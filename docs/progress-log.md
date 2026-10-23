@@ -54,7 +54,8 @@
 |---|---|---|---|
 | 부트스트랩(설계 문서·템플릿) | — | #1 | merged |
 | W1-00 | #2 | #3 | merged |
-| W1-01 | #4 | (이 PR) | open |
+| W1-01 | #4 | #5 | merged |
+| 문서 교정 (A) v1.3 | #6 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -64,6 +65,7 @@
 | `claude_md_sync_check` | (신규 — (A) §3.1에 W1-00 리뷰로 등재) | not_implemented → 2주차 | 없음(미구현 — 추적만) |
 | `engine_burp_isolation` | not_implemented(→1주차) | enforced | `tests/test_architecture.py::test_rejects_planted_burp_import` 외 — 목록은 `guardrails.yaml` (W1-01) |
 | `no_autonomous_send` | not_implemented(→1주차) | enforced | `tests/test_architecture.py::test_rejects_planted_send_or_socket_import` 외 — 목록은 `guardrails.yaml` (W1-01) |
+| `java_logic_isolation` | (신규 — (A) v1.3 §3.2 등재) | not_implemented → Java 연결 시 | 없음(Java 미연결 — 강제 대상 없음, 추적만) |
 
 > `secret_scan_hook`은 W1-00 리뷰에서 (A) §3.3 범위를 좁혔다: `enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현)`. 값(enforced)은 유지.
 
@@ -83,13 +85,17 @@
 - `branch_protection`: GitHub main 보호 규칙(PR 필수·관리자 포함·force push/삭제 금지)을 적용했으나, 레포 설정은 시스템이 자가확인할 수 없으므로 (A)대로 `unverifiable` 유지.
 - **폐쇄망 이식 과제:** 현재 개발은 인터넷망 PC(gh·pip 사용). 이식 시 사내 git + 오프라인 설치(wheelhouse)로 전환해야 함.
 - (W1-01) **경계 검사는 엔진 소스의 직접 import만 본다.** 제3자 패키지 내부 송신(전이 의존성), 런타임 조립 문자열로의 우회(`getattr(builtins, ...)` 등), 수신 객체를 정적으로 알 수 없는 호출(`loop.create_connection`)은 못 잡는다. 의존성 egress는 W1-02(`egress_static_check`·`egress_runtime_block`) 책임. 검사 대상은 `src/sentinel`(분석 엔진)뿐 — `tools/`·`tests/`는 범위 밖.
-- **관찰(기존 상태, W1-00에서 미수정):** CLAUDE.md 색인 N3는 "(A) §3 (경계 매핑)"을 가리키지만 §3에 Java 로직 금지 전용 행은 없다. N7은 §1.3 ⓕ(원본 트래픽)만 가리키고 키·토큰 커밋 금지의 강제 키(§3.3 `secret_scan_hook`)는 색인에 없다. 불일치라기보다 색인이 느슨한 지점 — 사람 판단 필요.
+
+### 해소 (미해결·관찰에서 이동)
+- **N3 색인 공백(거짓 색인)** → 해소: N3가 §3의 '없는 행'을 가리키던 공백을 (A) v1.3 §3.2 `java_logic_isolation` 행으로 메움. CLAUDE.md N3 → `(A) §3.2 java_logic_isolation`. (해소된 것은 '정본 공백'이며, 강제 자체는 not_implemented → Java 연결 시.)
+- **N7 색인 누락** → 해소: CLAUDE.md N7 → `(A) §1.3 ⓕ + §3.3 secret_scan_hook` (ⓕ=원본 트래픽, secret_scan_hook=비밀값 커밋).
 
 ### 추적됨 (미해결이었으나 현황판에 등재 — 해소 아님)
 - **뷰 동기화 ②(CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3) 기계 검사** → 추적됨: `claude_md_sync_check`=not_implemented→2주차. 현재는 PR 체크리스트 수동 확인. CLAUDE.md §4의 "전부 기계 강제" 표현을 사실대로 교정함(①·③=`make verify` 기계 강제, ②=수동).
 
 ### (A) 정본 변경 여부
 - **변경 있음(W1-00 리뷰 교정, PR #3):** §3.1에 `claude_md_sync_check` 행 추가(not_implemented → 2주차) / §3.3 `secret_scan_hook` 상태 칸 범위 명시(값 enforced 유지). 사유: 문서가 사실과 다른 보장을 하던 지점 교정. 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md §4 교정 — 같은 PR. claude.ai 발행본 재발행: 보류.
+- **변경 있음(문서 교정, Issue #6):** 버전 v1.2 → **v1.3**(제목·버전 줄·§3 매핑표 제목, 버전 이력 추가) / §3.2에 `java_logic_isolation` 행 추가(not_implemented → Java 연결 시). 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md N3·N7 색인·(B) 제목 기준 버전 — 같은 PR. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달(재발행은 설계자 몫).
 
 ### 다음 주차 이월
 - W1-01~W1-09 (진행 예정)

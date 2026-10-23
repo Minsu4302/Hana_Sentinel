@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.2",
+  "spec": "docs/design-decision.md §3 매핑표 v1.3",
   "capabilities": {
     "egress_static_check": {
       "status": "not_implemented",
@@ -117,6 +117,12 @@
         "tests/test_architecture.py::test_allowed_imports_pass_as_control",
         "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
       ]
+    },
+    "java_logic_isolation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "Java 연결 시",
+      "verification_tests": []
     },
     "input_schema_gate": {
       "status": "not_implemented",

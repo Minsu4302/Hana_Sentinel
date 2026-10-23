@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.2 — Sentinel Harness
+# (A) 설계확정서 v1.3 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,9 +7,10 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.2 = {범위 + 데이터계약(+ExecutionResponse) + 가드레일 매핑표 v1.2(통합점검 구멍5 반영)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.3 = {범위 + 데이터계약(+ExecutionResponse) + 가드레일 매핑표 v1.3(통합점검 구멍5 반영 + v1.3 교정)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
-> 확정일: 2026-10-22
+> **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23)
 
 ---
 
@@ -177,7 +178,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.2 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.3 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 CI가 검증한다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -223,6 +224,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
 |---|---|---|---|
 | 엔진 Burp/Montoya import 0 | 아키텍처 테스트 | enforced | `engine_burp_isolation` |
+| Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만) | 아키텍처 테스트 | not_implemented → Java 연결 시 | `java_logic_isolation` |
 | 입력은 스키마 통과분만 | 스키마/validator | enforced | `input_schema_gate` |
 | 봉투 len==1(single) | validator | enforced | `envelope_arity` |
 | 인증 선행 — 함수 미호출 + 코드 물리분리 | 테스트 | enforced | `auth_precedence_noinvoke` |

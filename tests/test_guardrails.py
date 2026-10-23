@@ -106,7 +106,8 @@ def test_rejects_enforced_pointing_to_non_test_function(spec, entries):
     _rejected(entries, spec, "egress_static_check", "실재하지 않음")
 
 
-@pytest.mark.parametrize("key", ["token_hardening", "receipt_hmac", "no_multiagent_rag", "eval_harness"])
+@pytest.mark.parametrize("key", ["token_hardening", "receipt_hmac", "no_multiagent_rag", "eval_harness",
+                                 "claude_md_sync_check", "java_logic_isolation"])
 def test_rejects_not_implemented_key_claimed_as_enforced(spec, entries, key):
     """테스트가 실재해도 (A)가 not_implemented(→N주차)로 둔 키는 enforced가 될 수 없다."""
     e = _get(entries, key)

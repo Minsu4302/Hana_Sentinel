@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.2. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.3. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.2"
+derived_from: "docs/design-decision.md §3 매핑표 v1.3"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -148,6 +148,14 @@ guardrails:
       - "tests/test_architecture.py::test_allowed_imports_pass_as_control"
       - "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
     manifest_key: engine_burp_isolation
+  - id: java_logic_isolation
+    description: "Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "Java 연결 시"
+    verification_tests: []
+    manifest_key: java_logic_isolation
   - id: input_schema_gate
     description: "입력은 스키마 통과분만"
     target_layer: "스키마·validator"
