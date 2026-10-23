@@ -95,6 +95,12 @@
         "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
       ]
     },
+    "claude_md_sync_check": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
     "engine_burp_isolation": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
@@ -141,6 +147,7 @@
     "secret_scan_hook": {
       "status": "enforced",
       "effective_status": "enforced",
+      "note": "클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현",
       "verification_tests": [
         "tests/test_secret_scan.py::test_precommit_blocks_fake_token_commit",
         "tests/test_secret_scan.py::test_precommit_blocks_each_fake_token_kind",

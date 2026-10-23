@@ -123,6 +123,14 @@ guardrails:
       - "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim"
       - "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
     manifest_key: manifest_derivation
+  - id: claude_md_sync_check
+    description: "CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: claude_md_sync_check
   - id: engine_burp_isolation
     description: "엔진 Burp/Montoya import 0"
     target_layer: "아키텍처테스트"
@@ -185,6 +193,7 @@ guardrails:
     target_layer: "CI게이트"
     week1_status:
       state: enforced
+      note: "클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현"
     verification_tests:
       - "tests/test_secret_scan.py::test_precommit_blocks_fake_token_commit"
       - "tests/test_secret_scan.py::test_precommit_blocks_each_fake_token_kind"
