@@ -1,4 +1,4 @@
-"""`manifest_derivation` — (A) §3 → guardrails.yaml → manifest 파생 사슬.
+"""`manifest_derivation`·`manifest_honesty` — (A) §3 → guardrails.yaml → manifest 파생 사슬과 정직성.
 
 정상 일치만이 아니라 '위조 거부'로 증명한다: 거짓 enforced, not_implemented의 enforced 참칭,
 중복 ID, 미지 status, 스키마 밖 구조, 손 편집된 생성물 → 전부 거부.

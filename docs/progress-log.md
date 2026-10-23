@@ -47,7 +47,7 @@
 
 <!-- Week 2 이후 섹션은 같은 양식으로 아래에 누적한다. 위 템플릿 블록을 복사해 쓴다. -->
 
-## Week 1 — 2026-10-22 ~ (진행 중)
+## Week 1 — 2026-10-22 ~ 2026-10-23
 
 ### 완료한 작업 (Issue / PR)
 | 작업 | Issue | PR | 상태 |
@@ -62,7 +62,8 @@
 | W1-05 | #14 | #15 | merged |
 | W1-06 | #16 | #17 | merged |
 | W1-07 | #18 | #19 | merged |
-| W1-08 | #20 | (이 PR) | open |
+| W1-08 | #20 | #21 | merged |
+| W1-09 | #22 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -95,6 +96,16 @@
 | `no_autopatch_apply` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_engine_has_no_autopatch_path` 외 (W1-08) |
 | `no_finetune_path` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_engine_has_no_finetune_path` 외 (W1-08) |
 | `no_raw_persistence` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_runtime_request_processing_persists_no_raw_traffic` 외 (W1-08) |
+
+| `manifest_honesty` | not_implemented(→1주차) | enforced | `tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced` 외 (W1-09) |
+| `manifest_selfcheck` | not_implemented(→1주차) | enforced(정적 → **동적**) | `tests/test_selfcheck.py::test_rejects_statically_present_but_uncollected_node` 외 (W1-09) |
+| `manifest_derivation` | enforced | enforced(유지) | 변경 없음 (W1-00) |
+
+> **W1-09 — selfcheck 정적 → 동적**: W1-00의 확인은 *정적*(`registry.resolve_test`: 노드의 파일·함수가 소스에 있음)뿐이었다. 이제 `make verify`의 pytest 단계가 selfcheck 플러그인(`tools/guardrails/selfcheck.py`, `-p tools.guardrails.selfcheck --manifest-selfcheck=guardrails.yaml`)을 켜고, enforced 키가 가리키는 모든 노드가 **그 실행에서 실제로 수집되고 통과했는지** 확인한다. 미수집(수집 제외·`-k` 선택 해제·collection error·부재)·skip(setup skip 포함)·xfail·xpass·setup/teardown 실패·실패·미실행이면 세션을 실패시킨다. 매개변수화 함수는 모든 인스턴스가 통과해야 한다. 실제 레포에서 enforced 검증 테스트 하나를 `-k`로 빼면 pytest 자체는 성공(나머지 통과)인데 selfcheck가 종료코드 1로 바꿈을 확인.
+> **정적 확인이 놓치던 것(적대 테스트로 재현)**: `__init__`이 있는 테스트 클래스의 메서드, `__test__ = False` 모듈, conftest `collect_ignore` — 셋 다 `resolve_test`는 '실재'로 보고 pytest도 종료코드 0인데 selfcheck만 잡는다.
+> **과대평가 금지(경계)**: selfcheck는 '등록·수집·통과'만 확인한다. 각 검증 테스트가 그 가드레일을 *실질적으로* 검증하는지는 그 테스트 내용의 책임이며 selfcheck가 떠안지 않는다(플러그인·테스트 머리말에 명시). 참칭 차단(not_implemented·disabled·unverifiable·derived의 enforced 주장 거부)은 기존대로 `registry.validate`(`guardrails check`)가 맡고 `manifest_honesty`가 그 거부 테스트를 가리킨다.
+> **변이 적용 유효성 장치(W1-08 교훈, `tools/mutation_guard.py`)**: 변이 결과를 읽기 전에 ⓐ 치환이 실제로 일어났는지(대상 문자열 정확히 1회, 결과 ≠ 원문) ⓑ 실행 중 로드된 모듈이 변이본인지(selfcheck의 활성 표지 `module=<경로>` = 변이본 경로)를 증명하고, 어긋나면 `MutationNotApplied`로 결과를 해석하지 않는다. selfcheck의 네 검사(미수집 판정·통과 판정·xfail 기록·세션 실패 반영) 각각에 대해 '원본은 위조 거부 / 그 검사를 끈 변이본은 같은 위조 통과'를 **스위트 안에서** 매번 보이며, 변이본이 실제로 로드됐음을 먼저 확인한다. W1-08 함정 재현(변이본을 만들었으나 실행은 원본 모듈) → 장치가 '다른 사본'으로 잡음.
+> **'종료코드 ≠ 0'은 거부 증거가 아니다**: 플러그인 미로드·옵션 오류도 ≠ 0이다. 그래서 샌드박스 거부 판정은 활성 표지(기대 모듈) + 거부 사유 출력이 있어야 인정한다. 재현 테스트: 플러그인을 못 불러 종료코드 ≠ 0인 실행을 장치가 '활성 표지 없음'으로 거부.
 
 > **W1-08 부재 증명 = 2겹**: ⓐ 정적(`tools/absence_check.py`) — `src/sentinel` 전체 AST에서 자동 반영(프로세스 실행·VCS·패치 라이브러리·자동반영 심볼), 파인튜닝(학습 프레임워크·Trainer류·파인튜닝 심볼), 원본 저장(파일 쓰기 open·write_text/bytes·os.write·임시파일·pickle류·파일 로그 핸들러·print·sqlite3) 통로가 없음. 허용 예외는 파일 단위 1건(`audit.py`의 sqlite3)이며 테스트가 허용 목록을 고정. ⓑ 런타임 관측(ⓕ) — 수용 + 인증·스키마·재검증 거부 + egress 시도를 원문 표지와 함께 처리하는 동안 파일 쓰기 open 0(Python 감사 이벤트), 전 로거 DEBUG 출력·stdout/stderr·**감사 SQLite 디렉터리 파일 바이트**에 원문(본문·토큰·제시 토큰·입력 헤더명·쿼리 값·egress 목적지) 0. 변이: 정적 검사기 무력화 → 심은 더미 테스트 전부 실패 / 감사 DB 파일 스캔 무력화 → '감사 지점이 본문을 적는' 변이 검출 실패 / 그 밖의 변이(디버그 로그·print·임시파일)는 각자 관측 경로가 잡음.
 > **커밋 경계(보조, R-10)**: `var/`·`*.sqlite3`·캡처물 경로가 git 무시 대상이고 추적 파일 0임을 테스트로 확인. `.gitignore`는 보조일 뿐 원본 미기록의 보장은 기능 부재 + 관측.
@@ -146,11 +157,12 @@
 - (W1-07) **egress 감사 훅은 테스트 egress 가드와 겹치지 않는다**: 테스트 가드는 소켓 시스템 호출 *전에* 차단하므로 감사 이벤트가 발생하지 않는다. 그래서 egress 감사 테스트는 `sys.audit(...)`로 이벤트만 직접 발생시켜 검증(실제 송신 없음).
 - (W1-08) 파인튜닝 이름 패턴의 `\blora\b`는 `build_lora_adapter`를 놓친다(`\b`가 밑줄을 단어 문자로 취급) → 식별자 단위 검사이므로 밑줄 경계 `(^|_)lora(_|$)`로 교정. 적대 더미가 잡음.
 - (W1-08) 변이 스크립트가 `tests.test_absence`를 import해 패치해도 pytest가 같은 파일을 다른 모듈 객체로 로드해 패치가 안 닿음(거짓 통과) → 패치 지점을 공용 객체(`Path.rglob`)로 옮겨 재확인. 변이 확인 자체도 '변이가 실제로 적용됐는지'를 봐야 함.
+- (W1-09) **지시와 실제 상태의 차이**: W1-09 지시는 `manifest_selfcheck`를 '이미 enforced'로 전제했으나 실제로는 `manifest_selfcheck`·`manifest_honesty` 둘 다 W1-00 이후 `not_implemented`(→1주차)였다(정적 확인만으로는 승격하지 않았음). W1-09에서 처음 승격.
+- (W1-09) **selfcheck가 레지스트리 YAML 파싱 오류에서 내부 오류로 죽었다**(`yaml.YAMLError` 미처리). 종료코드 ≠ 0이라 결과는 fail-closed였지만 활성 표지·사유가 없었다 — `_expect_rejected`가 '≠ 0'만으로 거부를 인정하지 않아 드러남 → 처리해 '레지스트리 읽기 실패' 사유로 거부.
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
 - **`secret_scan_hook`은 클라이언트 훅이다.** `git commit --no-verify`로 우회 가능. `make verify`가 추적 파일을 전수 재스캔하지만, 서버측 CI(GitHub Actions 등)는 없다 — (A) 목표층위 'CI게이트'의 서버측 강제는 미구현. 훅 실행엔 PATH의 `python` 필요.
-- W1-00의 검증 테스트 실재 확인은 **정적**(파일·함수 존재)뿐. 수집·통과 확인은 W1-09(`manifest_selfcheck`·`manifest_honesty`, 계속 not_implemented).
 - `branch_protection`: GitHub main 보호 규칙(PR 필수·관리자 포함·force push/삭제 금지)을 적용했으나, 레포 설정은 시스템이 자가확인할 수 없으므로 (A)대로 `unverifiable` 유지.
 - **폐쇄망 이식 과제:** 현재 개발은 인터넷망 PC(gh·pip 사용). 이식 시 사내 git + 오프라인 설치(wheelhouse)로 전환해야 함.
 - (W1-01) **경계 검사는 엔진 소스의 직접 import만 본다.** 제3자 패키지 내부 송신(전이 의존성), 런타임 조립 문자열로의 우회(`getattr(builtins, ...)` 등), 수신 객체를 정적으로 알 수 없는 호출(`loop.create_connection`)은 못 잡는다. 의존성 egress는 W1-02(`egress_static_check`·`egress_runtime_block`) 책임. 검사 대상은 `src/sentinel`(분석 엔진)뿐 — `tools/`·`tests/`는 범위 밖.
@@ -184,6 +196,10 @@
 - (W1-07) 정상 요청(①②③ 통과)은 감사하지 않는다(거부 경로만 기록). 수용 기록 필요 여부는 미정.
 
 - (W1-08) **부재 검사는 목록 기반 정적 검사**다 — 목록 밖 라이브러리, `getattr`·런타임 조립 문자열 우회, 제3자 패키지 내부 동작(예: uvicorn·FastAPI가 쓰는 파일)은 잡지 못한다. 범위는 `src/sentinel`뿐(`tools/`·`tests/`는 개발 도구라 범위 밖). 원본 저장은 런타임 관측으로 한 겹 더 막지만, 관측도 Python 감사 이벤트(`open`·`sqlite3.connect`·`tempfile.*`)가 닿는 경로만 본다(C 확장의 직접 파일 I/O는 못 봄).
+- (W1-09) **selfcheck는 `make test`(= `make verify`) 실행에서만 켜진다.** 맨 `pytest` 실행에는 없다(부분 실행이 늘 실패하지 않도록). Makefile 배선이 빠지면 동적 확인이 조용히 사라지므로 `test_make_test_runs_selfcheck_against_the_real_registry`가 레시피를 고정한다 — 단 이건 정적 확인이다.
+- (W1-09) selfcheck는 pytest가 보고한 결과를 믿는다. 항상 통과하는 빈 테스트(`assert True`)를 검증 노드로 등록하는 것은 못 막는다 — 과대평가 경계(테스트 내용의 책임)이며, 리뷰가 잡아야 한다.
+- (W1-09) 변이 유효성 장치를 스위트 안에서 자동 적용하는 것은 selfcheck뿐이다. W1-01~W1-08의 변이 확인은 PR 시점의 수동 스크립트였고 소급 자동화하지 않았다.
+- (W1-09) `tests/test_secret_scan.py`의 pre-commit 테스트 2개는 `PYTHONUTF8` 없이 실행하면 실패한다(Windows 콘솔 기본 인코딩, main에서도 동일 — 이번 변경과 무관). `make verify`는 `PYTHONUTF8=1`을 설정하므로 게이트는 통과. 인과 없는 기존 도구라 고치지 않고 기록만(W1-03 리뷰 2ⓑ).
 - (W1-08) 'train' 단독 이름은 금지하지 않았다(오탐 회피) — 파인튜닝 심볼은 `fine_tune`·`trainer`·`lora`·`sft`·`dpo`·`rlhf`·`peft`·`training_data/set/args` 등으로 한정.
 
 ### 심의 전 정의 필요 (W1-07 리뷰 이월)
@@ -201,6 +217,7 @@
 - W1-02 egress 검사의 본질적 한계(하위 프로세스·C 확장·Proactor·금지목록 밖 패키지)는 (A) 수정 없이 progress-log 이월로 관리(W1-02 리뷰 판단). 운영 실제 차단은 `egress_enforcement_owner`=unverifiable이 커버.
 
 ### 해소 (미해결·관찰에서 이동)
+- **검증 테스트 실재 확인이 정적뿐(W1-00 이월)** → 해소(W1-09): 게이트 실행에서 enforced 검증 노드의 실제 수집·통과를 동적으로 확인. `manifest_selfcheck`·`manifest_honesty` enforced.
 - **N3 색인 공백(거짓 색인)** → 해소: N3가 §3의 '없는 행'을 가리키던 공백을 (A) v1.3 §3.2 `java_logic_isolation` 행으로 메움. CLAUDE.md N3 → `(A) §3.2 java_logic_isolation`. (해소된 것은 '정본 공백'이며, 강제 자체는 not_implemented → Java 연결 시.)
 - **N7 색인 누락** → 해소: CLAUDE.md N7 → `(A) §1.3 ⓕ + §3.3 secret_scan_hook` (ⓕ=원본 트래픽, secret_scan_hook=비밀값 커밋).
 
@@ -212,5 +229,8 @@
 - **변경 있음(문서 교정, Issue #6):** 버전 v1.2 → **v1.3**(제목·버전 줄·§3 매핑표 제목, 버전 이력 추가) / §3.2에 `java_logic_isolation` 행 추가(not_implemented → Java 연결 시). 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md N3·N7 색인·(B) 제목 기준 버전 — 같은 PR. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달(재발행은 설계자 몫).
 - **변경 있음(W1-06, Issue #16):** 버전 v1.3 → **v1.4**(제목·버전 줄·이력·개정일) / §2.3 `redacted_kinds`를 `{token:int, cookie:int, pii:int, host:int}`(종류별 개수 맵)로 명확화 + §2.2 Body에 '본문 내부 마스킹 표기는 Java 연결 시 정의' 주석(리뷰 결정 1). §3 매핑표 변경 없음(매핑표 v1.3 유지 → `guardrails.yaml` 재파생 차이 없음). CLAUDE.md 영향 없음. (B) 제목 기준 버전 v1.4. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달.
 
+- **W1-09 (Issue #22):** 변경 없음. §3 매핑표 그대로 — `manifest_selfcheck`·`manifest_honesty`는 (A)가 enforced를 목표로 둔 키의 실제 승격. 전문 전달 불필요.
+
 ### 다음 주차 이월
-- W1-01~W1-09 (진행 예정)
+- 1주차 작업 W1-00~W1-09 전부 PR 완료(W1-09는 리뷰 대기). 1주차 전체 결산은 W1-09 merge 후 설계자 요청 시.
+- 2주차 대상 not_implemented 키와 위 '심의 전 정의 필요'·'2주차+ 이월'·'Java 연결 시'·'4번 주제' 항목.
