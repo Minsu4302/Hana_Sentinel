@@ -47,6 +47,32 @@ def test_rejects_egress_library_reached_transitively():
     assert [(f.name, f.chain) for f in found] == [("httpx", ("innocent-sdk", "helper", "httpx"))]
 
 
+# 금지 목록의 기대 스냅샷 — 금지 목록(tools/dep_egress.py)이 바뀌면 이 표도 같은 PR에서 바꿔야 한다.
+# 목록이 암묵적으로 자라거나 줄어 추적 밖으로 새지 않게 하는 장치. 분류와 추가 시점을 함께 남긴다.
+EXPECTED_EGRESS_DENYLIST = {
+    # W1-02: HTTP/네트워크 송신 클라이언트
+    "http_clients": {"requests", "httpx", "httpcore", "aiohttp", "urllib3", "httplib2", "pycurl", "treq",
+                     "websocket-client", "grpcio", "boto3", "botocore", "google-api-python-client"},
+    # W1-02: 상용·외부 AI SDK 및 LLM 프레임워크(N1)
+    "ai_sdks": {"openai", "anthropic", "google-generativeai", "google-genai", "cohere", "mistralai",
+                "litellm", "langchain", "langchain-core", "langchain-community", "langchain-openai",
+                "llama-index", "together", "groq", "replicate"},
+    # W1-03: 원격 측정 송신(fastapi가 opentelemetry-api를 끌어옴 — API 자체는 무송신이라 허용)
+    "telemetry_exporters": {"opentelemetry-exporter-otlp", "opentelemetry-exporter-otlp-proto-grpc",
+                            "opentelemetry-exporter-otlp-proto-http", "opentelemetry-exporter-zipkin",
+                            "opentelemetry-exporter-zipkin-json", "opentelemetry-exporter-jaeger",
+                            "opentelemetry-exporter-prometheus-remote-write", "opentelemetry-distro",
+                            "sentry-sdk", "ddtrace"},
+}
+
+
+def test_egress_denylist_matches_tracked_snapshot():
+    """egress_static_check가 커버하는 금지 목록 범위를 명시적으로 추적한다(추가·삭제 모두 이 표 변경 필요)."""
+    expected = set().union(*EXPECTED_EGRESS_DENYLIST.values())
+    assert set(EGRESS_DISTRIBUTIONS) == expected
+    assert "opentelemetry-api" not in EGRESS_DISTRIBUTIONS  # 무송신 API는 의도적으로 허용
+
+
 def test_rejects_telemetry_exporter_reached_transitively():
     """opentelemetry-api(무송신)는 통과, 실제로 내보내는 exporter가 붙으면 검출."""
     index = {"webframework": ["opentelemetry-api>=1"], "opentelemetry-api": [],

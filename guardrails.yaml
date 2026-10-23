@@ -15,6 +15,7 @@ guardrails:
       - "tests/test_egress.py::test_rejects_planted_direct_egress_dependency"
       - "tests/test_egress.py::test_rejects_egress_library_reached_transitively"
       - "tests/test_egress.py::test_rejects_telemetry_exporter_reached_transitively"
+      - "tests/test_egress.py::test_egress_denylist_matches_tracked_snapshot"
       - "tests/test_egress.py::test_rejects_egress_library_pulled_in_by_requested_extra"
       - "tests/test_egress.py::test_unresolvable_dependency_is_an_error_not_a_pass"
       - "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable"
