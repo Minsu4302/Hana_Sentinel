@@ -217,6 +217,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | manifest 정직성 | 테스트 | enforced | `manifest_honesty` |
 | manifest 자기검증 | 테스트 | enforced | `manifest_selfcheck` |
 | manifest 정본 파생(SSOT=이 표) + CI 일치검증 | 테스트 | enforced | `manifest_derivation` |
+| CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사 | 테스트 | not_implemented → 2주차 | `claude_md_sync_check` |
 
 ### 3.2 A. 입력경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -232,7 +233,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | 원본 생문자열 유입 불가(MaskedRef 타입) | 타입 레벨 | enforced | `maskedref_typing` |
 | Sanitization 독립 재검증 | 테스트 | enforced(값 재검증) | `sanitization_trust` |
 | 영수증 HMAC 서명 | validator | not_implemented → 2주차 | `receipt_hmac` |
-| 비밀값 커밋 금지 | CI(pre-commit) | enforced | `secret_scan_hook` |
+| 비밀값 커밋 금지 | CI(pre-commit) | enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현) | `secret_scan_hook` |
 | 원본 트래픽 미기록(기능 부재) | 테스트 | enforced | `no_raw_persistence` |
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |

@@ -1,0 +1,323 @@
+# guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.2. 값이 다르면 (A)가 정본이다.
+# 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
+# enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
+schema_version: "1"
+derived_from: "docs/design-decision.md §3 매핑표 v1.2"
+guardrails:
+  - id: egress_static_check
+    description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: egress_static_check
+  - id: egress_runtime_block
+    description: "egress 런타임 차단 실증"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+      note: "테스트환경 한정"
+    verification_tests: []
+    manifest_key: egress_runtime_block
+  - id: egress_enforcement_owner
+    description: "egress 차단 실주체(OS/네트워크)"
+    target_layer: "외부"
+    week1_status:
+      state: unverifiable
+    verification_tests: []
+    manifest_key: egress_enforcement_owner
+  - id: local_llm_vs_egress
+    description: "로컬 LLM ≠ 외부 egress 분리"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+      note: "1주차=허용목록 빔 검사"
+    verification_tests: []
+    manifest_key: local_llm_vs_egress
+  - id: no_autonomous_send
+    description: "자율 전송 0(송신·소켓 심볼 import 0)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: no_autonomous_send
+  - id: loopback_binding
+    description: "127.0.0.1 바인딩"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: loopback_binding
+  - id: request_token_validation
+    description: "요청자 토큰 검증(공유시크릿)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: request_token_validation
+  - id: token_hardening
+    description: "토큰 강화(회전·수명)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: token_hardening
+  - id: no_autopatch_apply
+    description: "자동 수정반영 부재(ⓓ)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: no_autopatch_apply
+  - id: no_finetune_path
+    description: "파인튜닝 경로 부재(ⓔ)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: no_finetune_path
+  - id: no_multiagent_rag
+    description: "멀티에이전트/RAG 부재(ⓖ)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "P2"
+    verification_tests: []
+    manifest_key: no_multiagent_rag
+  - id: manifest_honesty
+    description: "manifest 정직성"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: manifest_honesty
+  - id: manifest_selfcheck
+    description: "manifest 자기검증"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: manifest_selfcheck
+  - id: manifest_derivation
+    description: "manifest 정본 파생(SSOT=이 표) + CI 일치검증"
+    target_layer: "테스트"
+    week1_status:
+      state: enforced
+    verification_tests:
+      - "tests/test_guardrails.py::test_registry_is_rederived_from_design_decision_section3"
+      - "tests/test_guardrails.py::test_committed_manifest_matches_rederivation"
+      - "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests"
+      - "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced"
+      - "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim"
+      - "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
+    manifest_key: manifest_derivation
+  - id: claude_md_sync_check
+    description: "CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: claude_md_sync_check
+  - id: engine_burp_isolation
+    description: "엔진 Burp/Montoya import 0"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: engine_burp_isolation
+  - id: input_schema_gate
+    description: "입력은 스키마 통과분만"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: input_schema_gate
+  - id: envelope_arity
+    description: "봉투 len==1(single)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: envelope_arity
+  - id: auth_precedence_noinvoke
+    description: "인증 선행 — 함수 미호출 + 코드 물리분리"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: auth_precedence_noinvoke
+  - id: maskedref_typing
+    description: "원본 생문자열 유입 불가(MaskedRef 타입)"
+    target_layer: "타입"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: maskedref_typing
+  - id: sanitization_trust
+    description: "Sanitization 독립 재검증"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+      note: "값 재검증"
+    verification_tests: []
+    manifest_key: sanitization_trust
+  - id: receipt_hmac
+    description: "영수증 HMAC 서명"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: receipt_hmac
+  - id: secret_scan_hook
+    description: "비밀값 커밋 금지"
+    target_layer: "CI게이트"
+    week1_status:
+      state: enforced
+      note: "클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현"
+    verification_tests:
+      - "tests/test_secret_scan.py::test_precommit_blocks_fake_token_commit"
+      - "tests/test_secret_scan.py::test_precommit_blocks_each_fake_token_kind"
+      - "tests/test_secret_scan.py::test_scanner_flags_each_fake_secret_pattern"
+      - "tests/test_secret_scan.py::test_repository_tracked_files_contain_no_secrets"
+    manifest_key: secret_scan_hook
+  - id: no_raw_persistence
+    description: "원본 트래픽 미기록(기능 부재)"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: no_raw_persistence
+  - id: audit_log_present
+    description: "감사 로그 존재"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: audit_log_present
+  - id: authfail_log_hygiene
+    description: "인증실패 로그 위생"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "1주차"
+    verification_tests: []
+    manifest_key: authfail_log_hygiene
+  - id: audit_write_failure
+    description: "감사 기록 실패 시 fail-closed"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: audit_write_failure
+  - id: branch_protection
+    description: "main 직접 병합 금지"
+    target_layer: "CI게이트"
+    week1_status:
+      state: unverifiable
+      note: "레포 설정"
+    verification_tests: []
+    manifest_key: branch_protection
+  - id: evidence_min_one
+    description: "evidence≥1(0개 거부=환각차단)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: evidence_min_one
+  - id: evidence_ref_integrity
+    description: "evidence.transaction_ref ∈ analyzed_refs"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: evidence_ref_integrity
+  - id: server_assigned_status
+    description: "status 서버부여·LLM 생성불가"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: server_assigned_status
+  - id: category_closed_enum
+    description: "category 폐쇄형 enum"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: category_closed_enum
+  - id: output_schema_gate
+    description: "출력 스키마 전체(파생 롤업)"
+    target_layer: "파생"
+    week1_status:
+      state: derived
+      target: "2주차"
+      derived_from: [evidence_min_one, evidence_ref_integrity, server_assigned_status, category_closed_enum]
+    verification_tests: []
+    manifest_key: output_schema_gate
+  - id: assertive_token_guard
+    description: "hypothesis 단정 토큰 차단"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: assertive_token_guard
+  - id: corroboration_check
+    description: "observation 재대조"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "2주차"
+    verification_tests: []
+    manifest_key: corroboration_check
+  - id: hallucinated_literal_isolation
+    description: "환각 리터럴 격리"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "3주차"
+    verification_tests: []
+    manifest_key: hallucinated_literal_isolation
+  - id: anomaly_aggregation
+    description: "반복 이상 → 세션 신호"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "3주차"
+    verification_tests: []
+    manifest_key: anomaly_aggregation
+  - id: eval_harness
+    description: "평가 하네스"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "5번 주제"
+    verification_tests: []
+    manifest_key: eval_harness

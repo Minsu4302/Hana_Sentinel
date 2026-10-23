@@ -1,0 +1,12 @@
+# pre-commit — (A) §3.3 `secret_scan_hook` / N7.
+# 외부 다운로드 0: 원격 훅 저장소를 쓰지 않고 레포 내 스캐너(tools/secret_scan.py)만 실행한다.
+# 설치: make install-hooks   (PATH에 python이 있어야 한다)
+# 한계: 클라이언트 훅은 `git commit --no-verify`로 우회 가능 → `make verify`가 추적 파일 전수 재스캔.
+repos:
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: secret-scan (레포 내 스캐너, 외부 다운로드 0)
+        entry: python tools/secret_scan.py
+        language: unsupported
+        types: [text]

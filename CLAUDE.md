@@ -56,11 +56,11 @@
 
 ## 4. 뷰 동기화 (낡음 방지 — PR이 강제)
 
-이 CLAUDE.md 금지선 색인, (A) §3 매핑표, `guardrails.yaml`, manifest 생성물은 전부 **뷰 또는 파생물**이다. 뷰가 정본과 어긋나 조용히 낡는 것을 막기 위해, **PR 체크리스트가 다음 3종을 강제**한다(전부 **레포 내부** 기계 강제):
+이 CLAUDE.md 금지선 색인, (A) §3 매핑표, `guardrails.yaml`, manifest 생성물은 전부 **뷰 또는 파생물**이다. 뷰가 정본과 어긋나 조용히 낡는 것을 막기 위해, **PR 체크리스트가 다음 3종을 확인**한다. 강제 방식은 항목마다 다르다:
 
-1. `guardrails.yaml` 변경 시 → **(A) §3 매핑표**가 같은 PR에서 동기화됐는지.
-2. 이 CLAUDE.md 금지선 색인 변경 시 → **(A) §1.3 / §3**의 해당 절과 일치하는지.
-3. manifest 생성물 ↔ **(A) §3 파생 일치**(`manifest_derivation`; 메타 테스트가 검증).
+1. `guardrails.yaml` 변경 시 → **(A) §3 매핑표**가 같은 PR에서 동기화됐는지. — **기계 강제**: `make verify`(`guardrails check`)가 (A) §3 재파생과의 일치를 검사.
+2. 이 CLAUDE.md 금지선 색인 변경 시 → **(A) §1.3 / §3**의 해당 절과 일치하는지. — **현재 PR 체크리스트의 수동 확인이며, 기계 검사는 미구현**이다. manifest 키 `claude_md_sync_check`(= not_implemented → 2주차)로 추적한다.
+3. manifest 생성물 ↔ **(A) §3 파생 일치**(`manifest_derivation`). — **기계 강제**: `make verify`가 재파생과의 일치를 검사.
 
 불일치 시 정본 **(A)** 가 우선한다.
 
