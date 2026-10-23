@@ -61,7 +61,8 @@
 | W1-04 | #12 | #13 | merged |
 | W1-05 | #14 | #15 | merged |
 | W1-06 | #16 | #17 | merged |
-| W1-07 | #18 | (이 PR) | open |
+| W1-07 | #18 | #19 | merged |
+| W1-08 | #20 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -90,6 +91,13 @@
 
 | `audit_log_present` | not_implemented(→1주차) | enforced | `tests/test_audit.py::test_persisted_audit_contains_no_sensitive_values` 외 (W1-07) |
 | `audit_write_failure` | not_implemented(→2주차) | not_implemented(→2주차) 유지 | — (현재 동작을 `test_audit_write_failure_does_not_block_requests_yet_documented`가 고정: 기록 실패해도 요청을 막지 않음) |
+
+| `no_autopatch_apply` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_engine_has_no_autopatch_path` 외 (W1-08) |
+| `no_finetune_path` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_engine_has_no_finetune_path` 외 (W1-08) |
+| `no_raw_persistence` | not_implemented(→1주차) | enforced | `tests/test_absence.py::test_runtime_request_processing_persists_no_raw_traffic` 외 (W1-08) |
+
+> **W1-08 부재 증명 = 2겹**: ⓐ 정적(`tools/absence_check.py`) — `src/sentinel` 전체 AST에서 자동 반영(프로세스 실행·VCS·패치 라이브러리·자동반영 심볼), 파인튜닝(학습 프레임워크·Trainer류·파인튜닝 심볼), 원본 저장(파일 쓰기 open·write_text/bytes·os.write·임시파일·pickle류·파일 로그 핸들러·print·sqlite3) 통로가 없음. 허용 예외는 파일 단위 1건(`audit.py`의 sqlite3)이며 테스트가 허용 목록을 고정. ⓑ 런타임 관측(ⓕ) — 수용 + 인증·스키마·재검증 거부 + egress 시도를 원문 표지와 함께 처리하는 동안 파일 쓰기 open 0(Python 감사 이벤트), 전 로거 DEBUG 출력·stdout/stderr·**감사 SQLite 디렉터리 파일 바이트**에 원문(본문·토큰·제시 토큰·입력 헤더명·쿼리 값·egress 목적지) 0. 변이: 정적 검사기 무력화 → 심은 더미 테스트 전부 실패 / 감사 DB 파일 스캔 무력화 → '감사 지점이 본문을 적는' 변이 검출 실패 / 그 밖의 변이(디버그 로그·print·임시파일)는 각자 관측 경로가 잡음.
+> **커밋 경계(보조, R-10)**: `var/`·`*.sqlite3`·캡처물 경로가 git 무시 대상이고 추적 파일 0임을 테스트로 확인. `.gitignore`는 보조일 뿐 원본 미기록의 보장은 기능 부재 + 관측.
 
 > **W1-07 감사 저장 위치·형식(구현 재량, 기록)**: `sentinel.audit` 로거 → 로컬 SQLite 파일. 기본 `var/audit.sqlite3`(현재 작업 디렉터리 기준), 환경변수 `SENTINEL_AUDIT_DB`로 변경. 테이블 `audit_events(id, ts[UTC ISO8601], level, event, message)`. `event` = 메시지 첫 토큰(`auth_failure`·`schema_rejected`·`sanitization_rejected`·`payload_too_large`·`egress_attempt`). 저장하는 `message`는 각 감사 지점이 이미 위생 처리한 문자열(사유 코드·구조 위치·패턴 이름)뿐 — 본문·토큰·입력 이름·egress 목적지 없음. `var/`·`*.sqlite3`는 `.gitignore`. 설치는 `serve()`에서(토큰·manifest·바인드 검증이 모두 끝난 뒤).
 > **egress 시도 감사**: Python 런타임 감사 훅(`sys.addaudithook`)이 `socket.connect`·`socket.getaddrinfo`·`socket.sendto` 이벤트 중 외부 목적지(egress_policy EXTERNAL)를 `egress_attempt op=… port=…`로 기록. **기록만 하고 차단하지 않는다**(운영 차단 실주체 = OS/네트워크, `egress_enforcement_owner`=unverifiable 유지). 훅은 제거 불가라 프로세스당 1회 설치.
@@ -136,6 +144,8 @@
 - (W1-06) `redacted_kinds`를 (A) v1.4대로 `{token, cookie, pii, host}` 개수 맵으로 스키마 변경(네 키 필수, 음수·문자열·추가 키 거부).
 - (W1-07) `create_app()`이 이제 기동 시 manifest 파일을 `json.loads`로 읽어, W1-04의 '토큰 실패 시 역직렬화 미호출' 스파이가 앱 *구성 시점* 호출을 요청 처리로 오집계 → 앱 구성 후 스파이 기록을 비우고 요청 구간만 검사하도록 테스트 수정(검사 범위는 그대로 — 요청 처리 중 호출 0회).
 - (W1-07) **egress 감사 훅은 테스트 egress 가드와 겹치지 않는다**: 테스트 가드는 소켓 시스템 호출 *전에* 차단하므로 감사 이벤트가 발생하지 않는다. 그래서 egress 감사 테스트는 `sys.audit(...)`로 이벤트만 직접 발생시켜 검증(실제 송신 없음).
+- (W1-08) 파인튜닝 이름 패턴의 `\blora\b`는 `build_lora_adapter`를 놓친다(`\b`가 밑줄을 단어 문자로 취급) → 식별자 단위 검사이므로 밑줄 경계 `(^|_)lora(_|$)`로 교정. 적대 더미가 잡음.
+- (W1-08) 변이 스크립트가 `tests.test_absence`를 import해 패치해도 pytest가 같은 파일을 다른 모듈 객체로 로드해 패치가 안 닿음(거짓 통과) → 패치 지점을 공용 객체(`Path.rglob`)로 옮겨 재확인. 변이 확인 자체도 '변이가 실제로 적용됐는지'를 봐야 함.
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -172,6 +182,15 @@
 - (W1-07) 감사 저장소 자체의 무결성(변조 방지·보존 기간·회전)은 없다. 로컬 파일을 쓸 수 있는 프로세스는 기록을 바꿀 수 있다.
 - (W1-07) egress 감사 훅은 Python `socket` 계층의 감사 이벤트만 본다 — C 확장·하위 프로세스의 네트워크는 관측 못 함(W1-02 한계와 같은 성격). 관측만 하고 차단하지 않는다.
 - (W1-07) 정상 요청(①②③ 통과)은 감사하지 않는다(거부 경로만 기록). 수용 기록 필요 여부는 미정.
+
+- (W1-08) **부재 검사는 목록 기반 정적 검사**다 — 목록 밖 라이브러리, `getattr`·런타임 조립 문자열 우회, 제3자 패키지 내부 동작(예: uvicorn·FastAPI가 쓰는 파일)은 잡지 못한다. 범위는 `src/sentinel`뿐(`tools/`·`tests/`는 개발 도구라 범위 밖). 원본 저장은 런타임 관측으로 한 겹 더 막지만, 관측도 Python 감사 이벤트(`open`·`sqlite3.connect`·`tempfile.*`)가 닿는 경로만 본다(C 확장의 직접 파일 I/O는 못 봄).
+- (W1-08) 'train' 단독 이름은 금지하지 않았다(오탐 회피) — 파인튜닝 심볼은 `fine_tune`·`trainer`·`lora`·`sft`·`dpo`·`rlhf`·`peft`·`training_data/set/args` 등으로 한정.
+
+### 심의 전 정의 필요 (W1-07 리뷰 이월)
+- **감사 변조방지·보존·회전**: 감사 SQLite에 무결성 보호·보존 기간·회전 정의가 없다. 지금 manifest 키를 성급히 만들지 않고 사내 보안 심의 전 정의 필요 사항으로 남긴다((A) 수정 없음).
+
+### 2주차+ 이월 (W1-07 리뷰)
+- **수용 요청 감사**: 1주차는 거부 경로만 감사한다(LLM 없음). 분석이 생기면(2주차+) 수용된 요청도 감사 대상으로 확장(B-6).
 
 ### Java 연결 시 설계 숙제
 - **본문 내부 민감값의 마스킹 표기**(W1-06에서 드러남, W1-06 리뷰 결정 (나)): MaskedRef는 Param·Header 값에만 정의돼 있고 본문(JSON·폼) 안의 마스킹 표기는 (A)에 없다. 1주차는 현행 유지 — 본문에 평문 민감 패턴(자격증명 필드·토큰 등)이 있으면 fail-closed 거부. 로그인처럼 본문에 자격증명이 들어가는 요청의 분석은 Java 연결 시 표기 정의 이후 가능. (A) v1.4 §2.2 Body 주석으로 등재.
