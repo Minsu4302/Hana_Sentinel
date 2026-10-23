@@ -93,7 +93,7 @@ def test_actually_masked_input_passes():
 
 def test_actually_masked_input_reaches_not_implemented_path(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
-    assert _status(sent) == 501
+    assert _status(sent) == 200
 
 
 def test_every_policy_pattern_has_an_adversarial_sample():

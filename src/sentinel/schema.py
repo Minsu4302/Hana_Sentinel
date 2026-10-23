@@ -11,7 +11,7 @@ MaskedRef는 원본 생문자열을 담을 수 없는 타입이다: 값 필드�
 """
 from __future__ import annotations
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
@@ -118,3 +118,12 @@ class Envelope(_Strict):
         if self.analysis_type == "single" and len(self.transactions) != 1:
             raise ValueError(f"analysis_type=single이면 transactions는 정확히 1개 — {len(self.transactions)}개 거부")
         return self
+
+
+# ── 출력: (A) §2.5 ExecutionResponse — 분석 실행 상태(AnalysisResult와 구분) ──────────────
+
+class ExecutionResponse(_Strict):
+    """1주차 골격은 이 타입만 반환한다. findings 필드가 없다 — "분석 안 함 ≠ 분석 후 취약점 없음"."""
+    analysis_status: Literal["not_implemented"]
+    skipped_reasons: Annotated[list[str], Field(min_length=1)]
+    manifest_snapshot: dict[str, Any]

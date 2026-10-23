@@ -114,7 +114,7 @@ def _valid_envelope() -> bytes:
 
 def test_valid_token_reaches_the_pipeline(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _valid_envelope())
-    assert _status(sent) == 501  # ② 스키마 통과 후 아직 미구현 경로
+    assert _status(sent) == 200  # ①②③ 통과 → ④ ExecutionResponse
 
 
 # ── 위조 거부: 토큰 없음·위조 → 401 + 하위·본문 미호출 ─────────────────────
@@ -173,6 +173,7 @@ def parse_spies(monkeypatch):
 def test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure(token, kind, parse_spies):
     req = _forged_requests(token)[kind]
     app = create_app(token)
+    parse_spies.clear()  # 앱 구성 시점(manifest 파일 읽기)은 요청 처리가 아님 — 요청 구간만 검사
     inner_calls: list[dict] = []
     real_inner = app.app
 
@@ -206,7 +207,7 @@ def test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control(t
     stages = {f"{m.__name__}.{n}" for m, n in PIPELINE_FUNCTIONS}
     assert "sentinel.pipeline.schema_gate.parse_envelope" in stages
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _valid_envelope())
-    assert _status(sent) == 501
+    assert _status(sent) == 200
     assert "sentinel.pipeline.schema_gate.parse_envelope" in parse_spies
     assert "BaseModel.model_validate_json" in parse_spies
 
@@ -252,7 +253,7 @@ def _post(port, headers, body=None) -> int:
 def test_live_server_requires_token(live, token):
     assert _post(live, {}) == 401
     assert _post(live, {TOKEN_HEADER: secrets.token_urlsafe(32)}) == 401
-    assert _post(live, {TOKEN_HEADER: token.decode()}) == 501  # 대조군: 유효 토큰 + 정상 Envelope
+    assert _post(live, {TOKEN_HEADER: token.decode()}) == 200  # 대조군: 유효 토큰 + 정상 Envelope → ExecutionResponse
 
 
 # ── 위조 거부: 서버 측 토큰 미설정·빈값 → 기동 거부 ─────────────────────────

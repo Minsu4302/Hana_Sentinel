@@ -41,3 +41,7 @@ htmlcov/
 # ── 편집기 ──
 .vscode/
 .idea/
+
+# ── 감사 저장소(로컬 SQLite) ──
+var/
+*.sqlite3

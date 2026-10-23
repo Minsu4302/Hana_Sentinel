@@ -11,6 +11,7 @@ from typing import Any
 
 import uvicorn
 
+from sentinel.audit import attach_audit_store, audit_db_path, install_egress_audit_hook
 from sentinel.server.app import create_app
 from sentinel.server.auth import load_shared_token
 from sentinel.server.config import BIND_HOST, LoopbackBindError, ServerConfig, require_loopback_host, require_port
@@ -58,4 +59,7 @@ class LoopbackOnlyServer(uvicorn.Server):
 
 
 def serve(cfg: ServerConfig) -> None:
-    LoopbackOnlyServer(build_uvicorn_config(cfg)).run()
+    config = build_uvicorn_config(cfg)  # 토큰·manifest·바인드 주소 검증이 모두 끝난 뒤에만
+    attach_audit_store(audit_db_path())  # 감사 → SQLite (기록 실패 시 fail-closed는 2주차)
+    install_egress_audit_hook()  # egress 시도 관측·기록(차단 아님)
+    LoopbackOnlyServer(config).run()

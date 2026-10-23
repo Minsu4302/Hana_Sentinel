@@ -60,7 +60,8 @@
 | W1-03 | #10 | #11 | merged |
 | W1-04 | #12 | #13 | merged |
 | W1-05 | #14 | #15 | merged |
-| W1-06 | #16 | (이 PR) | open |
+| W1-06 | #16 | #17 | merged |
+| W1-07 | #18 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -86,6 +87,14 @@
 | `auth_precedence_noinvoke` | enforced | enforced(검증 범위 확장) | + `tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control` (W1-05) |
 
 | `sanitization_trust` | not_implemented(→1주차) | enforced(값 재검증) | `tests/test_sanitization.py::test_raw_secret_is_rejected_despite_applied_true_receipt` 외 (W1-06) |
+
+| `audit_log_present` | not_implemented(→1주차) | enforced | `tests/test_audit.py::test_persisted_audit_contains_no_sensitive_values` 외 (W1-07) |
+| `audit_write_failure` | not_implemented(→2주차) | not_implemented(→2주차) 유지 | — (현재 동작을 `test_audit_write_failure_does_not_block_requests_yet_documented`가 고정: 기록 실패해도 요청을 막지 않음) |
+
+> **W1-07 감사 저장 위치·형식(구현 재량, 기록)**: `sentinel.audit` 로거 → 로컬 SQLite 파일. 기본 `var/audit.sqlite3`(현재 작업 디렉터리 기준), 환경변수 `SENTINEL_AUDIT_DB`로 변경. 테이블 `audit_events(id, ts[UTC ISO8601], level, event, message)`. `event` = 메시지 첫 토큰(`auth_failure`·`schema_rejected`·`sanitization_rejected`·`payload_too_large`·`egress_attempt`). 저장하는 `message`는 각 감사 지점이 이미 위생 처리한 문자열(사유 코드·구조 위치·패턴 이름)뿐 — 본문·토큰·입력 이름·egress 목적지 없음. `var/`·`*.sqlite3`는 `.gitignore`. 설치는 `serve()`에서(토큰·manifest·바인드 검증이 모두 끝난 뒤).
+> **egress 시도 감사**: Python 런타임 감사 훅(`sys.addaudithook`)이 `socket.connect`·`socket.getaddrinfo`·`socket.sendto` 이벤트 중 외부 목적지(egress_policy EXTERNAL)를 `egress_attempt op=… port=…`로 기록. **기록만 하고 차단하지 않는다**(운영 차단 실주체 = OS/네트워크, `egress_enforcement_owner`=unverifiable 유지). 훅은 제거 불가라 프로세스당 1회 설치.
+> **ExecutionResponse**: ①②③ 통과 시 `200 {analysis_status:"not_implemented", skipped_reasons:["rule_engine_not_implemented","llm_analysis_not_implemented"], manifest_snapshot}` — findings 필드 자체가 없음(타입이 금지). `manifest_snapshot` = 커밋된 manifest의 키별 `status`·`effective_status`; 테스트가 SSOT(`guardrails.yaml`) 재파생과의 일치를 확인. manifest 없음·깨짐 → 기동 거부(fail-closed).
+> 변이 확인: 저장 무력화 → 저장 존재 테스트 전부 실패 / 감사 지점이 제시 헤더 기록 → 저장소 위생 테스트 실패 / 스냅샷 거짓(전부 enforced) → 스냅샷 일치·정직 테스트 실패 / 응답에 빈 findings 삽입 → 응답 형태 테스트 실패.
 
 > **W1-06 — 값 재검증이 돌 때만 enforced**: `sanitization_trust`의 증명은 영수증 불리언이 아니라 *값 재스캔* 테스트다. 영수증이 `applied:true, failed:false`라고 주장하는 입력에 생문자열을 10개 자리(비화이트리스트 요청·응답 헤더, 쿼리 값·이름, 퍼센트 인코딩, 경로, 요청·응답 본문, base64 본문, meta.origin_ref) × 정책 패턴 전부에 심어 전부 거부됨을 보였다. 변이: 재스캔 무력화 → 값 적대 테스트 전부 실패 / 영수증 신뢰(applied=true면 통과, R-11 재현) → 대량 실패 / 화이트리스트 제거 → 화이트리스트 테스트만 실패하고 값 재스캔 테스트는 통과(주 방어선의 독립성).
 > 새 단계 함수(`sentinel.pipeline.sanitization_check.*`)는 W1-05의 자동 열거로 `auth_precedence_noinvoke` 스파이 대상에 자동 포함 — 수동 등록 없음.
@@ -125,6 +134,8 @@
 - (W1-06) **패턴 구멍**: `session_cookie_pair`가 경로 속 `/JSESSIONID=…`(URL 재작성 세션)를 놓침. 적대 테스트(경로 자리)가 잡음 → 경계 문자에 `/` 추가.
 - (W1-06) **본문 크기 판단 — 적용함.** 재검증은 본문 전체를 스캔하므로 상한 없이는 DoS 경로가 된다. ⓐ HTTP 원시 요청 1 MiB 상한: 스트림을 읽다 초과 즉시 중단 → 413, 파싱 전 차단(설정값, 정본 결정 아님 — 64KB+256KB 본문의 base64 팽창·오버헤드 여유). ⓑ 내용 상한 (A) §2.2 req 64KB / resp 256KB: 디코드 후 바이트 기준, 초과 시 `truncated` 값과 무관하게 거부(Java가 잘랐어야 할 값).
 - (W1-06) `redacted_kinds`를 (A) v1.4대로 `{token, cookie, pii, host}` 개수 맵으로 스키마 변경(네 키 필수, 음수·문자열·추가 키 거부).
+- (W1-07) `create_app()`이 이제 기동 시 manifest 파일을 `json.loads`로 읽어, W1-04의 '토큰 실패 시 역직렬화 미호출' 스파이가 앱 *구성 시점* 호출을 요청 처리로 오집계 → 앱 구성 후 스파이 기록을 비우고 요청 구간만 검사하도록 테스트 수정(검사 범위는 그대로 — 요청 처리 중 호출 0회).
+- (W1-07) **egress 감사 훅은 테스트 egress 가드와 겹치지 않는다**: 테스트 가드는 소켓 시스템 호출 *전에* 차단하므로 감사 이벤트가 발생하지 않는다. 그래서 egress 감사 테스트는 `sys.audit(...)`로 이벤트만 직접 발생시켜 검증(실제 송신 없음).
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -156,6 +167,11 @@
 - (W1-06) **이름 화이트리스트는 설정값**(`sentinel/sanitization_policy.py` `DEFAULT_POLICY`, 정본 아님): Authorization·Proxy-Authorization·Cookie·Set-Cookie·X-API-Key·`*api-key*`·`*apikey*`·`*token*`·`*secret*`·`*session*`. 보조 방어선 — 주 방어선은 값 재스캔.
 - (W1-06) 영수증 `policy_version`과 Python 정책 버전의 일치는 검사하지 않는다(정본 미지정). `redacted_count`와 `redacted_kinds` 합의 일치도 검사하지 않는다 — 영수증은 어차피 신뢰하지 않으며, 서명 검증은 `receipt_hmac`(2주차).
 - (W1-06) `host` 값은 재스캔 대상(모든 문자열)이지만 내부 호스트명 자체를 탐지하는 패턴은 없다(가명화는 SanitizationPolicy·Java 몫, (A) §2.2).
+
+- (W1-07) **`audit_write_failure` 미구현(2주차) — 정직 표기**: 1주차는 '감사가 남는다'만 보장한다. 저장소 기록이 실패해도(디스크·DB 오류) logging의 handleError로 넘어가고 요청 처리는 계속된다 — '못 남기면 거부'는 미정의. 테스트가 이 현재 동작을 고정해 두었다(보장이 아님).
+- (W1-07) 감사 저장소 자체의 무결성(변조 방지·보존 기간·회전)은 없다. 로컬 파일을 쓸 수 있는 프로세스는 기록을 바꿀 수 있다.
+- (W1-07) egress 감사 훅은 Python `socket` 계층의 감사 이벤트만 본다 — C 확장·하위 프로세스의 네트워크는 관측 못 함(W1-02 한계와 같은 성격). 관측만 하고 차단하지 않는다.
+- (W1-07) 정상 요청(①②③ 통과)은 감사하지 않는다(거부 경로만 기록). 수용 기록 필요 여부는 미정.
 
 ### Java 연결 시 설계 숙제
 - **본문 내부 민감값의 마스킹 표기**(W1-06에서 드러남, W1-06 리뷰 결정 (나)): MaskedRef는 Param·Header 값에만 정의돼 있고 본문(JSON·폼) 안의 마스킹 표기는 (A)에 없다. 1주차는 현행 유지 — 본문에 평문 민감 패턴(자격증명 필드·토큰 등)이 있으면 fail-closed 거부. 로그인처럼 본문에 자격증명이 들어가는 요청의 분석은 Java 연결 시 표기 정의 이후 가능. (A) v1.4 §2.2 Body 주석으로 등재.

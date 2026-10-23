@@ -73,7 +73,7 @@ def test_valid_envelope_passes():
 
 def test_valid_envelope_reaches_the_not_implemented_path_after_token(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
-    assert _status(sent) == 501
+    assert _status(sent) == 200
 
 
 # ── 위조 거부: arity ───────────────────────────────────────────────
@@ -226,4 +226,4 @@ def test_schema_gate_is_reached_after_token(token, monkeypatch):
     real = schema_gate.parse_envelope
     monkeypatch.setattr(schema_gate, "parse_envelope", lambda raw: calls.append(raw) or real(raw))
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
-    assert _status(sent) == 501 and calls == [_raw(_env())]
+    assert _status(sent) == 200 and calls == [_raw(_env())]
