@@ -1,0 +1,248 @@
+{
+  "schema_version": "1",
+  "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
+  "source": "guardrails.yaml",
+  "spec": "docs/design-decision.md §3 매핑표 v1.2",
+  "capabilities": {
+    "egress_static_check": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "egress_runtime_block": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "note": "테스트환경 한정",
+      "verification_tests": []
+    },
+    "egress_enforcement_owner": {
+      "status": "unverifiable",
+      "effective_status": "unverifiable",
+      "verification_tests": []
+    },
+    "local_llm_vs_egress": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "note": "1주차=허용목록 빔 검사",
+      "verification_tests": []
+    },
+    "no_autonomous_send": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "loopback_binding": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "request_token_validation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "token_hardening": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "no_autopatch_apply": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "no_finetune_path": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "no_multiagent_rag": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "P2",
+      "verification_tests": []
+    },
+    "manifest_honesty": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "manifest_selfcheck": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "manifest_derivation": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_guardrails.py::test_registry_is_rederived_from_design_decision_section3",
+        "tests/test_guardrails.py::test_committed_manifest_matches_rederivation",
+        "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests",
+        "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced",
+        "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim",
+        "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
+      ]
+    },
+    "engine_burp_isolation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "input_schema_gate": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "envelope_arity": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "auth_precedence_noinvoke": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "maskedref_typing": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "sanitization_trust": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "note": "값 재검증",
+      "verification_tests": []
+    },
+    "receipt_hmac": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "secret_scan_hook": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_secret_scan.py::test_precommit_blocks_fake_token_commit",
+        "tests/test_secret_scan.py::test_precommit_blocks_each_fake_token_kind",
+        "tests/test_secret_scan.py::test_scanner_flags_each_fake_secret_pattern",
+        "tests/test_secret_scan.py::test_repository_tracked_files_contain_no_secrets"
+      ]
+    },
+    "no_raw_persistence": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "audit_log_present": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "authfail_log_hygiene": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "1주차",
+      "verification_tests": []
+    },
+    "audit_write_failure": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "branch_protection": {
+      "status": "unverifiable",
+      "effective_status": "unverifiable",
+      "note": "레포 설정",
+      "verification_tests": []
+    },
+    "evidence_min_one": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "evidence_ref_integrity": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "server_assigned_status": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "category_closed_enum": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "output_schema_gate": {
+      "status": "derived",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "derived_from": [
+        "evidence_min_one",
+        "evidence_ref_integrity",
+        "server_assigned_status",
+        "category_closed_enum"
+      ],
+      "verification_tests": []
+    },
+    "assertive_token_guard": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "corroboration_check": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2주차",
+      "verification_tests": []
+    },
+    "hallucinated_literal_isolation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "3주차",
+      "verification_tests": []
+    },
+    "anomaly_aggregation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "3주차",
+      "verification_tests": []
+    },
+    "eval_harness": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "5번 주제",
+      "verification_tests": []
+    }
+  }
+}

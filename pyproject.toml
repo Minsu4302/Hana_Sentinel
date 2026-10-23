@@ -1,0 +1,12 @@
+[project]
+name = "sentinel-harness"
+version = "0.0.0"
+description = "폐쇄망 전용 AI 웹 취약점 점검 보조 — 분석 서버(Python 엔진)"
+requires-python = ">=3.11"
+# 제품 런타임 의존성은 해당 작업 항목(W1-03~)에서 추가한다. 외부 송신 라이브러리 추가 금지(N1/N2).
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"
