@@ -57,7 +57,8 @@
 | W1-01 | #4 | #5 | merged |
 | 문서 교정 (A) v1.3 | #6 | #7 | merged |
 | W1-02 | #8 | #9 | merged |
-| W1-03 | #10 | (이 PR) | open |
+| W1-03 | #10 | #11 | merged |
+| W1-04 | #12 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -73,6 +74,11 @@
 | `local_llm_vs_egress` | not_implemented(→1주차) | enforced(1주차=허용목록 빔 검사) | `tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry` 외 (W1-02) |
 | `egress_enforcement_owner` | unverifiable | unverifiable(유지) | — (OS/네트워크 책임, 자가확인 불가) |
 | `loopback_binding` | not_implemented(→1주차) | enforced | `tests/test_server.py::test_rejects_non_loopback_bind_host` 외 — 목록은 `guardrails.yaml` (W1-03) |
+| `request_token_validation` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body` 외 (W1-04) |
+| `auth_precedence_noinvoke` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure` 외 (W1-04) |
+| `authfail_log_hygiene` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_auth_failure_audit_contains_no_body_or_token_values` 외 (W1-04) |
+
+> **W1-04 인터페이스 결정(정본 미지정 → 구현 재량, 기록 필수)**: 클라이언트는 공유 토큰을 요청 헤더 **`X-Sentinel-Token`** 한 개로 보낸다(없음·중복·불일치 → 401). Java Extension 연결 시 이 헤더 이름을 그대로 써야 한다. `Authorization` 헤더를 쓰지 않은 이유: 점검 대상 앱의 `Authorization` 헤더와 혼동·충돌을 피하고, Burp 트래픽 안의 대상 인증정보와 도구 인증을 분리하기 위해. 서버 측 토큰은 환경변수 `SENTINEL_SHARED_TOKEN`(설정) — 헤더(전달)와 분리.
 
 > `secret_scan_hook`은 W1-00 리뷰에서 (A) §3.3 범위를 좁혔다: `enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현)`. 값(enforced)은 유지.
 
@@ -92,6 +98,10 @@
 - (W1-03) **FastAPI 기본 문서 UI(/docs·/redoc)는 브라우저가 외부 CDN 자산을 받아 온다** → docs·redoc·openapi.json 비활성(N1). 테스트로 404 확인.
 - (W1-03) 바인드 주소는 (A) 표기대로 `127.0.0.1` 리터럴만 허용 — `localhost`(해석 결과 가변)·다른 127/8·`::1`·변형 표기(`127.1`, 정수·16진)도 거부. 바인드 주소 CLI 옵션·환경변수는 두지 않음. **기본 포트 8765는 정본 값이 없어 임의로 고른 값이며, 정본 결정이 아니다**(`--port`로 바꿀 수 있는 설정값). 주소(127.0.0.1)=불변식이라 리터럴 고정 / 포트=설정이라 가변 — 의도된 비대칭(W1-03 리뷰 승인).
 - (W1-03) 바인딩 3겹: 설정 객체 검증 → uvicorn 설정 직전 재검증(frozen 우회 대비) → `startup` 직후 실제 바인드 주소 재확인(비루프백이면 리스너 닫고 기동 중단). uvicorn의 소켓·fd·UDS 주입 경로는 거부. 변이 확인(검증 무력화 시 적대 테스트 전부 실패) — 단 실제 0.0.0.0 바인드를 일으킬 수 있는 우회 테스트는 변이 실행에서 제외(이 PC의 전 인터페이스에 포트를 열지 않기 위해).
+- (W1-04) **게이트 위치 = FastAPI 바깥의 순수 ASGI 래퍼**(`TokenGate`). FastAPI 미들웨어·의존성(Depends)으로 두면 라우팅·요청 객체 생성이 먼저 일어날 수 있어 '본문 touch 전 거부'를 구조로 보장하기 어렵다 → 최외곽 래퍼로 두고, 실패 시 ASGI `receive`(본문 수신)조차 호출하지 않음을 스파이로 증명.
+- (W1-04) **파서·분석·저장 함수는 아직 없다**(W1-05~07). 그래서 '미호출'은 ⓐ 하위 앱(그것들로 가는 유일한 진입로) ⓑ ASGI receive ⓒ 실제 FastAPI 안쪽의 본문 읽기·역직렬화(`Request.body/json/form/stream`, `json.loads`, pydantic `model_validate(_json)`) 스파이로 증명. 스파이가 실제로 파싱을 잡는다는 대조 테스트를 따로 둠(고장 난 스파이로 '0회'가 나오는 거짓 증명 방지). W1-05에서 스키마 검증 함수가 생기면 그 함수도 스파이 대상에 추가해야 함.
+- (W1-04) 테스트 입력 `\x00`은 OS가 환경변수에 담을 수 없어(ValueError) 다른 제어문자(`\x07`)로 대체 — NUL 토큰은 애초에 설정 불가.
+- (W1-04) 변이 확인: 검증 무력화 → 위조 거부·미호출·실서버 테스트 실패 / 감사 로그에 제시 헤더 기록 → 위생 테스트 실패 / 미설정 시 기본값 fallback → 기동 거부 테스트 실패.
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -108,6 +118,12 @@
 
 - (W1-03) **분석 엔드포인트(`POST /v1/analyze`)는 아직 인증 없이 501을 돌려준다.** 본문을 읽지 않으므로 처리되는 데이터는 없지만, 토큰 검증(W1-04)이 붙기 전까지 루프백의 아무 프로세스나 호출할 수 있다. W1-04가 파이프라인 최선두에 토큰 검증을 둔다.
 - (W1-03) 루프백 바인딩은 '외부 인터페이스에서 접근 불가'를 보장할 뿐, 같은 PC의 다른 사용자·프로세스로부터의 접근은 막지 않는다(그건 W1-04 토큰의 몫).
+
+- (W1-03 리뷰 2ⓐ) **목록 기반 차단은 알려진 것만 막는다.** `egress_static_check`의 금지 목록(`tools/dep_egress.py`)에 없는 미래의 신규 텔레메트리·송신 패키지는 수동 추가가 필요하다(스냅샷 테스트는 '목록이 바뀌었음'을 드러낼 뿐, '빠진 패키지'를 찾아주지 않음).
+- (W1-03 리뷰 2ⓑ) **이미 merge된 도구의 수정 원칙**: 그 수정을 유발한 작업과 인과가 있을 때만 허용하고 PR에 명시한다(예: W1-03의 fastapi 유입 → W1-02 금지 목록 보강).
+- (W1-04) **토큰 강도는 검사하지 않는다**(길이·엔트로피). 형식(ASCII 인쇄 가능·공백 없음·비어있지 않음)만 기동 시 검사 — 강화·회전·수명은 `token_hardening`(not_implemented→2주차).
+- (W1-04) **감사 로그는 아직 Python logging(`sentinel.audit`)으로만 나간다.** 기록 위치·형식·보존과 '기록 실패 시 fail-closed'는 W1-07(`audit_log_present`)·2주차(`audit_write_failure`). 현재 인증 실패만 기록(재검증 거부 등은 W1-06·07).
+- (W1-04) 공유 토큰 하나라 클라이언트 구분이 없다(같은 토큰을 아는 로컬 프로세스는 통과). 루프백 + 토큰이 1주차의 로컬 경계 — 그 이상은 2주차 이후.
 
 ### 4번 주제(LLM 전략) 이월
 - **사내 승인 LLM 엔드포인트의 분류**: 사내 승인 LLM은 루프백이 아니라 사내 네트워크의 다른 호스트일 수 있어, 현재 `egress_policy`에선 EXTERNAL로 차단된다. "사내 승인 엔드포인트를 어떻게 LOCAL/허용으로 분류하느냐"는 4번 주제에서 확정 — 그때까지 EXTERNAL 유지(W1-02 리뷰 판단).
