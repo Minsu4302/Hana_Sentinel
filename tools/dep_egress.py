@@ -29,6 +29,13 @@ EGRESS_DISTRIBUTIONS = frozenset({
     "openai", "anthropic", "google-generativeai", "google-genai", "cohere", "mistralai",
     "litellm", "langchain", "langchain-core", "langchain-community", "langchain-openai",
     "llama-index", "together", "groq", "replicate",
+    # 원격 측정 송신(OpenTelemetry exporter·distro). `opentelemetry-api` 자체는 송신하지 않음 —
+    # fastapi가 필수 의존성으로 끌어오므로 허용하되, 실제로 내보내는 계열은 금지.
+    "opentelemetry-exporter-otlp", "opentelemetry-exporter-otlp-proto-grpc",
+    "opentelemetry-exporter-otlp-proto-http", "opentelemetry-exporter-zipkin",
+    "opentelemetry-exporter-zipkin-json", "opentelemetry-exporter-jaeger",
+    "opentelemetry-exporter-prometheus-remote-write", "opentelemetry-distro",
+    "sentry-sdk", "ddtrace",
 })
 
 RequiresOf = Callable[[str], "list[str] | None"]

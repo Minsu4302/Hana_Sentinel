@@ -13,7 +13,7 @@ endif
 export PYTHONUTF8 := 1
 export PYTHONIOENCODING := utf-8
 
-.PHONY: verify secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks
+.PHONY: verify secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve
 
 ## verify: 시크릿 전수 스캔 → 가드레일 정합(guardrails.yaml↔(A) §3, manifest↔재파생) → pytest
 verify: secret-scan guardrails-check test
@@ -36,7 +36,12 @@ manifest:
 	$(PYTHON) -m tools.guardrails manifest
 
 install-dev:
+	$(PYTHON) tools/install_runtime_deps.py
 	$(PYTHON) -m pip install -r requirements-dev.txt
+
+## serve: 분석 서버 기동(127.0.0.1 고정, 바인드 주소 옵션 없음)
+serve:
+	$(PYTHON) -m sentinel.server
 
 install-hooks:
 	$(PYTHON) -m pre_commit install

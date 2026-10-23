@@ -47,6 +47,15 @@ def test_rejects_egress_library_reached_transitively():
     assert [(f.name, f.chain) for f in found] == [("httpx", ("innocent-sdk", "helper", "httpx"))]
 
 
+def test_rejects_telemetry_exporter_reached_transitively():
+    """opentelemetry-api(무송신)는 통과, 실제로 내보내는 exporter가 붙으면 검출."""
+    index = {"webframework": ["opentelemetry-api>=1"], "opentelemetry-api": [],
+             "tracing-kit": ["opentelemetry-api", "opentelemetry-exporter-otlp-proto-http"]}
+    assert find_egress_dependencies(["webframework"], _fake_index(index)) == []
+    found = find_egress_dependencies(["webframework", "tracing-kit"], _fake_index(index))
+    assert [f.name for f in found] == ["opentelemetry-exporter-otlp-proto-http"]
+
+
 def test_rejects_egress_library_pulled_in_by_requested_extra():
     index = {"webframework": ['starlette', 'httpx ; extra == "client"'], "starlette": []}
     assert find_egress_dependencies(["webframework"], _fake_index(index)) == []  # 대조군: extra 미요청
