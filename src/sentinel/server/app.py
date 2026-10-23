@@ -1,15 +1,18 @@
 """FastAPI 앱 — 단일 분석 엔드포인트. 최외곽은 토큰 게이트(W1-04).
 
 (A) §3.0 파이프라인
-① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ② 스키마 검증(W1-05) → ③ Sanitization 재검증(W1-06)
-→ ④ ExecutionResponse(W1-07). 엔드포인트는 아직 본문을 읽지 않고 501을 돌려준다.
+① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ② 스키마 검증(W1-05, `pipeline.schema_gate`)
+→ ③ Sanitization 재검증(W1-06) → ④ ExecutionResponse(W1-07). ② 통과 후는 아직 501.
 
+파이프라인 함수는 `모듈.함수`로 호출한다(스파이 우회 금지 — sentinel.pipeline 머리말 참조).
 문서 UI(/docs·/redoc)와 /openapi.json은 끈다: 문서 UI는 브라우저가 외부 CDN 자산을 받아 오므로(N1).
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
+from sentinel.pipeline import schema_gate
 from sentinel.server.auth import TokenGate
 
 ANALYZE_PATH = "/v1/analyze"
@@ -20,7 +23,13 @@ def create_api() -> FastAPI:
     api = FastAPI(title="Sentinel Harness", docs_url=None, redoc_url=None, openapi_url=None)
 
     @api.post(ANALYZE_PATH)
-    async def analyze() -> Response:
+    async def analyze(request: Request) -> Response:
+        raw = await request.body()
+        try:
+            schema_gate.parse_envelope(raw)
+        except schema_gate.SchemaRejected:
+            # 오류 상세(입력 값 포함 가능)는 반사하지 않는다
+            return JSONResponse({"error": "schema_rejected"}, status_code=422)
         return Response(status_code=501)
 
     return api
