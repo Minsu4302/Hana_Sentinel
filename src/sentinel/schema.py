@@ -41,12 +41,21 @@ class MaskedRef(_Strict):
         return v
 
 
+class RedactedKinds(_Strict):
+    """(A) v1.4 §2.3 — 종류별 개수 맵(값 없음, 감사용). 네 종류 모두 필수."""
+    token: NonNegative
+    cookie: NonNegative
+    pii: NonNegative
+    host: NonNegative
+
+
 class SanitizationReceipt(_Strict):
+    """요청자가 쓰는 '주장'. 파이프라인 ③은 이 값을 믿지 않고 데이터를 재검증한다((A) §2.3 신뢰 경계)."""
     applied: bool
     failed: bool
     policy_version: str
     redacted_count: NonNegative
-    redacted_kinds: list[MaskKind]  # 종류만(값 없음, 감사용)
+    redacted_kinds: RedactedKinds
 
 
 class Param(_Strict):
