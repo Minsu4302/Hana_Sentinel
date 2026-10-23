@@ -76,10 +76,17 @@
       ]
     },
     "request_token_validation": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_auth.py::test_valid_token_reaches_downstream",
+        "tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body",
+        "tests/test_auth.py::test_comparison_is_constant_time",
+        "tests/test_auth.py::test_live_server_requires_token",
+        "tests/test_auth.py::test_missing_or_invalid_server_token_refuses_startup",
+        "tests/test_auth.py::test_no_unauthenticated_app_construction_path",
+        "tests/test_auth.py::test_gate_does_not_keep_or_reveal_the_raw_token"
+      ]
     },
     "token_hardening": {
       "status": "not_implemented",
@@ -165,10 +172,16 @@
       "verification_tests": []
     },
     "auth_precedence_noinvoke": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body",
+        "tests/test_auth.py::test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure",
+        "tests/test_auth.py::test_parse_spies_do_detect_body_parsing_as_control",
+        "tests/test_auth.py::test_websocket_scope_is_rejected_without_calling_downstream",
+        "tests/test_auth.py::test_token_module_is_physically_separated_from_body_parsing",
+        "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
+      ]
     },
     "maskedref_typing": {
       "status": "not_implemented",
@@ -213,10 +226,14 @@
       "verification_tests": []
     },
     "authfail_log_hygiene": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_auth.py::test_auth_failure_audit_contains_no_body_or_token_values",
+        "tests/test_auth.py::test_successful_auth_is_not_audited_as_failure",
+        "tests/test_auth.py::test_uvicorn_access_log_is_disabled",
+        "tests/test_auth.py::test_missing_or_invalid_server_token_refuses_startup"
+      ]
     },
     "audit_write_failure": {
       "status": "not_implemented",

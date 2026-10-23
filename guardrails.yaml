@@ -87,9 +87,15 @@ guardrails:
     description: "요청자 토큰 검증(공유시크릿)"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_auth.py::test_valid_token_reaches_downstream"
+      - "tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body"
+      - "tests/test_auth.py::test_comparison_is_constant_time"
+      - "tests/test_auth.py::test_live_server_requires_token"
+      - "tests/test_auth.py::test_missing_or_invalid_server_token_refuses_startup"
+      - "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
+      - "tests/test_auth.py::test_gate_does_not_keep_or_reveal_the_raw_token"
     manifest_key: request_token_validation
   - id: token_hardening
     description: "토큰 강화(회전·수명)"
@@ -200,9 +206,14 @@ guardrails:
     description: "인증 선행 — 함수 미호출 + 코드 물리분리"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body"
+      - "tests/test_auth.py::test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure"
+      - "tests/test_auth.py::test_parse_spies_do_detect_body_parsing_as_control"
+      - "tests/test_auth.py::test_websocket_scope_is_rejected_without_calling_downstream"
+      - "tests/test_auth.py::test_token_module_is_physically_separated_from_body_parsing"
+      - "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
     manifest_key: auth_precedence_noinvoke
   - id: maskedref_typing
     description: "원본 생문자열 유입 불가(MaskedRef 타입)"
@@ -261,9 +272,12 @@ guardrails:
     description: "인증실패 로그 위생"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_auth.py::test_auth_failure_audit_contains_no_body_or_token_values"
+      - "tests/test_auth.py::test_successful_auth_is_not_audited_as_failure"
+      - "tests/test_auth.py::test_uvicorn_access_log_is_disabled"
+      - "tests/test_auth.py::test_missing_or_invalid_server_token_refuses_startup"
     manifest_key: authfail_log_hygiene
   - id: audit_write_failure
     description: "감사 기록 실패 시 fail-closed"

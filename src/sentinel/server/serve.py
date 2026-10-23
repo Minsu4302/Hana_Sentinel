@@ -6,19 +6,23 @@
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import uvicorn
 
 from sentinel.server.app import create_app
+from sentinel.server.auth import load_shared_token
 from sentinel.server.config import BIND_HOST, LoopbackBindError, ServerConfig, require_loopback_host, require_port
 
 
-def build_uvicorn_config(cfg: ServerConfig) -> uvicorn.Config:
+def build_uvicorn_config(cfg: ServerConfig, environ: Mapping[str, str] | None = None) -> uvicorn.Config:
     host = require_loopback_host(cfg.host)
     port = require_port(cfg.port)
-    return uvicorn.Config(create_app(), host=host, port=port, proxy_headers=False,
-                          server_header=False, log_level="warning")
+    token = load_shared_token(environ)  # 미설정·빈값 → TokenConfigError, uvicorn 미생성(기동 거부)
+    # access_log 끔: 요청 줄(경로·쿼리)을 기록하지 않는다 — 감사는 sentinel.audit만.
+    return uvicorn.Config(create_app(token), host=host, port=port, proxy_headers=False,
+                          server_header=False, access_log=False, log_level="warning")
 
 
 def bound_addresses(server: uvicorn.Server) -> list[Any]:

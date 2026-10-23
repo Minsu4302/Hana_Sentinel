@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import dataclasses
+import secrets
 import socket
 import threading
 import urllib.error
@@ -18,6 +19,7 @@ import uvicorn
 import sentinel.server.serve as serve_mod
 from sentinel.server.__main__ import main as cli_main
 from sentinel.server.app import ANALYZE_PATH
+from sentinel.server.auth import TOKEN_ENV, TOKEN_HEADER
 from sentinel.server.config import BIND_HOST, LoopbackBindError, ServerConfig
 from sentinel.server.serve import LoopbackOnlyServer, assert_loopback_bound, build_uvicorn_config
 
@@ -28,6 +30,14 @@ NON_LOOPBACK_HOSTS = [
     " 127.0.0.1", "127.0.0.1 ", "127.1", "2130706433", "0x7f000001", "127.0.0.1:80",
     None, b"127.0.0.1", 2130706433,
 ]
+
+
+@pytest.fixture(autouse=True)
+def shared_token(monkeypatch) -> str:
+    """서버 기동에 필요한 공유 토큰 — 런타임 생성(하드코딩 금지, N7)."""
+    token = secrets.token_urlsafe(32)
+    monkeypatch.setenv(TOKEN_ENV, token)
+    return token
 
 
 class _Run:
@@ -65,8 +75,9 @@ def running_server():
     run.stop()
 
 
-def _post(port: int, path: str, body: bytes = b"") -> int:
-    req = urllib.request.Request(f"http://{BIND_HOST}:{port}{path}", data=body, method="POST")
+def _post(port: int, path: str, body: bytes = b"", token: str | None = None) -> int:
+    headers = {TOKEN_HEADER: token} if token is not None else {}
+    req = urllib.request.Request(f"http://{BIND_HOST}:{port}{path}", data=body, method="POST", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:
             return resp.status
@@ -85,17 +96,17 @@ def test_started_server_is_bound_to_loopback_only(running_server):
     assert addrs and all(a[0] == BIND_HOST for a in addrs)
 
 
-def test_analyze_endpoint_answers_over_loopback_without_processing_body(running_server):
+def test_analyze_endpoint_answers_over_loopback_without_processing_body(running_server, shared_token):
     """대조군 겸 범위 확인: 루프백으로 응답, 본문은 아직 읽지 않음(깨진 본문도 422가 아니라 501)."""
     port = serve_mod.bound_addresses(running_server.server)[0][1]
-    assert _post(port, ANALYZE_PATH, b"\x00not json{") == 501
+    assert _post(port, ANALYZE_PATH, b"\x00not json{", token=shared_token) == 501
 
 
-def test_docs_ui_and_openapi_are_disabled(running_server):
-    """문서 UI는 브라우저가 외부 CDN 자산을 받아 오므로 끈다(N1)."""
+def test_docs_ui_and_openapi_are_disabled(running_server, shared_token):
+    """문서 UI는 브라우저가 외부 CDN 자산을 받아 오므로 끈다(N1). 토큰을 통과해도 경로 자체가 없음."""
     port = serve_mod.bound_addresses(running_server.server)[0][1]
     for path in ("/docs", "/redoc", "/openapi.json"):
-        req = urllib.request.Request(f"http://{BIND_HOST}:{port}{path}")
+        req = urllib.request.Request(f"http://{BIND_HOST}:{port}{path}", headers={TOKEN_HEADER: shared_token})
         with pytest.raises(urllib.error.HTTPError) as exc:
             urllib.request.urlopen(req, timeout=5)
         assert exc.value.code == 404
