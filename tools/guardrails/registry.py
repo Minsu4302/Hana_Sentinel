@@ -82,7 +82,10 @@ def sync(spec: Spec, current: list[Entry]) -> list[Entry]:
 
 
 def resolve_test(root: Path, node_id: str) -> bool:
-    """pytest 노드 ID가 정적으로 실재하는지(파일 + 함수/클래스 메서드). 수집·통과는 여기서 확인하지 않음."""
+    """pytest 노드 ID가 정적으로 실재하는지(파일 + 함수/클래스 메서드).
+
+    수집·통과는 여기서 확인하지 않는다 — 게이트 실행에서 selfcheck 플러그인(tools/guardrails/selfcheck.py)이 확인.
+    """
     parts = node_id.split("[", 1)[0].split("::")
     if len(parts) not in (2, 3) or not parts[0].endswith(".py"):
         return False
