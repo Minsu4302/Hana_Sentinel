@@ -55,7 +55,8 @@
 | 부트스트랩(설계 문서·템플릿) | — | #1 | merged |
 | W1-00 | #2 | #3 | merged |
 | W1-01 | #4 | #5 | merged |
-| 문서 교정 (A) v1.3 | #6 | (이 PR) | open |
+| 문서 교정 (A) v1.3 | #6 | #7 | merged |
+| W1-02 | #8 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -66,6 +67,10 @@
 | `engine_burp_isolation` | not_implemented(→1주차) | enforced | `tests/test_architecture.py::test_rejects_planted_burp_import` 외 — 목록은 `guardrails.yaml` (W1-01) |
 | `no_autonomous_send` | not_implemented(→1주차) | enforced | `tests/test_architecture.py::test_rejects_planted_send_or_socket_import` 외 — 목록은 `guardrails.yaml` (W1-01) |
 | `java_logic_isolation` | (신규 — (A) v1.3 §3.2 등재) | not_implemented → Java 연결 시 | 없음(Java 미연결 — 강제 대상 없음, 추적만) |
+| `egress_static_check` | not_implemented(→1주차) | enforced | `tests/test_egress.py::test_rejects_egress_library_reached_transitively` 외 — 목록은 `guardrails.yaml` (W1-02) |
+| `egress_runtime_block` | not_implemented(→1주차) | enforced(테스트환경 한정) | `tests/test_egress.py::test_urllib_external_request_fails_because_of_guard_not_network` 외 (W1-02) |
+| `local_llm_vs_egress` | not_implemented(→1주차) | enforced(1주차=허용목록 빔 검사) | `tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry` 외 (W1-02) |
+| `egress_enforcement_owner` | unverifiable | unverifiable(유지) | — (OS/네트워크 책임, 자가확인 불가) |
 
 > `secret_scan_hook`은 W1-00 리뷰에서 (A) §3.3 범위를 좁혔다: `enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현)`. 값(enforced)은 유지.
 
@@ -77,6 +82,10 @@
 - pre-commit 4.4+에서 훅 language `system`이 `unsupported`로 개명됨 → `unsupported` 사용, pre-commit 버전 고정(`requirements-dev.txt`).
 - (W1-01) **`asyncio`는 `socket` import 없이도 송신 가능**(`open_connection` 등). 모듈 단위 금지만으로는 구멍 → `asyncio`·`http`·`urllib`·`xmlrpc`는 패키지는 허용하고 송신 심볼(from-import·속성 접근)만 금지. `exec`/`eval`·비리터럴 동적 import는 정적 검증 불가 경로라 그 자체로 위반 처리.
 - (W1-01) 검사기 무력화 변이(visitor no-op)로 적대적 테스트가 실제로 실패함을 확인 — 테스트가 검사기에 의존함(정상·대조·fail-closed 케이스만 통과로 남음).
+- (W1-02) **"허용목록"의 해석**: (A) §3.1의 "허용목록 빔"을 *외부 egress 목적지 허용목록*으로 해석해 `src/sentinel/egress_policy.py`의 `EGRESS_ALLOWLIST: Final = ()`로 구현. 로컬 LLM(루프백)은 허용목록 항목이 아니라 목적지 분류(LOCAL)로 다뤄, 허용목록은 비어 있는 채로 둔다. 사내 대역(10.x·192.168.x)도 승인 개념(4번 주제) 전에는 EXTERNAL.
+- (W1-02) **W1-00 적대 테스트가 '아직 미승격인 키'(`egress_static_check`)에 고정돼 있어 승격 시 깨짐** → 이미 enforced인 키의 검증 테스트를 지우거나 바꾸는 방식으로 바꿔 승격 진행과 무관하게 함.
+- (W1-02) `ipaddress`는 3.11에서 IPv4-mapped 루프백(`::ffff:127.0.0.1`)을 루프백으로 보지 않음 → EXTERNAL로 분류(fail-closed 쪽이라 그대로 둠).
+- (W1-02) 변이 확인: 가드 무력화 + '네트워크 부재' 모의 시 런타임 테스트 전부 실패 — 특히 urllib 테스트는 실패 원인이 `EgressBlocked`가 아니라 일반 `OSError`라서 실패(가드 귀속 vs 네트워크 부재 구분이 실제로 작동). 의존성 금지 목록을 비우는 변이에서도 적대 테스트 전부 실패.
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -85,6 +94,11 @@
 - `branch_protection`: GitHub main 보호 규칙(PR 필수·관리자 포함·force push/삭제 금지)을 적용했으나, 레포 설정은 시스템이 자가확인할 수 없으므로 (A)대로 `unverifiable` 유지.
 - **폐쇄망 이식 과제:** 현재 개발은 인터넷망 PC(gh·pip 사용). 이식 시 사내 git + 오프라인 설치(wheelhouse)로 전환해야 함.
 - (W1-01) **경계 검사는 엔진 소스의 직접 import만 본다.** 제3자 패키지 내부 송신(전이 의존성), 런타임 조립 문자열로의 우회(`getattr(builtins, ...)` 등), 수신 객체를 정적으로 알 수 없는 호출(`loop.create_connection`)은 못 잡는다. 의존성 egress는 W1-02(`egress_static_check`·`egress_runtime_block`) 책임. 검사 대상은 `src/sentinel`(분석 엔진)뿐 — `tools/`·`tests/`는 범위 밖.
+
+- (W1-02) **egress 경계가 잡는 것 / 못 잡는 것** (W1-01 이월 한계 인수):
+  - 잡음 — 제품 런타임 의존성(pyproject)의 **전이 폐포**(설치 메타데이터의 Requires-Dist, 요청된 extra·marker 평가) 안의 송신 클라이언트·상용 AI SDK / 메타데이터를 못 찾는 의존성은 오류(fail-closed) / 테스트 프로세스의 Python `socket` 계층을 통한 외부 TCP 연결·DNS 해석·UDP 송신(가드 차단 + 이벤트 기록, probe 밖이면 그 테스트 실패).
+  - 못 잡음 — 금지 목록에 없는 송신 패키지, 메타데이터 없이 벤더링된 송신 코드 / 하위 프로세스(git·pre-commit 등)의 네트워크 / C 확장의 `_socket`·OS API 직접 호출 / Windows asyncio Proactor의 IP 리터럴 연결(ConnectEx) / **제품 런타임**(테스트 밖)의 실제 차단 — 이는 OS/네트워크 책임(`egress_enforcement_owner` = unverifiable). 개발 도구 의존성(requirements-dev.txt)은 범위 밖.
+- (W1-02) `egress_runtime_block`은 **테스트 환경 한정** enforced다. 제품이 운영에서 egress를 못 한다는 보장이 아니다.
 
 ### 해소 (미해결·관찰에서 이동)
 - **N3 색인 공백(거짓 색인)** → 해소: N3가 §3의 '없는 행'을 가리키던 공백을 (A) v1.3 §3.2 `java_logic_isolation` 행으로 메움. CLAUDE.md N3 → `(A) §3.2 java_logic_isolation`. (해소된 것은 '정본 공백'이며, 강제 자체는 not_implemented → Java 연결 시.)

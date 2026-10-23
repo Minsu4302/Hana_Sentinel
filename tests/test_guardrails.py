@@ -14,7 +14,7 @@ import pytest
 import tools.guardrails.__main__ as cli
 from tools.guardrails import MANIFEST_PATH, REGISTRY_PATH, REPO_ROOT, SPEC_PATH
 from tools.guardrails.manifest import derive_manifest, effective_state, render_manifest
-from tools.guardrails.registry import FIELDS, RegistryError, render_yaml, sync, validate
+from tools.guardrails.registry import FIELDS, RegistryError, load_registry, render_yaml, sync, validate
 from tools.guardrails.spec import SpecError, parse_spec
 
 # 위조에 쓸 '실재하는' 검증 테스트 — 테스트가 실재해도 (A)를 넘는 주장은 거부돼야 한다.
@@ -86,24 +86,25 @@ def test_enforced_keys_point_only_to_real_tests(entries):
 
 # ── 위조 거부: 거짓 enforced / 참칭 ─────────────────────────────────
 
+# 승격 진행과 무관하게 유지되도록, 이미 enforced인 키의 검증 테스트를 지우거나 바꿔 위조한다.
+ENFORCED_KEY = "secret_scan_hook"
+
+
 def test_rejects_enforced_without_verification_tests(spec, entries):
-    e = _get(entries, "egress_static_check")  # (A) 목표=enforced, 실제 테스트 없음
-    e["week1_status"] = {"state": "enforced"}
-    _rejected(entries, spec, "egress_static_check", "검증 테스트 식별자 없음")
+    e = _get(entries, ENFORCED_KEY)
+    assert e["week1_status"]["state"] == "enforced"
+    e["verification_tests"] = []
+    _rejected(entries, spec, ENFORCED_KEY, "검증 테스트 식별자 없음")
 
 
 def test_rejects_enforced_pointing_to_nonexistent_test(spec, entries):
-    e = _get(entries, "egress_static_check")
-    e["week1_status"] = {"state": "enforced"}
-    e["verification_tests"] = ["tests/test_egress.py::test_does_not_exist"]
-    _rejected(entries, spec, "egress_static_check", "실재하지 않음")
+    _get(entries, ENFORCED_KEY)["verification_tests"] = ["tests/test_secret_scan.py::test_does_not_exist"]
+    _rejected(entries, spec, ENFORCED_KEY, "실재하지 않음")
 
 
 def test_rejects_enforced_pointing_to_non_test_function(spec, entries):
-    e = _get(entries, "egress_static_check")
-    e["week1_status"] = {"state": "enforced"}
-    e["verification_tests"] = ["tests/test_guardrails.py::_get"]
-    _rejected(entries, spec, "egress_static_check", "실재하지 않음")
+    _get(entries, ENFORCED_KEY)["verification_tests"] = ["tests/test_guardrails.py::_get"]
+    _rejected(entries, spec, ENFORCED_KEY, "실재하지 않음")
 
 
 @pytest.mark.parametrize("key", ["token_hardening", "receipt_hmac", "no_multiagent_rag", "eval_harness",
@@ -225,17 +226,12 @@ def sandbox(tmp_path, monkeypatch):
     return reg, man
 
 
-def test_manifest_generation_is_refused_for_false_enforced_claim(sandbox):
+def test_manifest_generation_is_refused_for_false_enforced_claim(sandbox, spec):
     reg, man = sandbox
     man.unlink()
-    text = reg.read_text(encoding="utf-8")
-    forged = text.replace(
-        "    week1_status:\n      state: not_implemented\n      target: \"1주차\"\n"
-        "    verification_tests: []\n    manifest_key: egress_static_check",
-        "    week1_status:\n      state: enforced\n"
-        "    verification_tests: []\n    manifest_key: egress_static_check")
-    assert forged != text
-    reg.write_text(forged, encoding="utf-8")
+    forged = load_registry(reg)
+    _get(forged, ENFORCED_KEY)["verification_tests"] = []  # enforced인데 검증 테스트 없음
+    reg.write_text(render_yaml(forged, spec), encoding="utf-8")
     assert cli.main(["manifest"]) == 1
     assert not man.exists()  # 생성 거부 — 부분 산출물도 남기지 않음
 

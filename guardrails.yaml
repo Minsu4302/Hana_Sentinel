@@ -9,18 +9,31 @@ guardrails:
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_egress.py::test_product_runtime_dependencies_have_no_egress_library"
+      - "tests/test_egress.py::test_rejects_planted_direct_egress_dependency"
+      - "tests/test_egress.py::test_rejects_egress_library_reached_transitively"
+      - "tests/test_egress.py::test_rejects_egress_library_pulled_in_by_requested_extra"
+      - "tests/test_egress.py::test_unresolvable_dependency_is_an_error_not_a_pass"
+      - "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable"
+      - "tests/test_egress.py::test_non_empty_allowlist_would_permit_egress_so_it_must_stay_empty"
     manifest_key: egress_static_check
   - id: egress_runtime_block
     description: "egress 런타임 차단 실증"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
+      state: enforced
       note: "테스트환경 한정"
-    verification_tests: []
+    verification_tests:
+      - "tests/test_egress.py::test_guard_is_installed_for_the_whole_test_session"
+      - "tests/test_egress.py::test_external_tcp_connect_is_blocked_and_attributed_to_guard"
+      - "tests/test_egress.py::test_external_raw_socket_connect_is_blocked"
+      - "tests/test_egress.py::test_external_dns_resolution_is_blocked"
+      - "tests/test_egress.py::test_external_udp_sendto_is_blocked"
+      - "tests/test_egress.py::test_urllib_external_request_fails_because_of_guard_not_network"
+      - "tests/test_egress.py::test_loopback_connection_is_allowed_as_control"
+      - "tests/test_egress.py::test_unexpected_egress_outside_probe_is_flagged_as_real_event"
     manifest_key: egress_runtime_block
   - id: egress_enforcement_owner
     description: "egress 차단 실주체(OS/네트워크)"
@@ -33,10 +46,13 @@ guardrails:
     description: "로컬 LLM ≠ 외부 egress 분리"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
+      state: enforced
       note: "1주차=허용목록 빔 검사"
-    verification_tests: []
+    verification_tests:
+      - "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable"
+      - "tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry"
+      - "tests/test_egress.py::test_loopback_is_local_not_egress"
+      - "tests/test_egress.py::test_non_loopback_or_disguised_hosts_are_external"
     manifest_key: local_llm_vs_egress
   - id: no_autonomous_send
     description: "자율 전송 0(송신·소켓 심볼 import 0)"
