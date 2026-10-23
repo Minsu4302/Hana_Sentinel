@@ -56,7 +56,8 @@
 | W1-00 | #2 | #3 | merged |
 | W1-01 | #4 | #5 | merged |
 | 문서 교정 (A) v1.3 | #6 | #7 | merged |
-| W1-02 | #8 | (이 PR) | open |
+| W1-02 | #8 | #9 | merged |
+| W1-03 | #10 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -71,6 +72,7 @@
 | `egress_runtime_block` | not_implemented(→1주차) | enforced(테스트환경 한정) | `tests/test_egress.py::test_urllib_external_request_fails_because_of_guard_not_network` 외 (W1-02) |
 | `local_llm_vs_egress` | not_implemented(→1주차) | enforced(1주차=허용목록 빔 검사) | `tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry` 외 (W1-02) |
 | `egress_enforcement_owner` | unverifiable | unverifiable(유지) | — (OS/네트워크 책임, 자가확인 불가) |
+| `loopback_binding` | not_implemented(→1주차) | enforced | `tests/test_server.py::test_rejects_non_loopback_bind_host` 외 — 목록은 `guardrails.yaml` (W1-03) |
 
 > `secret_scan_hook`은 W1-00 리뷰에서 (A) §3.3 범위를 좁혔다: `enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현)`. 값(enforced)은 유지.
 
@@ -86,6 +88,10 @@
 - (W1-02) **W1-00 적대 테스트가 '아직 미승격인 키'(`egress_static_check`)에 고정돼 있어 승격 시 깨짐** → 이미 enforced인 키의 검증 테스트를 지우거나 바꾸는 방식으로 바꿔 승격 진행과 무관하게 함.
 - (W1-02) `ipaddress`는 3.11에서 IPv4-mapped 루프백(`::ffff:127.0.0.1`)을 루프백으로 보지 않음 → EXTERNAL로 분류(fail-closed 쪽이라 그대로 둠).
 - (W1-02) 변이 확인: 가드 무력화 + '네트워크 부재' 모의 시 런타임 테스트 전부 실패 — 특히 urllib 테스트는 실패 원인이 `EgressBlocked`가 아니라 일반 `OSError`라서 실패(가드 귀속 vs 네트워크 부재 구분이 실제로 작동). 의존성 금지 목록을 비우는 변이에서도 적대 테스트 전부 실패.
+- (W1-03) **FastAPI 0.161이 `opentelemetry-api`를 필수 의존성으로 끌어온다**(런타임 전이 폐포: annotated-doc, annotated-types, anyio, click, fastapi, h11, idna, opentelemetry-api, pydantic, pydantic-core, starlette, typing-extensions, typing-inspection, uvicorn — 송신 클라이언트 없음). API 패키지는 exporter 없이는 송신하지 않으므로 허용하되, OTLP·Zipkin·Jaeger exporter·distro·sentry-sdk·ddtrace를 `tools/dep_egress.py` 금지 목록에 추가(W1-02 도구 정책 보강 — 이번 의존성 추가에서 나온 발견). **금지 목록 범위 추적**: `tests/test_egress.py::test_egress_denylist_matches_tracked_snapshot`이 금지 목록을 분류·추가 시점별 기대 스냅샷(`EXPECTED_EGRESS_DENYLIST`)과 대조 — 목록이 바뀌면 이 표도 같은 PR에서 바뀌어야 통과(암묵적 확장·축소 차단). `egress_static_check` 검증 테스트로 등록.
+- (W1-03) **FastAPI 기본 문서 UI(/docs·/redoc)는 브라우저가 외부 CDN 자산을 받아 온다** → docs·redoc·openapi.json 비활성(N1). 테스트로 404 확인.
+- (W1-03) 바인드 주소는 (A) 표기대로 `127.0.0.1` 리터럴만 허용 — `localhost`(해석 결과 가변)·다른 127/8·`::1`·변형 표기(`127.1`, 정수·16진)도 거부. 바인드 주소 CLI 옵션·환경변수는 두지 않음. **기본 포트 8765는 정본 값이 없어 임의로 고른 값이며, 정본 결정이 아니다**(`--port`로 바꿀 수 있는 설정값). 주소(127.0.0.1)=불변식이라 리터럴 고정 / 포트=설정이라 가변 — 의도된 비대칭(W1-03 리뷰 승인).
+- (W1-03) 바인딩 3겹: 설정 객체 검증 → uvicorn 설정 직전 재검증(frozen 우회 대비) → `startup` 직후 실제 바인드 주소 재확인(비루프백이면 리스너 닫고 기동 중단). uvicorn의 소켓·fd·UDS 주입 경로는 거부. 변이 확인(검증 무력화 시 적대 테스트 전부 실패) — 단 실제 0.0.0.0 바인드를 일으킬 수 있는 우회 테스트는 변이 실행에서 제외(이 PC의 전 인터페이스에 포트를 열지 않기 위해).
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -99,6 +105,13 @@
   - 잡음 — 제품 런타임 의존성(pyproject)의 **전이 폐포**(설치 메타데이터의 Requires-Dist, 요청된 extra·marker 평가) 안의 송신 클라이언트·상용 AI SDK / 메타데이터를 못 찾는 의존성은 오류(fail-closed) / 테스트 프로세스의 Python `socket` 계층을 통한 외부 TCP 연결·DNS 해석·UDP 송신(가드 차단 + 이벤트 기록, probe 밖이면 그 테스트 실패).
   - 못 잡음 — 금지 목록에 없는 송신 패키지, 메타데이터 없이 벤더링된 송신 코드 / 하위 프로세스(git·pre-commit 등)의 네트워크 / C 확장의 `_socket`·OS API 직접 호출 / Windows asyncio Proactor의 IP 리터럴 연결(ConnectEx) / **제품 런타임**(테스트 밖)의 실제 차단 — 이는 OS/네트워크 책임(`egress_enforcement_owner` = unverifiable). 개발 도구 의존성(requirements-dev.txt)은 범위 밖.
 - (W1-02) `egress_runtime_block`은 **테스트 환경 한정** enforced다. 제품이 운영에서 egress를 못 한다는 보장이 아니다.
+
+- (W1-03) **분석 엔드포인트(`POST /v1/analyze`)는 아직 인증 없이 501을 돌려준다.** 본문을 읽지 않으므로 처리되는 데이터는 없지만, 토큰 검증(W1-04)이 붙기 전까지 루프백의 아무 프로세스나 호출할 수 있다. W1-04가 파이프라인 최선두에 토큰 검증을 둔다.
+- (W1-03) 루프백 바인딩은 '외부 인터페이스에서 접근 불가'를 보장할 뿐, 같은 PC의 다른 사용자·프로세스로부터의 접근은 막지 않는다(그건 W1-04 토큰의 몫).
+
+### 4번 주제(LLM 전략) 이월
+- **사내 승인 LLM 엔드포인트의 분류**: 사내 승인 LLM은 루프백이 아니라 사내 네트워크의 다른 호스트일 수 있어, 현재 `egress_policy`에선 EXTERNAL로 차단된다. "사내 승인 엔드포인트를 어떻게 LOCAL/허용으로 분류하느냐"는 4번 주제에서 확정 — 그때까지 EXTERNAL 유지(W1-02 리뷰 판단).
+- W1-02 egress 검사의 본질적 한계(하위 프로세스·C 확장·Proactor·금지목록 밖 패키지)는 (A) 수정 없이 progress-log 이월로 관리(W1-02 리뷰 판단). 운영 실제 차단은 `egress_enforcement_owner`=unverifiable이 커버.
 
 ### 해소 (미해결·관찰에서 이동)
 - **N3 색인 공백(거짓 색인)** → 해소: N3가 §3의 '없는 행'을 가리키던 공백을 (A) v1.3 §3.2 `java_logic_isolation` 행으로 메움. CLAUDE.md N3 → `(A) §3.2 java_logic_isolation`. (해소된 것은 '정본 공백'이며, 강제 자체는 not_implemented → Java 연결 시.)

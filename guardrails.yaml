@@ -14,6 +14,8 @@ guardrails:
       - "tests/test_egress.py::test_product_runtime_dependencies_have_no_egress_library"
       - "tests/test_egress.py::test_rejects_planted_direct_egress_dependency"
       - "tests/test_egress.py::test_rejects_egress_library_reached_transitively"
+      - "tests/test_egress.py::test_rejects_telemetry_exporter_reached_transitively"
+      - "tests/test_egress.py::test_egress_denylist_matches_tracked_snapshot"
       - "tests/test_egress.py::test_rejects_egress_library_pulled_in_by_requested_extra"
       - "tests/test_egress.py::test_unresolvable_dependency_is_an_error_not_a_pass"
       - "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable"
@@ -71,9 +73,15 @@ guardrails:
     description: "127.0.0.1 바인딩"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_server.py::test_started_server_is_bound_to_loopback_only"
+      - "tests/test_server.py::test_analyze_endpoint_answers_over_loopback_without_processing_body"
+      - "tests/test_server.py::test_rejects_non_loopback_bind_host"
+      - "tests/test_server.py::test_rejects_config_mutated_after_validation"
+      - "tests/test_server.py::test_cli_has_no_bind_host_option"
+      - "tests/test_server.py::test_server_refuses_to_start_with_bypassed_uvicorn_config"
+      - "tests/test_server.py::test_server_shuts_listener_when_actual_bind_is_not_loopback"
     manifest_key: loopback_binding
   - id: request_token_validation
     description: "요청자 토큰 검증(공유시크릿)"
