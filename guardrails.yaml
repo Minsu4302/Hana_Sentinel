@@ -42,9 +42,14 @@ guardrails:
     description: "자율 전송 0(송신·소켓 심볼 import 0)"
     target_layer: "아키텍처테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_architecture.py::test_engine_package_has_no_send_or_socket_imports"
+      - "tests/test_architecture.py::test_rejects_planted_send_or_socket_import"
+      - "tests/test_architecture.py::test_rejects_statically_unverifiable_dynamic_import"
+      - "tests/test_architecture.py::test_rejects_planted_import_in_nested_subpackage"
+      - "tests/test_architecture.py::test_allowed_imports_pass_as_control"
+      - "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
     manifest_key: no_autonomous_send
   - id: loopback_binding
     description: "127.0.0.1 바인딩"
@@ -135,9 +140,13 @@ guardrails:
     description: "엔진 Burp/Montoya import 0"
     target_layer: "아키텍처테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_architecture.py::test_engine_package_has_no_burp_or_montoya_imports"
+      - "tests/test_architecture.py::test_rejects_planted_burp_import"
+      - "tests/test_architecture.py::test_rejects_planted_import_in_nested_subpackage"
+      - "tests/test_architecture.py::test_allowed_imports_pass_as_control"
+      - "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
     manifest_key: engine_burp_isolation
   - id: input_schema_gate
     description: "입력은 스키마 통과분만"
