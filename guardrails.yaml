@@ -76,7 +76,7 @@ guardrails:
       state: enforced
     verification_tests:
       - "tests/test_server.py::test_started_server_is_bound_to_loopback_only"
-      - "tests/test_server.py::test_analyze_endpoint_answers_over_loopback_without_processing_body"
+      - "tests/test_server.py::test_analyze_endpoint_answers_over_loopback"
       - "tests/test_server.py::test_rejects_non_loopback_bind_host"
       - "tests/test_server.py::test_rejects_config_mutated_after_validation"
       - "tests/test_server.py::test_cli_has_no_bind_host_option"
@@ -190,17 +190,26 @@ guardrails:
     description: "입력은 스키마 통과분만"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_schema.py::test_valid_envelope_passes"
+      - "tests/test_schema.py::test_valid_envelope_reaches_the_not_implemented_path_after_token"
+      - "tests/test_schema.py::test_rejects_schema_violation"
+      - "tests/test_schema.py::test_rejects_non_envelope_bytes"
+      - "tests/test_schema.py::test_schema_rejection_is_audited_without_input_values"
+      - "tests/test_schema.py::test_http_schema_rejection_returns_422_without_reflecting_input"
+      - "tests/test_schema.py::test_schema_gate_is_never_reached_without_token"
+      - "tests/test_schema.py::test_schema_gate_is_reached_after_token"
     manifest_key: input_schema_gate
   - id: envelope_arity
     description: "봉투 len==1(single)"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_schema.py::test_rejects_single_envelope_without_exactly_one_transaction"
+      - "tests/test_schema.py::test_rejects_unknown_analysis_type_until_p1"
+      - "tests/test_schema.py::test_valid_envelope_passes"
     manifest_key: envelope_arity
   - id: auth_precedence_noinvoke
     description: "인증 선행 — 함수 미호출 + 코드 물리분리"
@@ -213,15 +222,19 @@ guardrails:
       - "tests/test_auth.py::test_parse_spies_do_detect_body_parsing_as_control"
       - "tests/test_auth.py::test_websocket_scope_is_rejected_without_calling_downstream"
       - "tests/test_auth.py::test_token_module_is_physically_separated_from_body_parsing"
+      - "tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control"
+      - "tests/test_schema.py::test_schema_gate_is_never_reached_without_token"
       - "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
     manifest_key: auth_precedence_noinvoke
   - id: maskedref_typing
     description: "원본 생문자열 유입 불가(MaskedRef 타입)"
     target_layer: "타입"
     week1_status:
-      state: not_implemented
-      target: "1주차"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_schema.py::test_rejects_raw_string_smuggled_into_masked_ref"
+      - "tests/test_schema.py::test_masked_ref_type_has_no_field_that_can_carry_a_raw_value"
+      - "tests/test_schema.py::test_null_label_is_allowed_as_contract_says"
     manifest_key: maskedref_typing
   - id: sanitization_trust
     description: "Sanitization 독립 재검증"

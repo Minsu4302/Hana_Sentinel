@@ -96,10 +96,10 @@ def test_started_server_is_bound_to_loopback_only(running_server):
     assert addrs and all(a[0] == BIND_HOST for a in addrs)
 
 
-def test_analyze_endpoint_answers_over_loopback_without_processing_body(running_server, shared_token):
-    """대조군 겸 범위 확인: 루프백으로 응답, 본문은 아직 읽지 않음(깨진 본문도 422가 아니라 501)."""
+def test_analyze_endpoint_answers_over_loopback(running_server, shared_token):
+    """대조군: 실제 서버가 루프백으로 응답한다(깨진 본문 → W1-05 스키마 게이트가 422)."""
     port = serve_mod.bound_addresses(running_server.server)[0][1]
-    assert _post(port, ANALYZE_PATH, b"\x00not json{", token=shared_token) == 501
+    assert _post(port, ANALYZE_PATH, b"\x00not json{", token=shared_token) == 422
 
 
 def test_docs_ui_and_openapi_are_disabled(running_server, shared_token):

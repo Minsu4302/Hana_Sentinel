@@ -58,7 +58,8 @@
 | 문서 교정 (A) v1.3 | #6 | #7 | merged |
 | W1-02 | #8 | #9 | merged |
 | W1-03 | #10 | #11 | merged |
-| W1-04 | #12 | (이 PR) | open |
+| W1-04 | #12 | #13 | merged |
+| W1-05 | #14 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -77,6 +78,13 @@
 | `request_token_validation` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body` 외 (W1-04) |
 | `auth_precedence_noinvoke` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure` 외 (W1-04) |
 | `authfail_log_hygiene` | not_implemented(→1주차) | enforced | `tests/test_auth.py::test_auth_failure_audit_contains_no_body_or_token_values` 외 (W1-04) |
+
+| `input_schema_gate` | not_implemented(→1주차) | enforced | `tests/test_schema.py::test_rejects_schema_violation` 외 (W1-05) |
+| `envelope_arity` | not_implemented(→1주차) | enforced | `tests/test_schema.py::test_rejects_single_envelope_without_exactly_one_transaction` 외 (W1-05) |
+| `maskedref_typing` | not_implemented(→1주차) | enforced | `tests/test_schema.py::test_rejects_raw_string_smuggled_into_masked_ref` 외 (W1-05) |
+| `auth_precedence_noinvoke` | enforced | enforced(검증 범위 확장) | + `tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control` (W1-05) |
+
+> **W1-05 스파이 커버리지 확장(W1-04 회귀 리스크 차단)**: 파이프라인 단계 함수는 `sentinel.pipeline` 패키지에 둔다. `auth_precedence_noinvoke` 스파이는 이 패키지의 **모든 함수를 자동 열거**해 감시한다(이번 신규: `sentinel.pipeline.schema_gate.parse_envelope`, 그리고 `BaseModel.model_validate(_json)` 경유의 Envelope 역직렬화). 새 단계 함수는 이 패키지에 두기만 하면 '토큰 실패 시 미호출' 검사 대상이 된다 — 수동 등록 누락으로 enforced가 조용히 낡는 경로를 없앰. 호출하는 쪽은 `모듈.함수`로 참조해야 하며, 직접 import로 묶어 스파이를 우회하면 대조 테스트가 실패한다(변이로 확인). 남는 가정: 파이프라인 함수가 `sentinel.pipeline` **밖**에 생기면 자동 열거에 안 잡힌다 — 단계 함수 위치 규칙(패키지 머리말)으로 관리.
 
 > **W1-04 인터페이스 결정(정본 미지정 → 구현 재량, 기록 필수)**: 클라이언트는 공유 토큰을 요청 헤더 **`X-Sentinel-Token`** 한 개로 보낸다(없음·중복·불일치 → 401). Java Extension 연결 시 이 헤더 이름을 그대로 써야 한다. `Authorization` 헤더를 쓰지 않은 이유: 점검 대상 앱의 `Authorization` 헤더와 혼동·충돌을 피하고, Burp 트래픽 안의 대상 인증정보와 도구 인증을 분리하기 위해. 서버 측 토큰은 환경변수 `SENTINEL_SHARED_TOKEN`(설정) — 헤더(전달)와 분리.
 
@@ -102,6 +110,11 @@
 - (W1-04) **파서·분석·저장 함수는 아직 없다**(W1-05~07). 그래서 '미호출'은 ⓐ 하위 앱(그것들로 가는 유일한 진입로) ⓑ ASGI receive ⓒ 실제 FastAPI 안쪽의 본문 읽기·역직렬화(`Request.body/json/form/stream`, `json.loads`, pydantic `model_validate(_json)`) 스파이로 증명. 스파이가 실제로 파싱을 잡는다는 대조 테스트를 따로 둠(고장 난 스파이로 '0회'가 나오는 거짓 증명 방지). W1-05에서 스키마 검증 함수가 생기면 그 함수도 스파이 대상에 추가해야 함.
 - (W1-04) 테스트 입력 `\x00`은 OS가 환경변수에 담을 수 없어(ValueError) 다른 제어문자(`\x07`)로 대체 — NUL 토큰은 애초에 설정 불가.
 - (W1-04) 변이 확인: 검증 무력화 → 위조 거부·미호출·실서버 테스트 실패 / 감사 로그에 제시 헤더 기록 → 위생 테스트 실패 / 미설정 시 기본값 fallback → 기동 거부 테스트 실패.
+- (W1-05) **Pydantic `Literal[True]`는 strict 모드에서도 정수 `1`을 통과시킨다**(`1 == True`). 적대 테스트(`masked: 1`)가 잡음 → `MaskedRef.masked`를 엄격 bool + `is True` 검증기로 교체.
+- (W1-05) 스파이 열거를 패치 **후**에 하면 래퍼의 `__module__`이 바뀌어 열거가 비는 테스트 버그 → 패치 전 1회 열거로 고정. 대조 테스트(열거 비어 있지 않음 + 실제 호출 기록)가 이 버그를 잡았다.
+- (W1-05) **MaskedRef 해석**: (A) §2.2에서 `Param.value`·`Header.value`는 `str | MaskedRef`라 평문 문자열 자체는 계약상 허용. '타입 레벨 생문자열 유입 불가'는 *MaskedRef 객체에 원문을 담을 경로가 없음*(추가 필드 금지, `masked`=true만, `label`=가명 라벨 형식 `^[a-z][a-z0-9]{0,23}_[0-9]{2,4}$`만, `kind` 폐쇄 enum, 불변)으로 구현. 평문 값에 비밀값이 남았는지는 W1-06(값 재검증).
+- (W1-05) `redacted_kinds`는 (A) §2.3 표기 `[token|cookie|pii|host]`대로 *종류 목록*으로 구현(종류별 개수 맵이 아님). 주석 "종류별 카운트"가 개수 맵을 뜻한다면 정본 확인 필요.
+- (W1-05) 변이 확인: arity 검증기 제거 → arity 테스트 실패 / MaskedRef 추가 필드 허용·제약 해제 → 밀반입 테스트 실패 / 앱이 파이프라인 함수를 우회 참조 → 스파이 대조 테스트 실패.
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -124,6 +137,10 @@
 - (W1-04) **토큰 강도는 검사하지 않는다**(길이·엔트로피). 형식(ASCII 인쇄 가능·공백 없음·비어있지 않음)만 기동 시 검사 — 강화·회전·수명은 `token_hardening`(not_implemented→2주차).
 - (W1-04) **감사 로그는 아직 Python logging(`sentinel.audit`)으로만 나간다.** 기록 위치·형식·보존과 '기록 실패 시 fail-closed'는 W1-07(`audit_log_present`)·2주차(`audit_write_failure`). 현재 인증 실패만 기록(재검증 거부 등은 W1-06·07).
 - (W1-04) 공유 토큰 하나라 클라이언트 구분이 없다(같은 토큰을 아는 로컬 프로세스는 통과). 루프백 + 토큰이 1주차의 로컬 경계 — 그 이상은 2주차 이후.
+
+- (W1-05) **결정 필요 — '반드시 MaskedRef여야 하는 자리'가 정본에 없다.** (A) §2.3은 Java가 "고정 화이트리스트 헤더"를 치환한다고만 하고 그 목록(예: Cookie·Authorization·Set-Cookie)을 정하지 않는다. 그래서 W1-05는 이름 기반 강제(예: Cookie 헤더 값이 평문이면 거부)를 만들지 않았다. 목록이 정해지면 스키마(타입)에서 강제할지 W1-06(값 재검증)에서 강제할지 함께 결정.
+- (W1-05) **요청 본문 크기 상한 없음**: 엔드포인트가 본문 전체를 메모리로 읽는다(루프백·토큰 뒤라 공격면은 작음). (A) §2.2의 body truncation 상한(req 64KB / resp 256KB, "config화")도 스키마에서 아직 강제하지 않는다 — Java가 자르는 값이라 Python 쪽 강제 여부·위치는 미정.
+- (W1-05) 스키마 거부 감사도 `sentinel.audit`(Python logging)에 오류 유형·개수만 남긴다. 기록 위치·형식은 W1-07. 422 응답 본문은 `{"error": "schema_rejected"}` 고정(입력 미반사).
 
 ### 4번 주제(LLM 전략) 이월
 - **사내 승인 LLM 엔드포인트의 분류**: 사내 승인 LLM은 루프백이 아니라 사내 네트워크의 다른 호스트일 수 있어, 현재 `egress_policy`에선 EXTERNAL로 차단된다. "사내 승인 엔드포인트를 어떻게 LOCAL/허용으로 분류하느냐"는 4번 주제에서 확정 — 그때까지 EXTERNAL 유지(W1-02 리뷰 판단).

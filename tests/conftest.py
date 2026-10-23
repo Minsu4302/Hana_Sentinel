@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import secrets
 
 import pytest
 
@@ -32,6 +33,12 @@ def _no_unexpected_egress():
 @pytest.fixture
 def egress_guard():
     return GUARD
+
+
+@pytest.fixture
+def token() -> bytes:
+    """공유 토큰 — 런타임 생성(하드코딩 금지, N7)."""
+    return secrets.token_urlsafe(32).encode()
 
 
 @pytest.fixture(scope="session")

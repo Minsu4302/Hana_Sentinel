@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import importlib
+import inspect
 import json
 import logging
+import pkgutil
 import secrets
 import urllib.error
 import urllib.request
@@ -21,6 +24,7 @@ import starlette.requests
 import uvicorn
 from fastapi import FastAPI
 
+import sentinel.pipeline
 import sentinel.server.auth as auth
 import sentinel.server.serve as serve_mod
 from sentinel.server.__main__ import main as cli_main
@@ -31,11 +35,6 @@ from sentinel.server.serve import LoopbackOnlyServer, build_uvicorn_config
 from tests.test_server import _Run
 
 HEADER = TOKEN_HEADER.lower().encode()
-
-
-@pytest.fixture
-def token() -> bytes:
-    return secrets.token_urlsafe(32).encode()
 
 
 def _scope(headers=(), *, path=ANALYZE_PATH, method="POST", query=b"", kind="http") -> dict:
@@ -108,9 +107,14 @@ def test_valid_token_reaches_downstream(token):
     assert _status(sent) == 200 and spy.calls == 1 and received == 1
 
 
-def test_valid_token_reaches_the_w1_03_not_implemented_path(token):
-    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), b"{}")
-    assert _status(sent) == 501
+def _valid_envelope() -> bytes:
+    from tests.test_schema import ENVELOPE  # 지연 import(순환 방지) — 정상 Envelope 더미
+    return json.dumps(ENVELOPE).encode()
+
+
+def test_valid_token_reaches_the_pipeline(token):
+    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _valid_envelope())
+    assert _status(sent) == 501  # ② 스키마 통과 후 아직 미구현 경로
 
 
 # ── 위조 거부: 토큰 없음·위조 → 401 + 하위·본문 미호출 ─────────────────────
@@ -126,9 +130,24 @@ def test_forged_or_missing_token_is_rejected_before_downstream_and_body(token, k
     assert received == 0  # 요청 본문을 받지조차 않음
 
 
+def pipeline_functions() -> list[tuple[object, str]]:
+    """`sentinel.pipeline` 패키지의 모든 함수를 자동 열거 — 새 단계 함수는 수동 등록 없이 스파이 대상이 된다
+    (W1-04 회귀 리스크: 알려진 함수만 감시하면 새 함수가 생길 때 enforced가 조용히 낡음)."""
+    found = []
+    for info in pkgutil.walk_packages(sentinel.pipeline.__path__, "sentinel.pipeline."):
+        module = importlib.import_module(info.name)
+        for name, fn in inspect.getmembers(module, inspect.isfunction):
+            if fn.__module__ == module.__name__:
+                found.append((module, name))
+    return found
+
+
+PIPELINE_FUNCTIONS = pipeline_functions()  # 스파이 패치 전에 열거(패치된 래퍼는 __module__이 바뀜)
+
+
 @pytest.fixture
 def parse_spies(monkeypatch):
-    """본문 읽기·역직렬화 경로 스파이(실제 FastAPI 앱 안쪽). 호출되면 기록된다."""
+    """본문 읽기·역직렬화·파이프라인 단계 스파이(실제 FastAPI 앱 안쪽). 호출되면 기록된다."""
     hits: list[str] = []
 
     def spy(name, original):
@@ -136,6 +155,9 @@ def parse_spies(monkeypatch):
             hits.append(name)
             return original(*a, **k)
         return wrapper
+
+    for module, name in PIPELINE_FUNCTIONS:
+        monkeypatch.setattr(module, name, spy(f"{module.__name__}.{name}", getattr(module, name)))
 
     for name in ("body", "json", "form", "stream"):
         monkeypatch.setattr(starlette.requests.Request, name, spy(f"Request.{name}",
@@ -178,6 +200,17 @@ def test_parse_spies_do_detect_body_parsing_as_control(token, parse_spies):
     assert "Request.json" in parse_spies and "Request.body" in parse_spies
 
 
+def test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control(token, parse_spies):
+    """대조군: 자동 열거가 비어 있지 않고, 토큰 통과 시 앱이 파이프라인 함수를 '모듈.함수'로 호출해
+    스파이에 잡힌다(직접 import로 묶어 스파이를 우회하면 이 테스트가 실패)."""
+    stages = {f"{m.__name__}.{n}" for m, n in PIPELINE_FUNCTIONS}
+    assert "sentinel.pipeline.schema_gate.parse_envelope" in stages
+    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _valid_envelope())
+    assert _status(sent) == 501
+    assert "sentinel.pipeline.schema_gate.parse_envelope" in parse_spies
+    assert "BaseModel.model_validate_json" in parse_spies
+
+
 def test_websocket_scope_is_rejected_without_calling_downstream(token):
     spy = SpyApp()
     sent, received = _drive(TokenGate(spy, token), _scope([(HEADER, token)], kind="websocket"))
@@ -205,7 +238,8 @@ def live(monkeypatch, token):
     run.stop()
 
 
-def _post(port, headers, body=b"{}") -> int:
+def _post(port, headers, body=None) -> int:
+    body = _valid_envelope() if body is None else body
     req = urllib.request.Request(f"http://{BIND_HOST}:{port}{ANALYZE_PATH}", data=body, method="POST",
                                  headers=headers)
     try:
@@ -218,7 +252,7 @@ def _post(port, headers, body=b"{}") -> int:
 def test_live_server_requires_token(live, token):
     assert _post(live, {}) == 401
     assert _post(live, {TOKEN_HEADER: secrets.token_urlsafe(32)}) == 401
-    assert _post(live, {TOKEN_HEADER: token.decode()}) == 501  # 대조군: 유효 토큰 → W1-03 경로
+    assert _post(live, {TOKEN_HEADER: token.decode()}) == 501  # 대조군: 유효 토큰 + 정상 Envelope
 
 
 # ── 위조 거부: 서버 측 토큰 미설정·빈값 → 기동 거부 ─────────────────────────
@@ -293,7 +327,7 @@ def test_auth_failure_audit_contains_no_body_or_token_values(token, caplog):
 
 def test_successful_auth_is_not_audited_as_failure(token, caplog):
     with caplog.at_level(logging.DEBUG, logger="sentinel.audit"):
-        _drive(create_app(token), _scope([(HEADER, token)]))
+        _drive(create_app(token), _scope([(HEADER, token)]), _valid_envelope())
     assert [r for r in caplog.records if r.name == "sentinel.audit"] == []
 
 
