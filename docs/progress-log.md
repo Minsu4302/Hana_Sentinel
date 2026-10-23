@@ -59,7 +59,8 @@
 | W1-02 | #8 | #9 | merged |
 | W1-03 | #10 | #11 | merged |
 | W1-04 | #12 | #13 | merged |
-| W1-05 | #14 | (이 PR) | open |
+| W1-05 | #14 | #15 | merged |
+| W1-06 | #16 | (이 PR) | open |
 
 ### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
 | manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
@@ -83,6 +84,11 @@
 | `envelope_arity` | not_implemented(→1주차) | enforced | `tests/test_schema.py::test_rejects_single_envelope_without_exactly_one_transaction` 외 (W1-05) |
 | `maskedref_typing` | not_implemented(→1주차) | enforced | `tests/test_schema.py::test_rejects_raw_string_smuggled_into_masked_ref` 외 (W1-05) |
 | `auth_precedence_noinvoke` | enforced | enforced(검증 범위 확장) | + `tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control` (W1-05) |
+
+| `sanitization_trust` | not_implemented(→1주차) | enforced(값 재검증) | `tests/test_sanitization.py::test_raw_secret_is_rejected_despite_applied_true_receipt` 외 (W1-06) |
+
+> **W1-06 — 값 재검증이 돌 때만 enforced**: `sanitization_trust`의 증명은 영수증 불리언이 아니라 *값 재스캔* 테스트다. 영수증이 `applied:true, failed:false`라고 주장하는 입력에 생문자열을 10개 자리(비화이트리스트 요청·응답 헤더, 쿼리 값·이름, 퍼센트 인코딩, 경로, 요청·응답 본문, base64 본문, meta.origin_ref) × 정책 패턴 전부에 심어 전부 거부됨을 보였다. 변이: 재스캔 무력화 → 값 적대 테스트 전부 실패 / 영수증 신뢰(applied=true면 통과, R-11 재현) → 대량 실패 / 화이트리스트 제거 → 화이트리스트 테스트만 실패하고 값 재스캔 테스트는 통과(주 방어선의 독립성).
+> 새 단계 함수(`sentinel.pipeline.sanitization_check.*`)는 W1-05의 자동 열거로 `auth_precedence_noinvoke` 스파이 대상에 자동 포함 — 수동 등록 없음.
 
 > **W1-05 스파이 커버리지 확장(W1-04 회귀 리스크 차단)**: 파이프라인 단계 함수는 `sentinel.pipeline` 패키지에 둔다. `auth_precedence_noinvoke` 스파이는 이 패키지의 **모든 함수를 자동 열거**해 감시한다(이번 신규: `sentinel.pipeline.schema_gate.parse_envelope`, 그리고 `BaseModel.model_validate(_json)` 경유의 Envelope 역직렬화). 새 단계 함수는 이 패키지에 두기만 하면 '토큰 실패 시 미호출' 검사 대상이 된다 — 수동 등록 누락으로 enforced가 조용히 낡는 경로를 없앰. 호출하는 쪽은 `모듈.함수`로 참조해야 하며, 직접 import로 묶어 스파이를 우회하면 대조 테스트가 실패한다(변이로 확인). 남는 가정: 파이프라인 함수가 `sentinel.pipeline` **밖**에 생기면 자동 열거에 안 잡힌다 — 단계 함수 위치 규칙(패키지 머리말)으로 관리.
 
@@ -115,6 +121,10 @@
 - (W1-05) **MaskedRef 해석**: (A) §2.2에서 `Param.value`·`Header.value`는 `str | MaskedRef`라 평문 문자열 자체는 계약상 허용. '타입 레벨 생문자열 유입 불가'는 *MaskedRef 객체에 원문을 담을 경로가 없음*(추가 필드 금지, `masked`=true만, `label`=가명 라벨 형식 `^[a-z][a-z0-9]{0,23}_[0-9]{2,4}$`만, `kind` 폐쇄 enum, 불변)으로 구현. 평문 값에 비밀값이 남았는지는 W1-06(값 재검증).
 - (W1-05) `redacted_kinds`는 (A) §2.3 표기 `[token|cookie|pii|host]`대로 *종류 목록*으로 구현(종류별 개수 맵이 아님). 주석 "종류별 카운트"가 개수 맵을 뜻한다면 정본 확인 필요.
 - (W1-05) 변이 확인: arity 검증기 제거 → arity 테스트 실패 / MaskedRef 추가 필드 허용·제약 해제 → 밀반입 테스트 실패 / 앱이 파이프라인 함수를 우회 참조 → 스파이 대조 테스트 실패.
+- (W1-06) **테스트 더미 버그**: `test_schema.py` TX가 요청·응답 본문에 같은 dict 객체를 써서 `deepcopy` 후에도 공유 → 응답 본문 수정이 요청 본문까지 바꿈. 상한 경계 테스트가 잡음 → 각자 사본으로.
+- (W1-06) **패턴 구멍**: `session_cookie_pair`가 경로 속 `/JSESSIONID=…`(URL 재작성 세션)를 놓침. 적대 테스트(경로 자리)가 잡음 → 경계 문자에 `/` 추가.
+- (W1-06) **본문 크기 판단 — 적용함.** 재검증은 본문 전체를 스캔하므로 상한 없이는 DoS 경로가 된다. ⓐ HTTP 원시 요청 1 MiB 상한: 스트림을 읽다 초과 즉시 중단 → 413, 파싱 전 차단(설정값, 정본 결정 아님 — 64KB+256KB 본문의 base64 팽창·오버헤드 여유). ⓑ 내용 상한 (A) §2.2 req 64KB / resp 256KB: 디코드 후 바이트 기준, 초과 시 `truncated` 값과 무관하게 거부(Java가 잘랐어야 할 값).
+- (W1-06) `redacted_kinds`를 (A) v1.4대로 `{token, cookie, pii, host}` 개수 맵으로 스키마 변경(네 키 필수, 음수·문자열·추가 키 거부).
 - 시크릿 스캐너 `secret_assignment` 패턴은 오탐 가능(예: 비밀 아닌 8자+ 문자열을 `*_password = "..."`에 대입). 허용목록(우회 구멍)은 두지 않고 fail-closed 쪽을 택함.
 
 ### 미해결 (명시적으로 남김 — 숨기지 않음)
@@ -142,6 +152,12 @@
 - (W1-05) **요청 본문 크기 상한 없음**: 엔드포인트가 본문 전체를 메모리로 읽는다(루프백·토큰 뒤라 공격면은 작음). (A) §2.2의 body truncation 상한(req 64KB / resp 256KB, "config화")도 스키마에서 아직 강제하지 않는다 — Java가 자르는 값이라 Python 쪽 강제 여부·위치는 미정.
 - (W1-05) 스키마 거부 감사도 `sentinel.audit`(Python logging)에 오류 유형·개수만 남긴다. 기록 위치·형식은 W1-07. 422 응답 본문은 `{"error": "schema_rejected"}` 고정(입력 미반사).
 
+- (W1-06) **한계((A) §2.3 그대로)**: 패턴 검사는 '정책에 정의된 패턴'(`sentinel/pipeline/sanitization_check.py` `PATTERNS`)만 탐지하며 '모든 비밀값 부재'를 증명하지 않는다 — 불투명 세션 ID는 일반 문자열과 구분 불가(`test_opaque_secret_in_unlisted_place_is_not_detected_documented_limitation`이 이 한계를 고정해 둠). Python 재검증(2차)은 Java 전송 전 마스킹(1차)을 대체하지 않는다.
+- (W1-06) **이름 화이트리스트는 설정값**(`sentinel/sanitization_policy.py` `DEFAULT_POLICY`, 정본 아님): Authorization·Proxy-Authorization·Cookie·Set-Cookie·X-API-Key·`*api-key*`·`*apikey*`·`*token*`·`*secret*`·`*session*`. 보조 방어선 — 주 방어선은 값 재스캔.
+- (W1-06) **결정 필요 — 본문 안의 마스킹 표기 규약이 정본에 없다.** MaskedRef는 Param/Header 값에만 정의돼 있고, 본문(JSON·폼) 안에서 마스킹된 값을 어떻게 표기하는지 (A)에 없다. 그래서 본문의 자격증명 필드(`"password": "…"`, `password=…` 등)는 값이 비어 있지 않으면 전부 거부한다(fail-closed) — Juice Shop 로그인 같은 요청은 Java가 본문을 어떤 표기로 마스킹하는지 정해져야 통과 가능.
+- (W1-06) 영수증 `policy_version`과 Python 정책 버전의 일치는 검사하지 않는다(정본 미지정). `redacted_count`와 `redacted_kinds` 합의 일치도 검사하지 않는다 — 영수증은 어차피 신뢰하지 않으며, 서명 검증은 `receipt_hmac`(2주차).
+- (W1-06) `host` 값은 재스캔 대상(모든 문자열)이지만 내부 호스트명 자체를 탐지하는 패턴은 없다(가명화는 SanitizationPolicy·Java 몫, (A) §2.2).
+
 ### 4번 주제(LLM 전략) 이월
 - **사내 승인 LLM 엔드포인트의 분류**: 사내 승인 LLM은 루프백이 아니라 사내 네트워크의 다른 호스트일 수 있어, 현재 `egress_policy`에선 EXTERNAL로 차단된다. "사내 승인 엔드포인트를 어떻게 LOCAL/허용으로 분류하느냐"는 4번 주제에서 확정 — 그때까지 EXTERNAL 유지(W1-02 리뷰 판단).
 - W1-02 egress 검사의 본질적 한계(하위 프로세스·C 확장·Proactor·금지목록 밖 패키지)는 (A) 수정 없이 progress-log 이월로 관리(W1-02 리뷰 판단). 운영 실제 차단은 `egress_enforcement_owner`=unverifiable이 커버.
@@ -156,6 +172,7 @@
 ### (A) 정본 변경 여부
 - **변경 있음(W1-00 리뷰 교정, PR #3):** §3.1에 `claude_md_sync_check` 행 추가(not_implemented → 2주차) / §3.3 `secret_scan_hook` 상태 칸 범위 명시(값 enforced 유지). 사유: 문서가 사실과 다른 보장을 하던 지점 교정. 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md §4 교정 — 같은 PR. claude.ai 발행본 재발행: 보류.
 - **변경 있음(문서 교정, Issue #6):** 버전 v1.2 → **v1.3**(제목·버전 줄·§3 매핑표 제목, 버전 이력 추가) / §3.2에 `java_logic_isolation` 행 추가(not_implemented → Java 연결 시). 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md N3·N7 색인·(B) 제목 기준 버전 — 같은 PR. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달(재발행은 설계자 몫).
+- **변경 있음(W1-06, Issue #16):** 버전 v1.3 → **v1.4**(제목·버전 줄·이력·개정일) / §2.3 `redacted_kinds`를 `{token:int, cookie:int, pii:int, host:int}`(종류별 개수 맵)로 명확화. §3 매핑표 변경 없음(매핑표 v1.3 유지 → `guardrails.yaml` 재파생 차이 없음). CLAUDE.md 영향 없음. (B) 제목 기준 버전 v1.4. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달.
 
 ### 다음 주차 이월
 - W1-01~W1-09 (진행 예정)

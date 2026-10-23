@@ -240,10 +240,24 @@ guardrails:
     description: "Sanitization 독립 재검증"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "1주차"
+      state: enforced
       note: "값 재검증"
-    verification_tests: []
+    verification_tests:
+      - "tests/test_sanitization.py::test_raw_secret_is_rejected_despite_applied_true_receipt"
+      - "tests/test_sanitization.py::test_http_lying_receipt_with_raw_token_is_rejected"
+      - "tests/test_sanitization.py::test_schema_valid_but_false_receipt_on_unmasked_cookie_is_rejected"
+      - "tests/test_sanitization.py::test_receipt_not_applied_or_failed_is_rejected_even_if_data_is_clean"
+      - "tests/test_sanitization.py::test_receipt_missing_or_mistyped_is_rejected_before_recheck"
+      - "tests/test_sanitization.py::test_value_rescan_does_not_depend_on_the_name_whitelist"
+      - "tests/test_sanitization.py::test_plaintext_whitelisted_header_is_rejected_even_without_pattern_match"
+      - "tests/test_sanitization.py::test_actually_masked_input_passes"
+      - "tests/test_sanitization.py::test_every_policy_pattern_has_an_adversarial_sample"
+      - "tests/test_sanitization.py::test_omitted_body_with_content_is_rejected"
+      - "tests/test_sanitization.py::test_undecodable_base64_body_is_rejected"
+      - "tests/test_sanitization.py::test_body_over_cap_is_rejected_and_at_cap_passes"
+      - "tests/test_sanitization.py::test_oversized_http_request_is_rejected_before_parsing"
+      - "tests/test_sanitization.py::test_rejection_audit_has_reason_codes_only_no_values_or_input_names"
+      - "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema"
     manifest_key: sanitization_trust
   - id: receipt_hmac
     description: "영수증 HMAC 서명"

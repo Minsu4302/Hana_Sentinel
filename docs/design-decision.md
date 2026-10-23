@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.3 — Sentinel Harness
+# (A) 설계확정서 v1.4 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,10 +7,11 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.3 = {범위 + 데이터계약(+ExecutionResponse) + 가드레일 매핑표 v1.3(통합점검 구멍5 반영 + v1.3 교정)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.4 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화) + 가드레일 매핑표 v1.3(통합점검 구멍5 반영 + v1.3 교정)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23)
+> **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06)
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23)
 
 ---
 
@@ -120,7 +121,7 @@ SanitizationPolicy
 SanitizationReceipt   # 각 Transaction.meta에 필수
 ├─ applied(bool) ├─ failed(bool) ├─ policy_version
 ├─ redacted_count(int)
-└─ redacted_kinds: [token|cookie|pii|host]   # 종류별 카운트(값은 없음, 감사용)
+└─ redacted_kinds: {token:int, cookie:int, pii:int, host:int}   # 종류별 개수 맵(값은 없음, 감사용)
 
 MaskedRef = { masked: true, label: "principal_01"|null, kind: "token|cookie|pii|host" }
 ```
