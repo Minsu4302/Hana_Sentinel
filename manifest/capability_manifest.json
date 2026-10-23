@@ -251,10 +251,19 @@
       "verification_tests": []
     },
     "audit_log_present": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_audit.py::test_auth_failure_is_persisted",
+        "tests/test_audit.py::test_schema_rejection_is_persisted",
+        "tests/test_audit.py::test_sanitization_rejection_is_persisted",
+        "tests/test_audit.py::test_oversized_request_is_persisted",
+        "tests/test_audit.py::test_egress_attempt_is_persisted_without_destination",
+        "tests/test_audit.py::test_local_socket_events_are_not_audited_as_egress",
+        "tests/test_audit.py::test_persisted_audit_contains_no_sensitive_values",
+        "tests/test_audit.py::test_audit_survives_handler_restart",
+        "tests/test_audit.py::test_serve_attaches_audit_store_and_egress_hook"
+      ]
     },
     "authfail_log_hygiene": {
       "status": "enforced",

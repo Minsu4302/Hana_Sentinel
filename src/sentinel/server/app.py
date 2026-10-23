@@ -2,8 +2,8 @@
 
 (A) §3.0 파이프라인
 ① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ② 스키마 검증(W1-05, `pipeline.schema_gate`)
-→ ③ Sanitization 독립 재검증(W1-06, `pipeline.sanitization_check`) → ④ ExecutionResponse(W1-07).
-③ 통과 후는 아직 501.
+→ ③ Sanitization 독립 재검증(W1-06, `pipeline.sanitization_check`) → ④ ExecutionResponse(W1-07,
+`pipeline.execution`). 1주차 ④는 분석 없이 analysis_status="not_implemented" + manifest 스냅샷을 돌려준다.
 
 원시 요청 본문은 MAX_REQUEST_BYTES까지만 읽는다(재검증은 본문 전체를 스캔하므로 무한 본문 차단, 413).
 파이프라인 함수는 `모듈.함수`로 호출한다(스파이 우회 금지 — sentinel.pipeline 머리말 참조).
@@ -12,12 +12,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Final
+from typing import Any, Final
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
-from sentinel.pipeline import sanitization_check, schema_gate
+from sentinel.manifest_snapshot import load_manifest_snapshot
+from sentinel.pipeline import execution, sanitization_check, schema_gate
 from sentinel.server.auth import TokenGate
 
 ANALYZE_PATH = "/v1/analyze"
@@ -38,7 +39,7 @@ async def _read_capped(request: Request, limit: int) -> bytes | None:
     return b"".join(chunks)
 
 
-def create_api() -> FastAPI:
+def create_api(manifest_snapshot: dict[str, Any]) -> FastAPI:
     """토큰 게이트 안쪽의 앱. 단독으로 서비스하지 않는다 — 항상 create_app()으로 감싼다."""
     api = FastAPI(title="Sentinel Harness", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -57,11 +58,14 @@ def create_api() -> FastAPI:
             sanitization_check.verify_sanitization(envelope)
         except sanitization_check.SanitizationRejected:
             return JSONResponse({"error": "sanitization_rejected"}, status_code=422)
-        return Response(status_code=501)
+        result = execution.build_execution_response(envelope, manifest_snapshot)
+        return JSONResponse(result.model_dump(mode="json"), status_code=200)
 
     return api
 
 
-def create_app(shared_token: bytes) -> TokenGate:
-    """서비스용 ASGI 앱. 토큰 인자는 필수 — 인증 없는 앱을 만드는 경로를 두지 않는다."""
-    return TokenGate(create_api(), shared_token, known_paths=frozenset({ANALYZE_PATH}))
+def create_app(shared_token: bytes, manifest_snapshot: dict[str, Any] | None = None) -> TokenGate:
+    """서비스용 ASGI 앱. 토큰 인자는 필수 — 인증 없는 앱을 만드는 경로를 두지 않는다.
+    manifest 스냅샷을 주지 않으면 커밋된 manifest에서 읽는다(없거나 깨졌으면 ManifestError — 기동 거부)."""
+    snapshot = load_manifest_snapshot() if manifest_snapshot is None else manifest_snapshot
+    return TokenGate(create_api(snapshot), shared_token, known_paths=frozenset({ANALYZE_PATH}))
