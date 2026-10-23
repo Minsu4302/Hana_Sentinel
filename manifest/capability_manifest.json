@@ -95,16 +95,24 @@
       "verification_tests": []
     },
     "no_autopatch_apply": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_absence.py::test_engine_has_no_autopatch_path",
+        "tests/test_absence.py::test_planted_forbidden_path_is_caught",
+        "tests/test_absence.py::test_allowed_constructs_pass_as_control",
+        "tests/test_absence.py::test_empty_or_unparseable_target_is_an_error_not_a_pass"
+      ]
     },
     "no_finetune_path": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_absence.py::test_engine_has_no_finetune_path",
+        "tests/test_absence.py::test_planted_forbidden_path_is_caught",
+        "tests/test_absence.py::test_allowed_constructs_pass_as_control",
+        "tests/test_absence.py::test_empty_or_unparseable_target_is_an_error_not_a_pass"
+      ]
     },
     "no_multiagent_rag": {
       "status": "not_implemented",
@@ -245,10 +253,18 @@
       ]
     },
     "no_raw_persistence": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_absence.py::test_engine_has_no_raw_persistence_path_except_allowlisted_audit_store",
+        "tests/test_absence.py::test_planted_forbidden_path_is_caught",
+        "tests/test_absence.py::test_allowlist_is_file_specific",
+        "tests/test_absence.py::test_runtime_request_processing_persists_no_raw_traffic",
+        "tests/test_absence.py::test_runtime_observer_catches_planted_raw_leak",
+        "tests/test_absence.py::test_audit_db_and_capture_paths_are_git_ignored",
+        "tests/test_absence.py::test_no_audit_db_or_capture_is_tracked",
+        "tests/test_audit.py::test_persisted_audit_contains_no_sensitive_values"
+      ]
     },
     "audit_log_present": {
       "status": "enforced",
