@@ -5,17 +5,32 @@
   "spec": "docs/design-decision.md §3 매핑표 v1.3",
   "capabilities": {
     "egress_static_check": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_egress.py::test_product_runtime_dependencies_have_no_egress_library",
+        "tests/test_egress.py::test_rejects_planted_direct_egress_dependency",
+        "tests/test_egress.py::test_rejects_egress_library_reached_transitively",
+        "tests/test_egress.py::test_rejects_egress_library_pulled_in_by_requested_extra",
+        "tests/test_egress.py::test_unresolvable_dependency_is_an_error_not_a_pass",
+        "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable",
+        "tests/test_egress.py::test_non_empty_allowlist_would_permit_egress_so_it_must_stay_empty"
+      ]
     },
     "egress_runtime_block": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
+      "status": "enforced",
+      "effective_status": "enforced",
       "note": "테스트환경 한정",
-      "verification_tests": []
+      "verification_tests": [
+        "tests/test_egress.py::test_guard_is_installed_for_the_whole_test_session",
+        "tests/test_egress.py::test_external_tcp_connect_is_blocked_and_attributed_to_guard",
+        "tests/test_egress.py::test_external_raw_socket_connect_is_blocked",
+        "tests/test_egress.py::test_external_dns_resolution_is_blocked",
+        "tests/test_egress.py::test_external_udp_sendto_is_blocked",
+        "tests/test_egress.py::test_urllib_external_request_fails_because_of_guard_not_network",
+        "tests/test_egress.py::test_loopback_connection_is_allowed_as_control",
+        "tests/test_egress.py::test_unexpected_egress_outside_probe_is_flagged_as_real_event"
+      ]
     },
     "egress_enforcement_owner": {
       "status": "unverifiable",
@@ -23,11 +38,15 @@
       "verification_tests": []
     },
     "local_llm_vs_egress": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "1주차",
+      "status": "enforced",
+      "effective_status": "enforced",
       "note": "1주차=허용목록 빔 검사",
-      "verification_tests": []
+      "verification_tests": [
+        "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable",
+        "tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry",
+        "tests/test_egress.py::test_loopback_is_local_not_egress",
+        "tests/test_egress.py::test_non_loopback_or_disguised_hosts_are_external"
+      ]
     },
     "no_autonomous_send": {
       "status": "enforced",
