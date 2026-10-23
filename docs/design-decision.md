@@ -10,7 +10,7 @@
 > **버전:** v1.4 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화) + 가드레일 매핑표 v1.3(통합점검 구멍5 반영 + v1.3 교정)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
-> **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06)
+> **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23)
 
 ---
@@ -108,6 +108,7 @@ Body   = { content_type, size_bytes(원본크기), truncated(bool),
 - `host` 가명화 여부는 TransactionSchema가 아니라 SanitizationPolicy가 결정(관심사 분리).
 - **body truncation 상한:** req 64KB / resp 256KB(config화). 초과 시 `truncated=true` + head+tail 일부 보존(에러·민감필드가 응답 꼬리에 자주 옴). truncated에서 파생된 finding은 자동으로 `limitations`에 "본문 일부만 분석됨" 플래그.
 - **multipart/바이너리:** 텍스트 파트(파일명·주장 content-type·동반 JSON)는 구조화 보존, 바이너리 파트만 `omitted`. `omitted = 본문 미전송 + Java 원본 즉시 폐기`.
+- **본문 내부 민감값의 마스킹 표기:** Java 연결 시 정의한다(현재: 평문 민감 패턴이면 fail-closed 거부). 로그인 등 본문에 자격증명이 들어가는 요청의 분석은 그 정의 이후 가능. (MaskedRef는 Param·Header 값에만 정의됨)
 
 ### 2.3 SanitizationPolicy + SanitizationReceipt
 ```

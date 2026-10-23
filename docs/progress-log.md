@@ -154,9 +154,12 @@
 
 - (W1-06) **한계((A) §2.3 그대로)**: 패턴 검사는 '정책에 정의된 패턴'(`sentinel/pipeline/sanitization_check.py` `PATTERNS`)만 탐지하며 '모든 비밀값 부재'를 증명하지 않는다 — 불투명 세션 ID는 일반 문자열과 구분 불가(`test_opaque_secret_in_unlisted_place_is_not_detected_documented_limitation`이 이 한계를 고정해 둠). Python 재검증(2차)은 Java 전송 전 마스킹(1차)을 대체하지 않는다.
 - (W1-06) **이름 화이트리스트는 설정값**(`sentinel/sanitization_policy.py` `DEFAULT_POLICY`, 정본 아님): Authorization·Proxy-Authorization·Cookie·Set-Cookie·X-API-Key·`*api-key*`·`*apikey*`·`*token*`·`*secret*`·`*session*`. 보조 방어선 — 주 방어선은 값 재스캔.
-- (W1-06) **결정 필요 — 본문 안의 마스킹 표기 규약이 정본에 없다.** MaskedRef는 Param/Header 값에만 정의돼 있고, 본문(JSON·폼) 안에서 마스킹된 값을 어떻게 표기하는지 (A)에 없다. 그래서 본문의 자격증명 필드(`"password": "…"`, `password=…` 등)는 값이 비어 있지 않으면 전부 거부한다(fail-closed) — Juice Shop 로그인 같은 요청은 Java가 본문을 어떤 표기로 마스킹하는지 정해져야 통과 가능.
 - (W1-06) 영수증 `policy_version`과 Python 정책 버전의 일치는 검사하지 않는다(정본 미지정). `redacted_count`와 `redacted_kinds` 합의 일치도 검사하지 않는다 — 영수증은 어차피 신뢰하지 않으며, 서명 검증은 `receipt_hmac`(2주차).
 - (W1-06) `host` 값은 재스캔 대상(모든 문자열)이지만 내부 호스트명 자체를 탐지하는 패턴은 없다(가명화는 SanitizationPolicy·Java 몫, (A) §2.2).
+
+### Java 연결 시 설계 숙제
+- **본문 내부 민감값의 마스킹 표기**(W1-06에서 드러남, W1-06 리뷰 결정 (나)): MaskedRef는 Param·Header 값에만 정의돼 있고 본문(JSON·폼) 안의 마스킹 표기는 (A)에 없다. 1주차는 현행 유지 — 본문에 평문 민감 패턴(자격증명 필드·토큰 등)이 있으면 fail-closed 거부. 로그인처럼 본문에 자격증명이 들어가는 요청의 분석은 Java 연결 시 표기 정의 이후 가능. (A) v1.4 §2.2 Body 주석으로 등재.
+- `java_logic_isolation`(not_implemented → Java 연결 시)·Extension의 `X-Sentinel-Token` 헤더 사용·Java 실제 마스킹 통합 테스트((A) §3.6 원칙 단서)도 같은 시점.
 
 ### 4번 주제(LLM 전략) 이월
 - **사내 승인 LLM 엔드포인트의 분류**: 사내 승인 LLM은 루프백이 아니라 사내 네트워크의 다른 호스트일 수 있어, 현재 `egress_policy`에선 EXTERNAL로 차단된다. "사내 승인 엔드포인트를 어떻게 LOCAL/허용으로 분류하느냐"는 4번 주제에서 확정 — 그때까지 EXTERNAL 유지(W1-02 리뷰 판단).
@@ -172,7 +175,7 @@
 ### (A) 정본 변경 여부
 - **변경 있음(W1-00 리뷰 교정, PR #3):** §3.1에 `claude_md_sync_check` 행 추가(not_implemented → 2주차) / §3.3 `secret_scan_hook` 상태 칸 범위 명시(값 enforced 유지). 사유: 문서가 사실과 다른 보장을 하던 지점 교정. 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md §4 교정 — 같은 PR. claude.ai 발행본 재발행: 보류.
 - **변경 있음(문서 교정, Issue #6):** 버전 v1.2 → **v1.3**(제목·버전 줄·§3 매핑표 제목, 버전 이력 추가) / §3.2에 `java_logic_isolation` 행 추가(not_implemented → Java 연결 시). 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·CLAUDE.md N3·N7 색인·(B) 제목 기준 버전 — 같은 PR. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달(재발행은 설계자 몫).
-- **변경 있음(W1-06, Issue #16):** 버전 v1.3 → **v1.4**(제목·버전 줄·이력·개정일) / §2.3 `redacted_kinds`를 `{token:int, cookie:int, pii:int, host:int}`(종류별 개수 맵)로 명확화. §3 매핑표 변경 없음(매핑표 v1.3 유지 → `guardrails.yaml` 재파생 차이 없음). CLAUDE.md 영향 없음. (B) 제목 기준 버전 v1.4. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달.
+- **변경 있음(W1-06, Issue #16):** 버전 v1.3 → **v1.4**(제목·버전 줄·이력·개정일) / §2.3 `redacted_kinds`를 `{token:int, cookie:int, pii:int, host:int}`(종류별 개수 맵)로 명확화 + §2.2 Body에 '본문 내부 마스킹 표기는 Java 연결 시 정의' 주석(리뷰 결정 1). §3 매핑표 변경 없음(매핑표 v1.3 유지 → `guardrails.yaml` 재파생 차이 없음). CLAUDE.md 영향 없음. (B) 제목 기준 버전 v1.4. claude.ai 발행본 재발행: merge 후 설계자에게 전문 전달.
 
 ### 다음 주차 이월
 - W1-01~W1-09 (진행 예정)
