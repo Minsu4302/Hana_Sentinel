@@ -10,7 +10,7 @@ egress 시도 감사: 제품 코드에는 송신 코드가 없다(N1·N2). 그�
 — 운영 차단의 실주체는 OS/네트워크(`egress_enforcement_owner` = unverifiable). 목적지 호스트는 사내 정보일 수
 있어 기록하지 않는다(동작 종류·포트만).
 
-정직 표기: 감사 기록 *실패* 시 fail-closed(`audit_write_failure`)는 2주차다. 1주차는 '감사가 남는다'만 보장하며,
+정직 표기: 감사 기록 *실패* 시 fail-closed(`audit_write_failure`)는 수용 요청 감사(B-6) 범위 확정 시로 이월됐다. 1주차는 '감사가 남는다'만 보장하며,
 기록에 실패해도 요청 처리를 막지 않는다(logging의 handleError로 넘어감) — '못 남기면 거부'는 미정의.
 """
 from __future__ import annotations
@@ -56,7 +56,7 @@ class SQLiteAuditHandler(logging.Handler):
                 self._conn.execute(
                     "INSERT INTO audit_events (ts, level, event, message) VALUES (?, ?, ?, ?)",
                     (datetime.now(timezone.utc).isoformat(), record.levelname, message.split(" ", 1)[0], message))
-        except Exception:  # noqa: BLE001 — 1주차: 기록 실패가 요청을 막지 않음(audit_write_failure = 2주차)
+        except Exception:  # noqa: BLE001 — 1주차: 기록 실패가 요청을 막지 않음(audit_write_failure → 수용 요청 감사(B-6) 범위 확정 시)
             self.handleError(record)
 
     def close(self) -> None:

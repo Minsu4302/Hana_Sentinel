@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.4 — Sentinel Harness
+# (A) 설계확정서 v1.5 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,11 +7,14 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.4 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화) + 가드레일 매핑표 v1.3(통합점검 구멍5 반영 + v1.3 교정)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.5 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙) + 가드레일 매핑표 v1.4(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23)
+> **v1.5 (매핑표 v1.4):** §2 데이터 계약 버전 규칙 신설 + §2.2 Body 마스킹 표기 정의처를 5번 설계로 변경 + §2.4 출력 계약 보정(analyzed_refs·severity_if_true 서버 부여, corroboration `not_run`, review_required 기본 true, 출력 전체 폐기 규칙) + §2.5 analysis_status 닫힌 enum + §3 이월처 재조정(`token_hardening`·`receipt_hmac` → Java 연결 시, `audit_write_failure` → 수용 요청 감사(B-6) 범위 확정 시) + 신규 키 `masker_no_send`(§3.1)·`engine_tools_isolation`(§3.2) + §3.5 2주차 enforced 범위 각주 + '현재 CI가 검증한다' 사실 주장 교정(서버측 CI 없음, 검증 주체 = `make verify`).
+>   - **문서 버전과 매핑표 버전은 별개다.** 문서 버전(제목의 vX.Y)은 (A) 전체 개정마다, 매핑표 버전(§3 제목)은 §3 표가 바뀔 때만 올린다. 두 숫자가 같을 필요는 없다.
+>   - 출력 스키마 최초 동결본에 `not_run` 포함 — 소비자 0, §2 버전 규칙에 따라 `schema_version` 유지.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26)
 
 ---
 
@@ -80,6 +83,13 @@
 
 세 스키마로 분리 관리한다. **마스킹 정책 ≠ 입력 스키마** — 분리해야 마스킹 규칙 변경이 분석 계약을 건드리지 않는다.
 
+> **데이터 계약 버전 규칙:** 가산 변경(새 선택 필드, enum 값 추가)의 `schema_version` 처리는 소비자 존재 여부로 가른다.
+> - 소비자 없음 → version 유지 + 이력 기록.
+> - 소비자 있음 → 가산 변경도 version 증가.
+> - 비가산 변경 → 항상 증가.
+>
+> 소비자 = 레포 밖 생산자·소비자, 또는 보존 대상 데이터(평가 데이터셋 등). 같은 PR에서 함께 갱신되는 레포 내부 테스트 픽스처는 소비자가 아니다.
+
 ### 2.1 최상위 봉투 (P0부터 shape 불변)
 ```
 Envelope
@@ -108,7 +118,7 @@ Body   = { content_type, size_bytes(원본크기), truncated(bool),
 - `host` 가명화 여부는 TransactionSchema가 아니라 SanitizationPolicy가 결정(관심사 분리).
 - **body truncation 상한:** req 64KB / resp 256KB(config화). 초과 시 `truncated=true` + head+tail 일부 보존(에러·민감필드가 응답 꼬리에 자주 옴). truncated에서 파생된 finding은 자동으로 `limitations`에 "본문 일부만 분석됨" 플래그.
 - **multipart/바이너리:** 텍스트 파트(파일명·주장 content-type·동반 JSON)는 구조화 보존, 바이너리 파트만 `omitted`. `omitted = 본문 미전송 + Java 원본 즉시 폐기`.
-- **본문 내부 민감값의 마스킹 표기:** Java 연결 시 정의한다(현재: 평문 민감 패턴이면 fail-closed 거부). 로그인 등 본문에 자격증명이 들어가는 요청의 분석은 그 정의 이후 가능. (MaskedRef는 Param·Header 값에만 정의됨)
+- **본문 내부 민감값의 마스킹 표기:** 5번 설계에서 정의한다(tools/ fixture 마스커가 참조 구현)(현재: 평문 민감 패턴이면 fail-closed 거부). 로그인 등 본문에 자격증명이 들어가는 요청의 분석은 그 정의 이후 가능. (MaskedRef는 Param·Header 값에만 정의됨)
 
 ### 2.3 SanitizationPolicy + SanitizationReceipt
 ```
@@ -137,7 +147,7 @@ MaskedRef = { masked: true, label: "principal_01"|null, kind: "token|cookie|pii|
 ```
 AnalysisResult
 ├─ schema_version : "1.0"
-├─ analyzed_refs  : [UUID]            # 이번 분석이 참조한 transaction_id
+├─ analyzed_refs  : [UUID]            # 서버 부여: LLM에 실제로 넘긴 transaction_id 목록. LLM 초안에는 없음
 ├─ findings       : [Finding]         # 탐지 4종만. 빈 배열 = 정상(단, ExecutionResponse와 구분 ↓)
 ├─ advisory_signals: [AdvisorySignal] # 카테고리 밖 조언. ★탐지 아님
 └─ analysis_meta  : { model_id, policy_version, prompt_version, ruleset_version,
@@ -149,7 +159,7 @@ Finding
 ├─ hypothesis : str                   # 조건·추정형만("~가능성/~로 보임"). 단정 토큰 금지
 ├─ evidence   : [Evidence]            # 최소 1개 필수(0개면 거부=환각 차단)
 ├─ claim_basis: enum(observed|inferred|speculative)   # 근거의 성격(자유숫자 금지)
-├─ severity_if_true?: enum            # 사실이라면의 위험도(사실성과 무관). 확신도 아님
+├─ severity_if_true: enum | null      # 항상 존재. null = 등급 매핑 미정의. 서버가 부여한다(LLM 초안에 없음). 사실이라면의 위험도(사실성과 무관), 확신도 아님 ↓
 ├─ status     : enum(unverified|verifying|confirmed|false_positive|needs_review)
 │               # ★LLM은 생성 불가. 서버가 unverified 부여. 승격은 ReviewEvent로만
 ├─ produced_by: enum(rule|llm|hybrid) # AI 기여도 분리 측정(평가 테제)
@@ -161,12 +171,20 @@ Evidence
 ├─ locus(req_line|req_header|req_param|req_body|resp_status|resp_header|resp_body)
 ├─ pointer(str)            # locus별 고정 표기(헤더명/param+location/JSONPath/범위)
 ├─ observation(str)        # 관측 사실(해석 아님). 가명 라벨 그대로 인용 가능
-├─ corroboration: matched|unmatched|not_checkable
+├─ corroboration: matched|unmatched|not_checkable|not_run   # 서버 생성(LLM 아님). not_run=대조 미실행 / not_checkable=대조 불가
 ├─ anomaly_flags: [...]    # 서버 재대조 로직이 생성(LLM 아님). 예: hallucinated_literal_suspected
-└─ review_required(bool)
+└─ review_required(bool)   # 서버 기본값 true(미대조 상태의 fail-safe)
 
 AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], suggestion }
 ```
+- **analyzed_refs 서버 부여:** 서버가 LLM에 실제로 넘긴 transaction_id 목록을 채운다. LLM 초안에는 없다. 근거: LLM이 analyzed_refs와 evidence.transaction_ref 양쪽을 다 쓰면 `evidence_ref_integrity`가 자기참조가 된다.
+- **severity_if_true 서버 부여:** LLM은 채우지 않는다(초안에 없다).
+  - 기본값: category별 기본값 표에서 부여한다. 이 표는 미정의다(5번 이후 확정).
+  - 보정(adjust): 서버가 관측·판정한 신호 유형으로 기본값을 조정할 수 있다. 보정 규칙(어떤 신호가 severity를 어떻게 바꾸는지)은 미정의다(5번 이후 확정).
+  - 기본값 표가 정의되기 전에는 비워 둔다(null). 기본값 표가 정의된 뒤에도, 보정 규칙이 정의되기 전에는 기본값만 부여하고 보정하지 않는다.
+  - 근거: 건건이 자유롭게 매기면 같은 취약점이 다른 값을 받아 평가가 오염된다(R-9와 같은 문제). 규칙이 미정의인 상태에서 판정을 허용하면 추측하거나 LLM에 다시 위임하는 뒷문이 된다.
+- **corroboration·review_required:** 서버가 생성한다(LLM 아님). `not_run` = 대조 미실행, `not_checkable` = 대조 불가. `review_required`의 서버 기본값은 true — 미대조 상태의 fail-safe.
+- **출력 검증 규칙(전체 폐기):** LLM 초안의 어느 한 부분이라도 검증에 실패하면 결과 전체를 폐기한다(부분 수용 금지). 폐기는 조용히 하지 않는다 — 사유 코드를 감사에 남기고, `ExecutionResponse.analysis_status = output_rejected`로 명시한다(§2.5). 근거: 깨끗한 부분만 골라내는 것은 환각을 부분적으로 신뢰하는 것이다. 빈 결과로 위장하면 '분석 실패'와 '분석 후 깨끗함'이 다시 섞인다.
 - **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. LLM 응답에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
 - **evidence 무결성:** transaction_ref ∈ analyzed_refs + locus 유효 + pointer/observation이 **마스킹 후 데이터로 검증 가능** + observation 핵심 주장이 실제 발견되는지 재대조.
 - **환각 리터럴 격리:** 재대조 실패 + 민감패턴 의심 → `hallucinated_literal_suspected`(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 의심 문자열 미저장·미로그·집계 원문 제외. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
@@ -178,11 +196,17 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 ```
 > **왜 분리?** `findings:[]`가 "분석 완료·깨끗함"인지 "아직 분석 안 함"인지 혼동 금지. **분석 안 함 ≠ 분석 후 취약점 없음.** 평가의 '정상 사례 정확도'가 이 구분에 의존한다. 1주차 골격은 이 타입만 반환한다.
 
+- **`analysis_status` = 닫힌 enum:** `not_implemented | completed | output_rejected`.
+  - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 동작).
+  - `completed`: 분석이 끝나고 결과(AnalysisResult)가 동봉됨. 동봉 형태(필드 위치)는 LLM 결선 시 정의한다. 분석 후 깨끗함 = `completed` + `findings: []`.
+  - `output_rejected`: LLM 출력이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
+- 세 값은 "분석 안 함 / 분석 후 결과 있음(깨끗함 포함) / 분석 결과 폐기"를 구분하기 위한 것이다.
+
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.3 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.4 (FROZEN)
 
-> 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 CI가 검증한다.
+> 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
 > **파생 상태(derived):** 자체 강제테스트 없이 하위 키들의 AND로 상태가 정해지는 롤업 항목(예: `output_schema_gate`). 독립 강제를 참칭하지 않으며, 하위 키가 모두 enforced일 때만 enforced.
 > **목표 층위:** 주된 강제 지점. 실제 보장엔 보조 층위가 추가될 수 있고, enforced는 선언된 필수검증이 실제 실행·통과한 경우에만 부여.
@@ -201,7 +225,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 ④ [1주차] 분석 없음 → ExecutionResponse(analysis_status="not_implemented") 반환
    [이후]  규칙엔진 → LLM → 출력 스키마 검증 → 저장
 ```
-**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부) — 2주차.
+**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부) — 수용 요청 감사(B-6) 범위 확정 시.
 
 ### 3.1 D. 실행경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -213,14 +237,15 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | 자율 전송 0(송신·소켓 심볼 import 0) | 아키텍처 테스트 | enforced | `no_autonomous_send` |
 | 127.0.0.1 바인딩 | 테스트+설정 | enforced | `loopback_binding` |
 | 요청자 토큰 검증(공유시크릿) | validator+테스트 | enforced | `request_token_validation` |
-| 토큰 강화(회전·수명) | validator | not_implemented → 2주차 | `token_hardening` |
+| 토큰 강화(회전·수명) | validator | not_implemented → Java 연결 시 | `token_hardening` |
 | 자동 수정반영 부재(ⓓ) | 아키텍처 테스트 | enforced | `no_autopatch_apply` |
 | 파인튜닝 경로 부재(ⓔ) | 아키텍처 테스트 | enforced | `no_finetune_path` |
 | 멀티에이전트/RAG 부재(ⓖ) | 아키텍처 테스트 | not_implemented → P2 | `no_multiagent_rag` |
 | manifest 정직성 | 테스트 | enforced | `manifest_honesty` |
 | manifest 자기검증 | 테스트 | enforced | `manifest_selfcheck` |
-| manifest 정본 파생(SSOT=이 표) + CI 일치검증 | 테스트 | enforced | `manifest_derivation` |
+| manifest 정본 파생(SSOT=이 표) + make verify 일치검증 | 테스트 | enforced | `manifest_derivation` |
 | CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사 | 테스트 | not_implemented → 2주차 | `claude_md_sync_check` |
+| fixture 마스커에 송신·소켓·egress 의존 0 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `masker_no_send` |
 
 ### 3.2 A. 입력경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -230,18 +255,19 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | 입력은 스키마 통과분만 | 스키마/validator | enforced | `input_schema_gate` |
 | 봉투 len==1(single) | validator | enforced | `envelope_arity` |
 | 인증 선행 — 함수 미호출 + 코드 물리분리 | 테스트 | enforced | `auth_precedence_noinvoke` |
+| 엔진(src/sentinel)이 tools/를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `engine_tools_isolation` |
 
 ### 3.3 B. 민감정보경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
 |---|---|---|---|
 | 원본 생문자열 유입 불가(MaskedRef 타입) | 타입 레벨 | enforced | `maskedref_typing` |
 | Sanitization 독립 재검증 | 테스트 | enforced(값 재검증) | `sanitization_trust` |
-| 영수증 HMAC 서명 | validator | not_implemented → 2주차 | `receipt_hmac` |
+| 영수증 HMAC 서명 | validator | not_implemented → Java 연결 시 | `receipt_hmac` |
 | 비밀값 커밋 금지 | CI(pre-commit) | enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현) | `secret_scan_hook` |
 | 원본 트래픽 미기록(기능 부재) | 테스트 | enforced | `no_raw_persistence` |
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
-| 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 2주차 | `audit_write_failure` |
+| 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 수용 요청 감사(B-6) 범위 확정 시 | `audit_write_failure` |
 
 ### 3.4 전 층위 공통
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -263,6 +289,8 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | 평가 하네스 | 테스트 | not_implemented → 5번 주제 | `eval_harness` |
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced이며, 현재 하위 전부 not_implemented이므로 파생값도 미구현(→2주차). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
+
+> **2주차 enforced 범위:** 2주차 enforced 범위 = 검증 함수 단위(주입 테스트). 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
 
 ### 3.6 1주차 적대적 테스트 (Java 없이 직접 주입 — '위조 거부'로 증명)
 | 공격 케이스 | 기대 동작 |

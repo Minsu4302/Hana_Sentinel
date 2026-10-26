@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.3",
+  "spec": "docs/design-decision.md §3 매핑표 v1.4",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -91,7 +91,7 @@
     "token_hardening": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "Java 연결 시",
       "verification_tests": []
     },
     "no_autopatch_apply": {
@@ -180,6 +180,12 @@
       "target": "2주차",
       "verification_tests": []
     },
+    "masker_no_send": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "fixture 마스커 구현 시",
+      "verification_tests": []
+    },
     "engine_burp_isolation": {
       "status": "enforced",
       "effective_status": "enforced",
@@ -234,6 +240,12 @@
         "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
       ]
     },
+    "engine_tools_isolation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "fixture 마스커 구현 시",
+      "verification_tests": []
+    },
     "maskedref_typing": {
       "status": "enforced",
       "effective_status": "enforced",
@@ -268,7 +280,7 @@
     "receipt_hmac": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "Java 연결 시",
       "verification_tests": []
     },
     "secret_scan_hook": {
@@ -324,7 +336,7 @@
     "audit_write_failure": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "수용 요청 감사(B-6) 범위 확정 시",
       "verification_tests": []
     },
     "branch_protection": {

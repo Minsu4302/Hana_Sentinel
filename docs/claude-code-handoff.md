@@ -1,4 +1,4 @@
-# Sentinel Harness — Claude Code 인계문서 (B) · 1주차  〔(A) v1.4 기준〕
+# Sentinel Harness — Claude Code 인계문서 (B) · 1주차  〔(A) v1.5 기준〕
 
 > **이 문서의 성격**: 건조한 실행 지시서. '왜'는 담지 않는다 — 근거·트레이드오프·기각대안은 전부 **(A) 설계확정서(레포 `docs/design-decision.md`, 정본)**에 있다.
 > **정본 관계**: 규칙 '값'의 정본은 (A)의 FROZEN 블록(§1 범위 / §2 데이터계약 / §3 가드레일 매핑표)이다. 이 문서는 그것을 **실행 순서로 추출**만 한다. 값이 (A)와 (B)에서 다르면 **(A)가 맞다.**
@@ -111,7 +111,7 @@
 - **무엇을**: egress 시도·재검증 거부·인증 실패가 감사에 남음(본문·토큰값 제외). 정상 요청은 `ExecutionResponse(analysis_status="not_implemented", skipped_reasons=[...], manifest_snapshot)`.
 - **완료 기준**: 각 거부 경로가 감사에 흔적(민감값 없이). 정상 입력도 **빈 findings가 아니라** `analysis_status="not_implemented"`. ("분석 안 함 ≠ 분석 후 깨끗함")
 - **manifest**: `audit_log_present`.  **의존**: W1-06.
-- **주의**: "감사 기록 **실패** 시 fail-closed"(`audit_write_failure`)는 **2주차**. 1주차는 "남는다"만 보장하고, "못 남기면 거부"는 **미정의**임을 정직 표기.
+- **주의**: "감사 기록 **실패** 시 fail-closed"(`audit_write_failure`)는 **수용 요청 감사(B-6) 범위 확정 시**. 1주차는 "남는다"만 보장하고, "못 남기면 거부"는 **미정의**임을 정직 표기.
 
 ### W1-08. 영구 제외 '부재 증명' 테스트
 - **무엇을**: 아키텍처 테스트로 (a) AI 수정코드 자동반영 경로 부재(ⓓ), (b) 파인튜닝 경로 부재(ⓔ), (c) 원본 트래픽 저장 기능 부재(파일·임시파일·예외/디버그 로그 포함) 증명.
@@ -148,7 +148,8 @@
 
 - LLM 연동·프롬프트·규칙 엔진·분석 로직 — **없음**.
 - Java/Montoya Extension — **1주차엔 붙이지 않음**. 적대적 입력은 손으로 주입. (Java 실제 마스킹은 Java 연결 후 통합 테스트로 별도 증명.)
-- 2주차 항목(`token_hardening`, `receipt_hmac`, 출력 스키마 불변식군, `audit_write_failure`) — manifest에 `not_implemented`로 정직 표기, 구현 안 함.
+- 2주차 항목(출력 스키마 불변식군) — manifest에 `not_implemented`로 정직 표기, 구현 안 함.
+- 이월 항목 — `token_hardening`·`receipt_hmac`(→ Java 연결 시), `audit_write_failure`(→ 수용 요청 감사(B-6) 범위 확정 시). manifest에 `not_implemented`로 정직 표기, 구현 안 함.
 - 3주차 이후(`hallucinated_literal_isolation`, `anomaly_aggregation`), 5번 평가(`eval_harness`) — 손대지 않음.
 
 ---
