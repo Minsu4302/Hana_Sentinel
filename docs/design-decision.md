@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.8 — Sentinel Harness
+# (A) 설계확정서 v1.9 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.8 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙) + 가드레일 매핑표 v1.7(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.9 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.8(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -22,7 +22,11 @@
 >   - Envelope `schema_version` "1.0" 유지 — 라벨 형식을 `ref_NN`으로 좁힘 = 비가산 / `masked_spans` = 가산. 둘 다 소비자 0이라 유지.
 >   - 같은 매핑표 버전(v1.6) 안의 보강: §3.5 `evidence_pointer_resolves` 추가(§2.6 Locator 서버 검증 규칙에 대응하는 키가 없던 공백, `output_schema_gate` 하위 키 아님) + §2.6 Locator에 'range는 값이 문자열일 때만(MaskedRef면 금지), 모든 변형에 적용' 명시.
 > **v1.8 (매핑표 v1.7):** §3.5 `evidence_pointer_resolves` 승격(not_implemented → enforced(검증 함수 단위), 증명은 같은 PR의 ζ1). 바꾼 것은 상태 칸과 이력뿐 — §2.6 문구 변경 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26)
+> **v1.9 (매핑표 v1.8):** §2.2 Param.location을 query|form으로 축소 + request.path 쿼리 미포함(raw '?'는 ② 거부) + §2.4 중복 처리 규칙 교체((category, Evidence CNA 집합) 정확 일치만 병합) + §2.6 Locator req_param location 축소·CNA(정규 노드 주소)·정규화 함수 신설·BodyPointer `json` = RFC 8259 엄격 파싱 명문화 + §3 신규 키 `path_no_query_string`(§3.2)·`canonical_address`(§3.5).
+>   - Param.location에서 json·path 제거 = 비가산, 소비자 0이라 유지. json: 중첩을 표현하지 못하면서 본문 JSON Pointer와 중복되고 정보도 잃는다. path: Java는 구문 파싱만 하므로 경로 파라미터를 판별할 수 없다(path_template은 Python이 내부에서 파생 — A-3/A-4). 계약이 Java에 불가능한 일을 요구하던 것을 교정했다.
+>   - request.path 쿼리 미포함 = 비가산(이전에는 '?' 포함 path가 ②·③을 통과했다), 소비자 0이라 유지.
+>   - 같은 버전(v1.9) 안의 정정: §2.6 CNA 근거가 레포에 정의 없는 설계 대화 라벨("D4")을 가리키던 거짓 색인을 실제 절(§2.6 e 헤더 이름 정규화)로 교체. (A) 규범 본문의 다른 임시 라벨(D·E·F·G·H·I·J 계열)은 grep으로 0건 확인.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26)
 
 ---
 
@@ -114,18 +118,21 @@ Envelope
 Transaction
 ├─ meta: { transaction_id(UUID), captured_at(ISO8601+tz), origin_ref(Burp 내부 id, 실호스트 아님),
 │          sanitization: SanitizationReceipt }
-├─ request:  { method, scheme(http|https), host, port, path(원본),
+├─ request:  { method, scheme(http|https), host, port, path(원본, 쿼리 미포함 ↓),
 │              query_params:[Param], headers:[Header], body: Body }
 └─ response: { status, headers:[Header], body: Body,
                elapsed_ms(int|null) }   # ★시간기반 SQLi 탐지에 사용 금지(제외 카테고리)
 
-Param  = { name, value: str|MaskedRef, location(query|form|json|path) }      # MaskedRef → §2.6
+Param  = { name, value: str|MaskedRef, location(query|form) }                # MaskedRef → §2.6
 Header = { name, value: str|MaskedRef }
 Body   = { content_type, size_bytes(원본크기), truncated(bool),
            encoding(utf8|base64|omitted), content(str|null),
            masked_spans: [MaskedSpan] = [] }                                   # MaskedSpan → §2.6
 ```
 - **Java는 구문 파싱만.** `path_template`, 'ID스러운 파라미터' 분류, 반사 표식 등 **해석 필드는 Python이 내부 파생**(A-3/A-4).
+- **request.path:** path는 쿼리 문자열을 포함하지 않는다. 쿼리는 query_params(location=query)로만 표현한다.
+  - 강제: 디코딩 전 raw path에 리터럴 '?'가 있으면 ② 스키마 검증에서 거부한다. 인코딩된 '%3F'는 경로 세그먼트의 정상 일부일 수 있으므로 거부하지 않는다. 강제 수단은 manifest 키 `path_no_query_string`이 추적한다.
+  - 근거: 같은 쿼리 값을 req_line.path와 req_param 두 방식으로 가리킬 수 있는 경로를 막는다(CNA 중복 원천). 계약 문구만 두고 검증하지 않으면 'Java가 분리한다'는 영수증을 믿는 것과 같다(R-11 계열, 단일 실패점). Python이 재검증한다.
 - `host` 가명화 여부는 TransactionSchema가 아니라 SanitizationPolicy가 결정(관심사 분리).
 - **body truncation 상한:** req 64KB / resp 256KB(config화). 초과 시 `truncated=true` + head+tail 일부 보존(에러·민감필드가 응답 꼬리에 자주 옴). truncated에서 파생된 finding은 자동으로 `limitations`에 "본문 일부만 분석됨" 플래그.
 - **multipart/바이너리:** 텍스트 파트(파일명·주장 content-type·동반 JSON)는 구조화 보존, 바이너리 파트만 `omitted`. `omitted = 본문 미전송 + Java 원본 즉시 폐기`.
@@ -215,7 +222,8 @@ AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], sugges
 - **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. LLM 응답에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
 - **evidence 무결성:** transaction_ref ∈ analyzed_refs + pointer가 마스킹 후 데이터에서 해석됨 + pointer/observation이 **마스킹 후 데이터로 검증 가능** + observation 핵심 주장이 실제 발견되는지 재대조.
 - **환각 리터럴 격리:** 재대조 실패 + 민감패턴 의심 → `hallucinated_literal_suspected`(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 의심 문자열 미저장·미로그·집계 원문 제외. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
-- **중복 처리:** 같은 (transaction_ref, pointer.locus, topic/category)는 병합, finding이 advisory보다 우선. 평가 TP/FP 채점 = 중복 제거 후.
+- **중복 처리:** Finding끼리는 (category, Evidence CNA 집합)이 정확히 같을 때만 병합한다(CNA → §2.6). CNA가 일부 겹치는 것만으로는 병합하지 않는다. advisory의 CNA 집합이 어떤 finding과 정확히 같으면 advisory를 버린다(finding 우선). 평가 채점은 이 중복 처리를 거친 출력을 대상으로 한다.
+  - 근거: 겹침으로 병합하면 사슬 병합이 생기고, 거친 노드(body_text)가 서로 다른 결함을 끌어모은다. 보안 도구에서 과병합은 결함을 숨기고, 과소병합은 중복을 보여 줄 뿐이다(fail-safe 방향). 남은 중복은 평가에서 측정된다.
 
 ### 2.5 ExecutionResponse (분석 실행 상태 — AnalysisResult와 구분)
 ```
@@ -238,7 +246,7 @@ BodyPointer = { kind: "json", path: <RFC 6901 JSON Pointer>, range?: Range }
             | { kind: "text", range?: Range }
 Locator     = { locus: req_line, part: method|path, range? }
             | { locus: req_header|resp_header, name, occurrence: int ≥ 0 = 0, range? }
-            | { locus: req_param, location: query|form|json|path, name, occurrence: int ≥ 0 = 0, range? }
+            | { locus: req_param, location: query|form, name, occurrence: int ≥ 0 = 0, range? }
             | { locus: req_body|resp_body, body: BodyPointer }
             | { locus: resp_status }
 MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
@@ -248,6 +256,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 - **Range:** 유니코드 코드포인트, 반열림 [start, end). 대상은 가리킨 '저장 값' 문자열이다.
 - **BodyPointer:**
   - `json`은 content 전체가 JSON으로 파싱될 때만 허용한다. 그 외에는 `text`.
+  - 'content 전체가 JSON으로 파싱됨' = RFC 8259 엄격 파싱이다. NaN·Infinity, 후행 문자열, 중복 키를 허용하지 않는다(중복 키는 '노드 정확히 1개' 조건을 깨뜨린다). 출력 게이트·③·fixture 마스커는 같은 정의를 쓴다.
   - JSON Pointer의 `-` 토큰은 금지한다. path가 가리키는 노드는 정확히 1개다.
   - range는 가리킨 노드가 문자열일 때만 허용한다.
   - **JSONPath 대신 JSON Pointer를 쓰는 이유:** JSONPath는 질의 언어라 여러 노드를 가리킬 수 있고 표기가 하나로 정해지지 않는다.
@@ -257,10 +266,28 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
   - Evidence의 range는 선택(힌트)이다. 근거: LLM은 문자 수를 세는 데 약해서, 필수로 하면 unmatched 잡음이 폭증한다.
   - 서버 검증: Locator는 마스킹 후 데이터에서 실제로 해석돼야 한다(경로 존재, occurrence 범위, range 길이). 실패하면 출력 전체를 폐기한다(§2.4 출력 검증 규칙). 감사에는 사유 코드만 남기고 pointer 내용은 남기지 않는다.
 - **MaskedSpan:** masked_spans의 range는 정확해야 하고 ③이 검증한다(§2.2 Body 불변식). Evidence와의 비대칭은 의도된 것이다 — 만드는 주체의 정확도에 따라 요구 수준을 다르게 둔다.
+- **CNA (정규 노드 주소):**
+  ```
+  CNA  = (transaction_ref, node)
+  node = req_line.method | req_line.path
+       | header(side, 소문자 이름, occurrence)
+       | param(query|form, name, occurrence)
+       | body_json(side, JSON Pointer)
+       | body_text(side)
+       | resp_status
+  ```
+  - range는 CNA에 포함하지 않는다(Evidence range는 힌트).
+  - 정규화 함수: 엔진 안의 순수 함수 1개. 서버 중복 처리(§2.4)와 평가기가 함께 쓴다. 평가기(tools)가 엔진을 import하는 것은 허용 방향이다.
+  - 정규화 규칙(결정론적, 모두 이 함수 안에 둔다):
+    - `req_body{json, path, range?}` → `body_json(path)`
+    - `req_body{text, range}`: 폼 본문에서 range가 파라미터 값 하나의 구간 안에 완전히 들어가면 → 그 `param(form, …)` / JSON으로 파싱되는 본문에서 range가 들어가는 가장 깊은 문자열 노드 → 그 `body_json(path)` / 그 밖의 경우 → `body_text`
+    - `header{…, range}` → header 노드(range 제거)
+    - `req_line{path, range}` → `req_line.path`
+  - 근거: 형식이 다르다는 이유로 출력 전체를 거부하지 않는다(§2.6 e의 헤더 이름 정규화와 같은 원칙(형식 차이를 이유로 출력 전체를 거부하지 않는다)). 승격에 실패하면 거친 노드로 떨어지고, 그 결과로 생기는 FN은 평가에서 측정된다.
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.7 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.8 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -310,6 +337,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 | Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만) | 아키텍처 테스트 | not_implemented → Java 연결 시 | `java_logic_isolation` |
 | 입력은 스키마 통과분만 | 스키마/validator | enforced | `input_schema_gate` |
 | 봉투 len==1(single) | validator | enforced | `envelope_arity` |
+| raw path에 리터럴 '?' 없음(쿼리는 query_params로만) | 스키마/validator | not_implemented → ζ2(입력 스키마) 구현 시 | `path_no_query_string` |
 | 인증 선행 — 함수 미호출 + 코드 물리분리 | 테스트 | enforced | `auth_precedence_noinvoke` |
 | 엔진(src/sentinel)이 tools/를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `engine_tools_isolation` |
 | 마스커가 sentinel.pipeline.sanitization_check를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `masker_independence` |
@@ -347,6 +375,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 | 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |
 | 반복 이상 → 세션 신호 | 테스트 | not_implemented → 3주차 | `anomaly_aggregation` |
 | 평가 하네스 | 테스트 | not_implemented → 5번 주제 | `eval_harness` |
+| 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | not_implemented → 정규화 함수 구현 시 | `canonical_address` |
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
