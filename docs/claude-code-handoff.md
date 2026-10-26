@@ -39,7 +39,11 @@
      ↓
 ④ PR 생성(pull_request_template; "Closes #<번호>")
      ↓
-⑤ make verify 통과 확인 → merge
+⑤ make verify 통과 확인
+     ↓
+⑥ 리뷰 팩 제출(docs/review-pack-rule.md) → 설계자 승인
+     ↓
+⑦ merge
 ```
 
 - **한 Issue = 한 수직 작업 = 한 PR.** 아래 §3의 작업 항목 하나가 Issue 하나다.
@@ -132,7 +136,7 @@
    - 모든 `enforced` 키가 **실제 통과 테스트를 가리킨다**(enforced 선언 ↔ 통과 테스트 1:1).
    - 어떤 `not_implemented` 키도 `enforced`로 **참칭되지 않는다**. (목표 주차 ≠ 현재 상태)
    - → '일단 다 enforced로 적자'는 유혹이 **빌드 실패로 차단**된다. 이 프로젝트가 가장 피하려는 '거짓 보장'을 막는 선이다.
-3. **뷰 동기화 불일치 0**(레포 내부 기계 강제 3종): `guardrails.yaml`↔(A) §3 / CLAUDE.md 금지선↔(A) §1.3·§3 / manifest 생성물↔(A) §3 파생.
+3. **뷰 동기화 불일치 0**(3종 — 강제 방식은 항목마다 다르다, CLAUDE.md §4): ① `guardrails.yaml`↔(A) §3 — **기계 강제**(`make verify`의 `guardrails check`가 (A) §3 재파생과의 일치를 검사) / ② CLAUDE.md 금지선↔(A) §1.3·§3 — **PR 체크리스트의 수동 확인이며, 기계 검사는 미구현**(`claude_md_sync_check` = not_implemented → 2주차로 추적) / ③ manifest 생성물↔(A) §3 파생 — **기계 강제**(`make verify`가 재파생과의 일치를 검사).
 4. 정상 입력이 `analysis_status="not_implemented"`를 받는다.
 5. 레포에 실데이터·비밀값 커밋 0.
 

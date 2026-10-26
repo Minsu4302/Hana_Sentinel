@@ -267,6 +267,7 @@
 
 ### 미해결
 - 위 5건 외의 미해결·이월(위 섹션의 '미해결'·'심의 전 정의 필요'·'2주차+ 이월'·'Java 연결 시 설계 숙제'·'4번 주제 이월')은 변경 없이 유지.
+- `tests/test_auth.py::test_live_server_requires_token` — Windows에서 WinError 10053으로 1회 실패. 단독 5회 반복은 모두 통과, `make verify` 재실행 종료코드 0. 원인 미조사. 재발 시 별도 Issue. 재실행으로 통과시킨 경우 리뷰 팩 7번에 반드시 기록한다.
 
 ### (A) 정본 변경 여부
 - 변경 없음(α는 docs 정리). (B) 본문 매핑표 버전 숫자 제거 — 버전 표기는 (B) 제목 "〔(A) vX 기준〕" 한 곳만. 리뷰 팩 규율 `docs/review-pack-rule.md` 신설, CLAUDE.md §3에 포인터 한 줄.

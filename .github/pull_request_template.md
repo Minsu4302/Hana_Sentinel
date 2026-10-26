@@ -27,7 +27,7 @@ Closes #
 > 뷰가 정본과 어긋나 조용히 낡는 모든 경로를 봉인한다. 불일치 시 정본 (A)가 우선.
 - [ ] `guardrails.yaml` 변경 시 → **(A) §3 매핑표**가 같은 PR에서 동기화됐다.
 - [ ] CLAUDE.md 금지선 색인 변경 시 → **(A) §1.3 / §3**의 해당 절과 일치한다.
-- [ ] manifest 생성물 ↔ **(A) §3 파생 일치** (`manifest_derivation`; CI가 검증).
+- [ ] manifest 생성물 ↔ **(A) §3 파생 일치** (`manifest_derivation`; `make verify`(로컬)가 검증. 서버측 CI 없음).
 
 ## 금지선 확인 (N1~N10 — (A) §1.3 / §3)
 - [ ] N1 외부 egress / N2 자율 전송 / N3 Java 로직 / N4 Burp 격리 / N5 실데이터 / N7 민감정보 커밋 / N8 자동반영 / N9 파인튜닝 / N10 멀티에이전트·RAG 위반 없음.
