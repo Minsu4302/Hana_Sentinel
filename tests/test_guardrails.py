@@ -61,7 +61,9 @@ def test_output_schema_gate_is_a_derived_rollup_not_an_enforced_claim(spec, entr
         "evidence_min_one", "evidence_ref_integrity", "server_assigned_status", "category_closed_enum"]
     assert gate["verification_tests"] == []
     cap = derive_manifest(entries, spec, REPO_ROOT)["capabilities"]["output_schema_gate"]
-    assert cap["effective_status"] != "enforced"
+    children = {e["id"]: e["week1_status"]["state"] for e in entries if e["id"] in gate["week1_status"]["derived_from"]}
+    assert cap["status"] == "derived"  # 자체 enforced 주장이 아니다 — 실효 상태는 하위 4키의 AND
+    assert cap["effective_status"] == ("enforced" if set(children.values()) == {"enforced"} else "not_implemented")
 
 
 def test_derived_rollup_is_enforced_only_when_every_child_is_enforced():

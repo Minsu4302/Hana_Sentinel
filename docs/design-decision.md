@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.5 — Sentinel Harness
+# (A) 설계확정서 v1.6 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,14 +7,15 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.5 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙) + 가드레일 매핑표 v1.4(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.6 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙) + 가드레일 매핑표 v1.5(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
 > **v1.5 (매핑표 v1.4):** §2 데이터 계약 버전 규칙 신설 + §2.2 Body 마스킹 표기 정의처를 5번 설계로 변경 + §2.4 출력 계약 보정(analyzed_refs·severity_if_true 서버 부여, corroboration `not_run`, review_required 기본 true, 출력 전체 폐기 규칙) + §2.5 analysis_status 닫힌 enum + §3 이월처 재조정(`token_hardening`·`receipt_hmac` → Java 연결 시, `audit_write_failure` → 수용 요청 감사(B-6) 범위 확정 시) + 신규 키 `masker_no_send`(§3.1)·`engine_tools_isolation`(§3.2) + §3.5 2주차 enforced 범위 각주 + '현재 CI가 검증한다' 사실 주장 교정(서버측 CI 없음, 검증 주체 = `make verify`).
 >   - **문서 버전과 매핑표 버전은 별개다.** 문서 버전(제목의 vX.Y)은 (A) 전체 개정마다, 매핑표 버전(§3 제목)은 §3 표가 바뀔 때만 올린다. 두 숫자가 같을 필요는 없다.
 >   - 출력 스키마 최초 동결본에 `not_run` 포함 — 소비자 0, §2 버전 규칙에 따라 `schema_version` 유지.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26)
+> **v1.6 (매핑표 v1.5):** §3.5 출력 게이트 4키 승격(`evidence_min_one`·`evidence_ref_integrity`·`server_assigned_status`·`category_closed_enum` → enforced(검증 함수 단위), 증명은 같은 PR의 γ) + 목표 재조정 2키(`assertive_token_guard`·`corroboration_check` → 5번 평가 데이터로 기준 확정 시 — 단정 토큰 목록과 '핵심 주장' 추출 기준은 평가 데이터 없이 정하면 추측이다, 2026-10-26 결정) + §3.5 제목 "C·E (출력·검증)" + † 각주 갱신.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26)
 
 ---
 
@@ -204,7 +205,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.4 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.5 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -274,21 +275,21 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 |---|---|---|---|
 | main 직접 병합 금지 | CI(branch protection) | unverifiable(레포 설정) | `branch_protection` |
 
-### 3.5 C·E (출력·검증 — 목표층위 예약, 1주차 미구현)
+### 3.5 C·E (출력·검증)
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
 |---|---|---|---|
-| evidence≥1(0개 거부=환각차단) | 스키마/validator | not_implemented → 2주차 | `evidence_min_one` |
-| evidence.transaction_ref ∈ analyzed_refs | validator | not_implemented → 2주차 | `evidence_ref_integrity` |
-| status 서버부여·LLM 생성불가 | validator | not_implemented → 2주차 | `server_assigned_status` |
-| category 폐쇄형 enum | 스키마 | not_implemented → 2주차 | `category_closed_enum` |
+| evidence≥1(0개 거부=환각차단) | 스키마/validator | enforced(검증 함수 단위) | `evidence_min_one` |
+| evidence.transaction_ref ∈ analyzed_refs | validator | enforced(검증 함수 단위) | `evidence_ref_integrity` |
+| status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
+| category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived (→2주차) † | `output_schema_gate` |
-| hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 2주차 | `assertive_token_guard` |
-| observation 재대조 | 테스트 | not_implemented → 2주차 | `corroboration_check` |
+| hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
+| observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |
 | 반복 이상 → 세션 신호 | 테스트 | not_implemented → 3주차 | `anomaly_aggregation` |
 | 평가 하네스 | 테스트 | not_implemented → 5번 주제 | `eval_harness` |
 
-> **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced이며, 현재 하위 전부 not_implemented이므로 파생값도 미구현(→2주차). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
+> **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
 > **2주차 enforced 범위:** 2주차 enforced 범위 = 검증 함수 단위(주입 테스트). 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
 

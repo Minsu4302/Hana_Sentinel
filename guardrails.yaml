@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.4. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.5. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.4"
+derived_from: "docs/design-decision.md §3 매핑표 v1.5"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -391,33 +391,69 @@ guardrails:
     description: "evidence≥1(0개 거부=환각차단)"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "2주차"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위"
+    verification_tests:
+      - "tests/test_output_gate.py::test_rejects_finding_without_evidence"
+      - "tests/test_output_gate.py::test_unusable_draft_is_an_explicit_rejection_not_an_exception_or_empty_result"
+      - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
+      - "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
+      - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: evidence_min_one
   - id: evidence_ref_integrity
     description: "evidence.transaction_ref ∈ analyzed_refs"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "2주차"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위"
+    verification_tests:
+      - "tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs"
+      - "tests/test_output_gate.py::test_rejects_any_ref_when_analyzed_refs_is_empty"
+      - "tests/test_output_gate.py::test_bad_server_args_raise_before_draft_parsing_without_values"
+      - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
+      - "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
+      - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: evidence_ref_integrity
   - id: server_assigned_status
     description: "status 서버부여·LLM 생성불가"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "2주차"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위"
+    verification_tests:
+      - "tests/test_output_gate.py::test_rejects_injected_status"
+      - "tests/test_output_gate.py::test_rejects_each_server_assigned_field_injected"
+      - "tests/test_output_gate.py::test_rejects_server_evidence_field_injected_into_advisory_basis"
+      - "tests/test_output_gate.py::test_rejects_null_severity_injected_even_though_it_equals_the_server_value"
+      - "tests/test_output_gate.py::test_server_assigned_field_list_is_pinned"
+      - "tests/test_output_gate.py::test_draft_type_has_no_server_assigned_field_anywhere"
+      - "tests/test_output_gate.py::test_stored_finding_allows_only_null_severity"
+      - "tests/test_output_gate.py::test_stored_finding_requires_severity_field_present"
+      - "tests/test_output_gate.py::test_stored_evidence_allows_only_empty_anomaly_flags"
+      - "tests/test_output_gate.py::test_clean_draft_is_a_result_with_empty_findings_not_a_rejection"
+      - "tests/test_output_gate.py::test_reason_codes_are_a_closed_list"
+      - "tests/test_output_gate.py::test_gate_is_in_pipeline_package_so_auth_spies_cover_it"
+      - "tests/test_output_gate.py::test_mutant_shadowed_by_original_module_is_detected"
+      - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
+      - "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
+      - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: server_assigned_status
   - id: category_closed_enum
     description: "category 폐쇄형 enum"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "2주차"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위"
+    verification_tests:
+      - "tests/test_output_gate.py::test_rejects_category_outside_closed_four"
+      - "tests/test_output_gate.py::test_rejects_type_coercion_bypass"
+      - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
+      - "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
+      - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: category_closed_enum
   - id: output_schema_gate
     description: "출력 스키마 전체(파생 롤업)"
@@ -433,7 +469,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "2주차"
+      target: "5번 평가 데이터로 기준 확정 시"
     verification_tests: []
     manifest_key: assertive_token_guard
   - id: corroboration_check
@@ -441,7 +477,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "2주차"
+      target: "5번 평가 데이터로 기준 확정 시"
     verification_tests: []
     manifest_key: corroboration_check
   - id: hallucinated_literal_isolation

@@ -329,3 +329,37 @@
 ### 미해결
 - `src/sentinel/schema.py` `ExecutionResponse.analysis_status`는 `Literal["not_implemented"]` 그대로 — (A) §2.5의 3값 enum보다 좁다. 타입은 실제로 반환할 수 있는 값만 허용하므로 **LLM 결선 시** 넓힌다.
 - `tests/test_guardrails.py::test_spec_parser_rejects_unparseable_status`는 (A) 표의 특정 행 문구에 고정돼 있어 개정할 때마다 깨질 수 있다. 행을 동적으로 고르는 방식으로 바꾸는 것을 검토. 지금은 고치지 않는다.
+
+---
+
+## γ — 출력 스키마 게이트 (Issue #30)
+
+### manifest 상태 변화 (실제 통과 테스트로 증명된 승격만)
+| manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
+|---|---|---|---|
+| `evidence_min_one` | not_implemented(→2주차) | enforced(검증 함수 단위) | `tests/test_output_gate.py::test_rejects_finding_without_evidence` 외 — 목록은 `guardrails.yaml` |
+| `evidence_ref_integrity` | not_implemented(→2주차) | enforced(검증 함수 단위) | `tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs` 외 |
+| `server_assigned_status` | not_implemented(→2주차) | enforced(검증 함수 단위) | `tests/test_output_gate.py::test_rejects_each_server_assigned_field_injected` 외 |
+| `category_closed_enum` | not_implemented(→2주차) | enforced(검증 함수 단위) | `tests/test_output_gate.py::test_rejects_category_outside_closed_four` 외 |
+| `output_schema_gate` | derived(effective not_implemented) | derived(effective **enforced** — 하위 4키 AND, 손으로 쓰지 않음) | 자체 테스트 없음 |
+| `assertive_token_guard`·`corroboration_check` | not_implemented(→2주차) | not_implemented(→5번 평가 데이터로 기준 확정 시) | — |
+
+> **범위 = 검증 함수 단위((A) §3.5 각주)**: `sentinel.pipeline.output_gate.validate_draft`에 초안을 직접 주입해 증명했다. 파이프라인 ④ 결선(이 함수가 LLM 출력의 유일 통로임)은 증명하지 않았다 — LLM 연동 PR 몫. 서버는 여전히 `analysis_status="not_implemented"`만 반환한다.
+> **타입 두 벌**: 초안 타입(`sentinel.output_schema.*Draft`, LLM이 채우는 필드만 + 추가 필드 금지) / 저장용 타입(서버만 구성). 저장용 타입은 지금 부여할 수 있는 값만 허용(severity_if_true = null만, anomaly_flags = 빈 목록만) — 2차 방어선이기도 해서 초안 검사 ②③을 변이로 끄면 결과는 여전히 거부되지만 사유 코드가 `result_build_failed`로 바뀌어 해당 적대 테스트가 실패한다.
+> **변이 확인(스위트 안, `tools/mutation_guard.py`)**: 초안 추가 필드 허용 / 초안 category Literal 해제 / evidence 최소 개수 해제 / 참조 검사 해제 / 부분 수용(위반 항목만 빼고 반환) — 각각 변이본 로드를 활성 표지로 먼저 확인한 뒤 대응 적대 테스트 실패를 확인. '부분 수용 금지'는 ①~③에서는 구조적(Pydantic이 문서 전체를 한 번에 검증 — 항목 단위로 받는 경로가 없음)이라 변이 대상은 항목 단위인 ④.
+
+### 깨진 가정 · 발견된 문제
+- 변이 대조 테스트 초안이 '원본에 가려짐'을 재현하려고 변이본 경로를 뺐더니 `sentinel` 자체를 못 찾아 표지 부재로 통과할 뻔했다(거짓 통과) → 원본 src를 명시적으로 적재하고 표지 존재·원본 통과를 먼저 단언한 뒤 '다른 사본'으로 잡히는지 확인.
+- (A) §3.5 `output_schema_gate` 상태 칸을 `derived †`로 바꾸면 파서(`tools/guardrails/spec.py` `_STATE_DERIVED_RE`)가 거부한다(목표 없는 derived 미지원). 파서를 고치지 않고 칸을 기존 `derived (→2주차) †`로 두었다 — 결정 대기(γ PR 리뷰).
+
+### 미해결
+- **pointer 형식 미검증**: `Evidence.pointer`는 str만 검사(문법은 5번 개정 대기).
+- **AdvisorySignal.basis 최소 개수 미적용**: evidence ≥ 1은 Finding에만. `test_advisory_basis_may_be_empty_documented_limitation`이 현재 동작을 고정((A) 미정).
+- **pipeline_mode**: 열린 str. 값 목록 미정의 → 4번(LLM 전략)에서 닫음. 서버가 넣는 값이라 LLM 경로가 아님.
+- **analysis_meta 필드 타입**(str·0 이상 정수·`token_usage: dict[str, 0 이상 정수] | None`)은 (A) 미지정 → 구현 재량.
+- **ExecutionResponse `Literal["not_implemented"]`** 유지 — LLM 결선 시 넓힘.
+- **(A) §3 열 머리 "1주차 상태"가 낡음** — 파서(`TABLE_HEADER`)가 열 머리 문구에 의존하므로 의존 확인 후 정리(이월).
+- `output_schema_gate`의 (A) 상태 칸 `(→2주차)` 표기 — 위 '깨진 가정' 참조, 결정 대기.
+
+### (A) 정본 변경 여부
+- **변경 있음:** 문서 v1.5 → **v1.6**, 매핑표 v1.4 → **v1.5**. §3.5 4키 enforced(검증 함수 단위) / `assertive_token_guard`·`corroboration_check` 목표 재조정 / §3.5 제목 "C·E (출력·검증)" / † 각주. 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·(B) 제목 기준 버전. CLAUDE.md 영향 없음. claude.ai 발행본 재발행: merge 후 설계자에게 (A) 전달.
