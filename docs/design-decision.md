@@ -20,6 +20,7 @@
 >   - 버전 규칙: v1.5의 '비가산 → 항상 증가'를 소비자 우선 2단 분기로 대체.
 >   - AnalysisResult `schema_version` "1.0" 유지 — Evidence.locus 제거·pointer 객체화 = 비가산, 소비자 0이라 유지.
 >   - Envelope `schema_version` "1.0" 유지 — 라벨 형식을 `ref_NN`으로 좁힘 = 비가산 / `masked_spans` = 가산. 둘 다 소비자 0이라 유지.
+>   - 같은 매핑표 버전(v1.6) 안의 보강: §3.5 `evidence_pointer_resolves` 추가(§2.6 Locator 서버 검증 규칙에 대응하는 키가 없던 공백, `output_schema_gate` 하위 키 아님) + §2.6 Locator에 'range는 값이 문자열일 때만(MaskedRef면 금지), 모든 변형에 적용' 명시.
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26)
 
 ---
@@ -251,6 +252,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
   - **JSONPath 대신 JSON Pointer를 쓰는 이유:** JSONPath는 질의 언어라 여러 노드를 가리킬 수 있고 표기가 하나로 정해지지 않는다.
 - **Locator (= Evidence.pointer, locus로 판별):**
   - 정규화: 헤더 이름은 서버가 소문자로 바꾼다. 파라미터 이름은 대소문자를 유지한다.
+  - range는 가리킨 값이 문자열일 때만 허용한다(값이 MaskedRef면 range 금지). req_line·header·param·body 모든 변형에 적용한다.
   - Evidence의 range는 선택(힌트)이다. 근거: LLM은 문자 수를 세는 데 약해서, 필수로 하면 unmatched 잡음이 폭증한다.
   - 서버 검증: Locator는 마스킹 후 데이터에서 실제로 해석돼야 한다(경로 존재, occurrence 범위, range 길이). 실패하면 출력 전체를 폐기한다(§2.4 출력 검증 규칙). 감사에는 사유 코드만 남기고 pointer 내용은 남기지 않는다.
 - **MaskedSpan:** masked_spans의 range는 정확해야 하고 ③이 검증한다(§2.2 Body 불변식). Evidence와의 비대칭은 의도된 것이다 — 만드는 주체의 정확도에 따라 요구 수준을 다르게 둔다.
@@ -335,6 +337,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 |---|---|---|---|
 | evidence≥1(0개 거부=환각차단) | 스키마/validator | enforced(검증 함수 단위) | `evidence_min_one` |
 | evidence.transaction_ref ∈ analyzed_refs | validator | enforced(검증 함수 단위) | `evidence_ref_integrity` |
+| Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기) | validator+테스트 | not_implemented → Evidence Locator 구현 시 | `evidence_pointer_resolves` |
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |

@@ -395,6 +395,12 @@
         "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
       ]
     },
+    "evidence_pointer_resolves": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "Evidence Locator 구현 시",
+      "verification_tests": []
+    },
     "server_assigned_status": {
       "status": "enforced",
       "effective_status": "enforced",

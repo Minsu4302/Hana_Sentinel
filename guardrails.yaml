@@ -445,6 +445,14 @@ guardrails:
       - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
       - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: evidence_ref_integrity
+  - id: evidence_pointer_resolves
+    description: "Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "Evidence Locator 구현 시"
+    verification_tests: []
+    manifest_key: evidence_pointer_resolves
   - id: server_assigned_status
     description: "status 서버부여·LLM 생성불가"
     target_layer: "스키마·validator"

@@ -306,7 +306,8 @@
 ε에서 함께 (A)에 반영: pointer 문법(§2.6 Locator·BodyPointer·Range), Body 불변식(§2.2), FILLER·라벨 접두사 ref(§2.6·§2.3), 버전 규칙 통합(§2 머리), 공용 소절 §2.6 + MaskedRef 이동
 
 ### 큐 (미확정)
-10. (큐만, 미확정) truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.
+10. (큐만, 미확정) truncation 경계 표기.
+    - 오프셋 기준(저장 content)은 (A) §2.2에서 정해짐 — 큐 10에서 분리. (작성 당시 문구: "truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.")
 11. (큐만, 미확정) 헤더 값·경로의 부분 마스킹 표기 — (A) §2.2가 이 큐를 가리킨다. 현재는 fail-closed.
 12. 첫 소비자 경계 강제 장치 — 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이는 실패하는 테스트. 평가 데이터셋을 처음 동결할 때 키 신설.
 
@@ -400,3 +401,5 @@
 - `src/sentinel/schema.py` `Body`: `masked_spans` 필드·Body 불변식(1~6, 2' 중 `truncated == false`) 없음. FILLER 정의 없음.
 - `principal_01` 잔존(src·tests): `src/sentinel/schema.py:8`, `:20`, `tests/test_sanitization.py:173`, `tests/test_schema.py:184`.
 - 중복 처리 키 `(transaction_ref, pointer.locus, …)` — 중복 병합 자체가 미구현.
+- 파생기 OR 변이 확인(`test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down`)은 수동 1회 실행. 스위트에서 자동 실행되지 않는다(W1-01~08 변이 확인과 같은 성격).
+- `evidence_pointer_resolves`(§3.5, not_implemented → Evidence Locator 구현 시) 추가 — 리뷰 반영, 이월처 ζ1.
