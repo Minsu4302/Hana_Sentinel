@@ -234,3 +234,72 @@
 ### 다음 주차 이월
 - 1주차 작업 W1-00~W1-09 전부 PR 완료(W1-09는 리뷰 대기). 1주차 전체 결산은 W1-09 merge 후 설계자 요청 시.
 - 2주차 대상 not_implemented 키와 위 '심의 전 정의 필요'·'2주차+ 이월'·'Java 연결 시'·'4번 주제' 항목.
+
+---
+
+## Week 1 결산 — 2026-10-22 ~ 2026-10-23 (α, Issue #24)
+
+> 위 "Week 1 — 2026-10-22 ~ 2026-10-23" 섹션은 누적 규칙대로 고치지 않았다. 그 섹션의 W1-09 행("(이 PR) | open")과 '다음 주차 이월'의 "W1-09는 리뷰 대기"는 작성 시점 기록이며, 현재 상태는 이 결산이 맞다.
+
+### 완료한 작업 (Issue / PR) — W1-09 확정
+| 작업 | Issue | PR | 상태 |
+|---|---|---|---|
+| W1-09 | #22 (closed) | #23 | merged (2026-10-23) |
+
+- 1주차 작업 W1-00 ~ W1-09 전부 merged. 1주차 merge 내역은 위 섹션 표 + 이 행.
+
+### manifest 최종 상태 (`guardrails.yaml` / `manifest/capability_manifest.json`에서 읽음, 둘 일치)
+- 전체 39키 — **enforced 21 / not_implemented 15 / unverifiable 2 / derived 1**.
+- enforced(21): `audit_log_present`, `auth_precedence_noinvoke`, `authfail_log_hygiene`, `egress_runtime_block`(테스트환경 한정), `egress_static_check`, `engine_burp_isolation`, `envelope_arity`, `input_schema_gate`, `local_llm_vs_egress`, `loopback_binding`, `manifest_derivation`, `manifest_honesty`, `manifest_selfcheck`, `maskedref_typing`, `no_autonomous_send`, `no_autopatch_apply`, `no_finetune_path`, `no_raw_persistence`, `request_token_validation`, `sanitization_trust`, `secret_scan_hook`.
+- not_implemented(15): `anomaly_aggregation`, `assertive_token_guard`, `audit_write_failure`, `category_closed_enum`, `claude_md_sync_check`, `corroboration_check`, `eval_harness`, `evidence_min_one`, `evidence_ref_integrity`, `hallucinated_literal_isolation`, `java_logic_isolation`, `no_multiagent_rag`, `receipt_hmac`, `server_assigned_status`, `token_hardening`.
+- unverifiable(2): `branch_protection`, `egress_enforcement_owner`.
+- derived(1): `output_schema_gate`.
+- 1주차 판정 근거: `make verify` 종료코드 0 + selfcheck 활성 표지(`module=…tools\guardrails\selfcheck.py keys=21`) + "enforced 검증 노드 전부 수집·통과" — (B) §4 정직성 조건. 상태별 키 수는 성과 지표가 아니라 현황이다.
+
+### 해소 (미해결·관찰에서 이동 — 근거 확인 후)
+> 원래 항목은 위 섹션에 그대로 남는다(누적 규칙). 여기서는 해소 사실과 근거만 적는다.
+- **(W1-03) 분석 엔드포인트 무인증 501** → 해소(W1-04 토큰 게이트). 근거: 최외곽 ASGI 래퍼 `src/sentinel/server/auth.py` `TokenGate` / `tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body`, `tests/test_auth.py::test_real_app_never_invokes_inner_app_parser_or_deserializer_on_auth_failure`. 501 응답은 `src/sentinel`에서 사라짐 — 토큰 통과 후 `tests/test_execution.py::test_valid_request_gets_not_implemented_execution_response_not_empty_findings`.
+- **(W1-04) 감사가 Python logging으로만 나감** → 해소(W1-07 SQLite 감사). 근거: `src/sentinel/audit.py` `SQLiteAuditHandler` / `tests/test_audit.py::test_auth_failure_is_persisted`, `tests/test_audit.py::test_persisted_audit_contains_no_sensitive_values`. ('기록 실패 시 fail-closed'는 해소 아님 — `audit_write_failure` not_implemented→2주차 그대로.)
+- **(W1-04) 스키마 함수를 스파이 대상에 추가 필요** → 해소(W1-05 자동 열거). 근거: `sentinel.pipeline` 패키지 전 함수 자동 열거 / `tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control`. (남는 가정 '패키지 밖 단계 함수는 안 잡힘'은 위 섹션 W1-05 기록 그대로.)
+- **(W1-05) 요청 본문 크기 상한 없음** → 해소(W1-06 상한). 근거: 원시 요청 1 MiB `src/sentinel/server/app.py` `MAX_REQUEST_BYTES`(413) / `tests/test_sanitization.py::test_oversized_http_request_is_rejected_before_parsing`; 내용 상한 req 64KB·resp 256KB `src/sentinel/pipeline/sanitization_check.py` `REQ_BODY_CAP`·`RESP_BODY_CAP` / `tests/test_sanitization.py::test_body_over_cap_is_rejected_and_at_cap_passes`, `tests/test_sanitization.py::test_base64_body_cap_counts_decoded_bytes`.
+- **(W1-05) redacted_kinds 형태 정본 확인 필요** → 해소((A) v1.4 개수 맵). 근거: (A) §2.3 `redacted_kinds: {token:int, cookie:int, pii:int, host:int}` / `src/sentinel/schema.py` `RedactedKinds` / `tests/test_schema.py::test_rejects_schema_violation`(케이스 `redacted_kinds_as_list`·`unknown_redacted_kind`·`redacted_kind_missing`·`redacted_kind_negative`·`redacted_kind_as_string`).
+- 근거를 찾지 못해 이동하지 않은 항목: 없음.
+
+### 미해결
+- 위 5건 외의 미해결·이월(위 섹션의 '미해결'·'심의 전 정의 필요'·'2주차+ 이월'·'Java 연결 시 설계 숙제'·'4번 주제 이월')은 변경 없이 유지.
+- `tests/test_auth.py::test_live_server_requires_token` — Windows에서 WinError 10053으로 1회 실패. 단독 5회 반복은 모두 통과, `make verify` 재실행 종료코드 0. 원인 미조사. 재발 시 별도 Issue. 재실행으로 통과시킨 경우 리뷰 팩 7번에 반드시 기록한다.
+
+### (A) 정본 변경 여부
+- 변경 없음(α는 docs 정리). (B) 본문 매핑표 버전 숫자 제거 — 버전 표기는 (B) 제목 "〔(A) vX 기준〕" 한 곳만. 리뷰 팩 규율 `docs/review-pack-rule.md` 신설, CLAUDE.md §3에 포인터 한 줄.
+
+---
+
+## 설계 트랙: 5번 평가 (진행 중)
+
+> **성격: 확정 — (A) 미반영. 5번 결론 개정 때 (A)로 옮긴다. 이 기록은 정본이 아니다.**
+
+1. Body에 masked_spans: [{pointer, ref: MaskedRef}] 가산(사이드카 방식).
+   첫 평가 픽스처가 동결되기 전에 (A)에 반영한다.
+2. 채움값은 kind 없는 단일 고정 토큰이고, kind·라벨은 masked_spans.ref에만 둔다.
+   이 비대칭은 의도된 것이다(본문은 신뢰할 수 없으므로 정보 최소화, 권위는 사이드카).
+3. 오프셋은 저장된 content 기준, 유니코드 코드포인트 단위. 마스커는 정규화하지 않는다.
+   UTF-16 변환은 Java 쪽 책임이다.
+4. pointer 문법은 "JSONPath + 문자열 안 범위" 형태이고, Evidence.pointer와 공유한다
+   (문안은 아직 미작성).
+5. masked_spans가 비어 있지 않으면 encoding == utf8이어야 한다.
+   base64 본문에서 비밀값이 발견되면 omitted로 처리한다.
+6. 라벨은 양방향 동치(같은 원본값 ⇔ 같은 라벨)이고, 순번으로 할당한다(HMAC은 매핑 테이블 키로만).
+   동치 기준은 원본값이며 kind와 무관하다. 라벨은 배치 안에서만 유효하다.
+   (A) §2.3의 "HMAC → 짧은 라벨" 문구를 이 뜻으로 교정한다.
+7. 6번은 생산자 쪽에서만 강제할 수 있다(Python ③은 원본을 모름).
+   manifest 키 1개를 신설하되 Python 런타임 보장으로 표기하지 않는다.
+8. ⓕ 해석: "사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고,
+   시스템(엔진·tools)은 이를 영속화하지 않는다."
+9. fixture 마스커 불변식 4개:
+   - tools/에 둔다. 엔진은 tools/를 import하지 않는다.
+   - 엔진의 sanitization_check를 재사용하지 않는다.
+   - N1·N2 검사 범위에 포함한다.
+   - 정책은 데이터 파일로 두고 공유한다.
+10. (큐만, 미확정) truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.
+
+남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의.
