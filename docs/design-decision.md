@@ -15,6 +15,7 @@
 >   - **문서 버전과 매핑표 버전은 별개다.** 문서 버전(제목의 vX.Y)은 (A) 전체 개정마다, 매핑표 버전(§3 제목)은 §3 표가 바뀔 때만 올린다. 두 숫자가 같을 필요는 없다.
 >   - 출력 스키마 최초 동결본에 `not_run` 포함 — 소비자 0, §2 버전 규칙에 따라 `schema_version` 유지.
 > **v1.6 (매핑표 v1.5):** §3.5 출력 게이트 4키 승격(`evidence_min_one`·`evidence_ref_integrity`·`server_assigned_status`·`category_closed_enum` → enforced(검증 함수 단위), 증명은 같은 PR의 γ) + 목표 재조정 2키(`assertive_token_guard`·`corroboration_check` → 5번 평가 데이터로 기준 확정 시 — 단정 토큰 목록과 '핵심 주장' 추출 기준은 평가 데이터 없이 정하면 추측이다, 2026-10-26 결정) + §3.5 제목 "C·E (출력·검증)" + † 각주 갱신.
+>   - `output_schema_gate` 상태 칸 "derived (→2주차) †" → "derived †"(목표 없는 derived). target은 '언제'를 담는 필드인데 derived에는 자기 목표가 없고, "(→2주차)"는 실효 enforced와 모순됐다. 같은 매핑표 버전(v1.5) 안의 정정.
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26)
 
 ---
@@ -282,7 +283,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 | evidence.transaction_ref ∈ analyzed_refs | validator | enforced(검증 함수 단위) | `evidence_ref_integrity` |
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
-| 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived (→2주차) † | `output_schema_gate` |
+| 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |

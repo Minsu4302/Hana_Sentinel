@@ -52,7 +52,9 @@ def expected_status(row: SpecRow, current: Any) -> dict[str, Any]:
         status: dict[str, Any] = {"state": "enforced"} if promoted else {
             "state": "not_implemented", "target": WEEK1_TARGET}
     elif row.state == "derived":
-        status = {"state": "derived", "target": row.target, "derived_from": list(row.derived_from)}
+        status = {"state": "derived", "derived_from": list(row.derived_from)}
+        if row.target:
+            status["target"] = row.target
     else:
         status = {"state": row.state}
         if row.target:

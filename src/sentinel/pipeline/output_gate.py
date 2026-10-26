@@ -12,7 +12,8 @@ schema_version="1.0".
 
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
 입력이 정한 필드명은 남기지 않는다(Pydantic 오류의 loc·msg는 분류에만 쓰고 버린다).
-서버 인자는 초안 파싱 전에 검사한다. 잘못된 서버 인자는 LLM 출력 거부가 아니라 호출자 버그라 ValueError다.
+서버 인자는 초안 파싱 전에 검사한다. 잘못된 서버 인자는 LLM 출력 거부가 아니라 호출자 버그라 ValueError다
+(analyzed_refs가 비었거나 중복 포함, produced_by가 3값 밖, analysis_meta 타입 오류 — 메시지에 값 없음).
 
 범위((A) §3.5 각주): 검증 함수 단위(주입 테스트). 파이프라인 ④ 결선(유일 통로)은 LLM 연동 PR에서 별도 증명.
 """
@@ -74,6 +75,9 @@ def _checked_server_args(analyzed_refs: Sequence[UUID], produced_by: str, analys
     # 메시지에 인자 값을 넣지 않는다.
     if isinstance(analyzed_refs, (str, bytes)) or not all(type(r) is UUID for r in analyzed_refs):
         raise ValueError("analyzed_refs는 UUID 목록이어야 함")
+    # 빈 목록이면 'analyzed_refs: [] + findings: []' = 아무것도 분석하지 않았는데 깨끗함이 만들어진다((A) §2.5)
+    if not analyzed_refs or len(set(analyzed_refs)) != len(analyzed_refs):
+        raise ValueError("analyzed_refs는 비어 있지 않고 중복이 없어야 함")
     if type(produced_by) is not str or produced_by not in get_args(ProducedBy):
         raise ValueError("produced_by는 rule|llm|hybrid 중 하나여야 함")
     if not isinstance(analysis_meta, AnalysisMeta):

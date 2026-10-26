@@ -180,8 +180,21 @@ def test_rejects_transaction_ref_outside_analyzed_refs(where):
     _rejected(_run_gate(d), "evidence_ref_outside_analyzed")
 
 
-def test_rejects_any_ref_when_analyzed_refs_is_empty():
-    _rejected(_run_gate(_draft(), refs=()), "evidence_ref_outside_analyzed")
+@pytest.mark.parametrize("refs", [(), (REF, REF)])
+def test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing(refs, monkeypatch):
+    parsed: list[int] = []
+    real = AnalysisDraft.model_validate_json.__func__
+    monkeypatch.setattr(AnalysisDraft, "model_validate_json",
+                        classmethod(lambda cls, *a, **k: parsed.append(1) or real(cls, *a, **k)))
+    with pytest.raises(ValueError) as exc:
+        _run_gate(_draft(), refs=refs)
+    assert parsed == [] and str(REF) not in str(exc.value)
+
+
+def test_nothing_analyzed_cannot_become_a_clean_result():
+    """빈 analyzed_refs + findings 없는 초안 → '분석 안 함 ≠ 분석 후 깨끗함'((A) §2.5) — AnalysisResult가 생기지 않는다."""
+    with pytest.raises(ValueError):
+        _run_gate(_draft(findings=[], advisories=[]), refs=())
 
 
 # ── 위조 거부: 형 변환 우회(W1-05 `masked: 1` 교훈) ────────────────────

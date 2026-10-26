@@ -171,7 +171,11 @@
         "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests",
         "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced",
         "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim",
-        "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
+        "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest",
+        "tests/test_guardrails.py::test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down",
+        "tests/test_guardrails.py::test_targetless_derived_is_accepted_with_no_target",
+        "tests/test_guardrails.py::test_spec_parser_still_requires_target_for_not_implemented",
+        "tests/test_guardrails.py::test_targetless_derived_without_child_list_is_rejected"
       ]
     },
     "claude_md_sync_check": {
@@ -364,7 +368,8 @@
       "note": "검증 함수 단위",
       "verification_tests": [
         "tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs",
-        "tests/test_output_gate.py::test_rejects_any_ref_when_analyzed_refs_is_empty",
+        "tests/test_output_gate.py::test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing",
+        "tests/test_output_gate.py::test_nothing_analyzed_cannot_become_a_clean_result",
         "tests/test_output_gate.py::test_bad_server_args_raise_before_draft_parsing_without_values",
         "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
         "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation",
@@ -412,7 +417,6 @@
     "output_schema_gate": {
       "status": "derived",
       "effective_status": "enforced",
-      "target": "2주차",
       "derived_from": [
         "evidence_min_one",
         "evidence_ref_integrity",
