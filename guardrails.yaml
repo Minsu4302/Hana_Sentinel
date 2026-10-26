@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.6. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.7. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.6"
+derived_from: "docs/design-decision.md §3 매핑표 v1.7"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -437,7 +437,7 @@ guardrails:
       note: "검증 함수 단위"
     verification_tests:
       - "tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs"
-      - "tests/test_output_gate.py::test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing"
+      - "tests/test_output_gate.py::test_empty_or_duplicate_transactions_is_a_server_arg_error_before_draft_parsing"
       - "tests/test_output_gate.py::test_nothing_analyzed_cannot_become_a_clean_result"
       - "tests/test_output_gate.py::test_bad_server_args_raise_before_draft_parsing_without_values"
       - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
@@ -449,9 +449,25 @@ guardrails:
     description: "Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기)"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "Evidence Locator 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위"
+    verification_tests:
+      - "tests/test_output_gate.py::test_valid_locator_of_each_variant_is_accepted"
+      - "tests/test_output_gate.py::test_json_pointer_escapes_tilde_and_slash"
+      - "tests/test_output_gate.py::test_uppercase_header_name_is_normalized_and_stored_lowercase"
+      - "tests/test_output_gate.py::test_param_name_case_is_not_normalized"
+      - "tests/test_output_gate.py::test_range_counts_codepoints_not_utf16_units"
+      - "tests/test_output_gate.py::test_rejects_unresolvable_pointer"
+      - "tests/test_output_gate.py::test_rejects_json_pointer_into_truncated_ambiguous_or_non_standard_json"
+      - "tests/test_output_gate.py::test_rejects_body_pointer_into_omitted_or_base64_body"
+      - "tests/test_output_gate.py::test_rejects_locator_valid_in_one_transaction_but_pointing_at_another"
+      - "tests/test_output_gate.py::test_rejects_malformed_json_pointer_at_schema"
+      - "tests/test_output_gate.py::test_rejects_locus_field_in_draft_evidence"
+      - "tests/test_output_gate.py::test_rejects_locator_mixing_fields_of_another_variant"
+      - "tests/test_output_gate.py::test_rejects_locator_type_coercion_or_bad_shape"
+      - "tests/test_output_gate.py::test_unresolvable_pointer_audit_has_no_header_name_path_or_range_values"
+      - "tests/test_output_gate.py::test_partial_violation_rejects_whole_result"
+      - "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
     manifest_key: evidence_pointer_resolves
   - id: server_assigned_status
     description: "status 서버부여·LLM 생성불가"
