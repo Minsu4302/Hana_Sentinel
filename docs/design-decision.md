@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.7 — Sentinel Harness
+# (A) 설계확정서 v1.8 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.7 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙) + 가드레일 매핑표 v1.6(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.8 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙) + 가드레일 매핑표 v1.7(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -21,7 +21,8 @@
 >   - AnalysisResult `schema_version` "1.0" 유지 — Evidence.locus 제거·pointer 객체화 = 비가산, 소비자 0이라 유지.
 >   - Envelope `schema_version` "1.0" 유지 — 라벨 형식을 `ref_NN`으로 좁힘 = 비가산 / `masked_spans` = 가산. 둘 다 소비자 0이라 유지.
 >   - 같은 매핑표 버전(v1.6) 안의 보강: §3.5 `evidence_pointer_resolves` 추가(§2.6 Locator 서버 검증 규칙에 대응하는 키가 없던 공백, `output_schema_gate` 하위 키 아님) + §2.6 Locator에 'range는 값이 문자열일 때만(MaskedRef면 금지), 모든 변형에 적용' 명시.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26)
+> **v1.8 (매핑표 v1.7):** §3.5 `evidence_pointer_resolves` 승격(not_implemented → enforced(검증 함수 단위), 증명은 같은 PR의 ζ1). 바꾼 것은 상태 칸과 이력뿐 — §2.6 문구 변경 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26)
 
 ---
 
@@ -259,7 +260,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.6 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.7 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -337,7 +338,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 |---|---|---|---|
 | evidence≥1(0개 거부=환각차단) | 스키마/validator | enforced(검증 함수 단위) | `evidence_min_one` |
 | evidence.transaction_ref ∈ analyzed_refs | validator | enforced(검증 함수 단위) | `evidence_ref_integrity` |
-| Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기) | validator+테스트 | not_implemented → Evidence Locator 구현 시 | `evidence_pointer_resolves` |
+| Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기) | validator+테스트 | enforced(검증 함수 단위) | `evidence_pointer_resolves` |
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |

@@ -403,3 +403,29 @@
 - 중복 처리 키 `(transaction_ref, pointer.locus, …)` — 중복 병합 자체가 미구현.
 - 파생기 OR 변이 확인(`test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down`)은 수동 1회 실행. 스위트에서 자동 실행되지 않는다(W1-01~08 변이 확인과 같은 성격).
 - `evidence_pointer_resolves`(§3.5, not_implemented → Evidence Locator 구현 시) 추가 — 리뷰 반영, 이월처 ζ1.
+
+---
+
+## ζ1 — 출력 쪽 계약 정렬: Evidence.pointer = Locator (Issue #34)
+
+### ε 리뷰 반영 (PR #33, merge 전 추가 커밋) — 기록
+- (A) §3.5 `evidence_pointer_resolves` 등재(같은 매핑표 버전 v1.6 이력), §2.6 e에 'range는 값이 문자열일 때만(MaskedRef면 금지), 모든 변형' 명시, 큐 10 분리, ε 미해결에 파생기 OR 변이 확인이 수동 1회임을 기록.
+
+### manifest 상태 변화
+| manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
+|---|---|---|---|
+| `evidence_pointer_resolves` | not_implemented(→ Evidence Locator 구현 시) | enforced(검증 함수 단위) | `tests/test_output_gate.py::test_rejects_unresolvable_pointer` 외 — 목록은 `guardrails.yaml` |
+
+> `output_schema_gate` 롤업(하위 4키)은 바꾸지 않았다. 게이트 서명: `analyzed_refs` 인자 → `transactions`(③ 통과 Transaction 목록), analyzed_refs는 그 ID에서 파생.
+> 변이 확인(스위트 안, 변이본 로드 표지 먼저 확인): 위치 해석 해제 → `test_rejects_unresolvable_pointer`·부분 위반 실패 / 헤더 정규화 해제 → 대문자 대조 실패 / UTF-16 단위 세기 → 이모지 대조 실패.
+
+### 깨진 가정 · 발견된 문제
+- 테스트 픽스처 버그(W1-06과 같은 종류): `_evidence()`가 공유 dict(`DEFAULT_POINTER`)를 그대로 넘겨, 형 변환 우회 테스트가 locus를 바꾼 것이 뒤 테스트를 오염시켰다 → 매번 깊은 복사.
+- 표준 JSON 해석 범위를 정함(구현 재량): 중복 키는 '경로가 노드 1개'를 보장하지 못하므로 해석 실패, NaN·Infinity는 표준 JSON이 아니므로 해석 실패, truncated content에 kind=json은 해석 실패.
+
+### 미해결
+- **"-" 세그먼트 전면 금지의 한계**: 실제 키가 "-"인 객체 멤버는 Locator로 가리킬 수 없다((A) §2.6 d 그대로).
+- **정규 주소 미정**: 같은 값을 req_param과 req_body 두 방식으로 가리킬 수 있다 — 5번 TP 판정에서 정한다. 지금은 둘 다 허용.
+- 배열 인덱스 선행 0은 형태 검사가 아니라 해석 단계에서 거부(형태만으로는 객체 키 "01"과 구별 불가) → 사유 코드는 `pointer_unresolvable`.
+- ε 미해결의 '코드가 (A)보다 낡은 지점' 중 Evidence(locus·pointer: str)는 해소. 나머지(MaskLabel 정규식·Body masked_spans·FILLER·principal_01 잔존)는 ζ2.
+- **간헐 실패 재발**: `tests/test_auth.py::test_live_server_requires_token`이 ζ1의 `make verify`에서 WinError 10053으로 다시 실패(selfcheck가 `request_token_validation` 노드 미통과로 세션 실패 처리). 코드 변경 없이 재실행해 종료코드 0 — **재실행으로 통과**. 규칙대로 별도 Issue #35 등재(원인 가설: 인증 실패 시 본문 미수신 + 연결 종료 → Windows RST, 미확인).

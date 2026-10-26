@@ -7,7 +7,7 @@
   타입은 지금 실제로 부여할 수 있는 값만 허용한다 — `severity_if_true`는 null만(등급 값 목록 미정의),
   `anomaly_flags`는 빈 목록만(값 목록 미정의 — `hallucinated_literal_isolation`에서 넓힌다).
 
-`pointer`는 str만 검사하고 형식은 검증하지 않는다(pointer 문법은 5번 개정 대기).
+`pointer`는 (A) §2.6 Locator(`sentinel.common_types`) — 형태는 타입이, 마스킹 후 데이터에서의 해석은 게이트가 검사한다.
 """
 from __future__ import annotations
 
@@ -16,9 +16,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from sentinel.common_types import Locator
+
 # (A) §1.1 P0 탐지 카테고리 4종(폐쇄형) — `category_closed_enum`
 Category = Literal["access_control", "info_exposure", "security_misconfig", "reflected_injection_indicator"]
-Locus = Literal["req_line", "req_header", "req_param", "req_body", "resp_status", "resp_header", "resp_body"]
 ClaimBasis = Literal["observed", "inferred", "speculative"]
 FindingStatus = Literal["unverified", "verifying", "confirmed", "false_positive", "needs_review"]
 ProducedBy = Literal["rule", "llm", "hybrid"]
@@ -40,8 +41,7 @@ class _Draft(BaseModel):
 
 class EvidenceDraft(_Draft):
     transaction_ref: UUID
-    locus: Locus
-    pointer: str  # 형식 미검증(5번 개정 대기)
+    pointer: Locator  # locus는 Locator 안의 판별자(별도 locus 필드 없음)
     observation: str
 
 
@@ -80,8 +80,7 @@ class _Stored(BaseModel):
 
 class Evidence(_Stored):
     transaction_ref: UUID
-    locus: Locus
-    pointer: str
+    pointer: Locator
     observation: str
     corroboration: Corroboration
     anomaly_flags: Annotated[list[str], Field(max_length=0)]  # 값 목록 미정의 → 지금은 빈 목록만

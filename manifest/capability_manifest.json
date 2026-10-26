@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.6",
+  "spec": "docs/design-decision.md §3 매핑표 v1.7",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -386,7 +386,7 @@
       "note": "검증 함수 단위",
       "verification_tests": [
         "tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs",
-        "tests/test_output_gate.py::test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing",
+        "tests/test_output_gate.py::test_empty_or_duplicate_transactions_is_a_server_arg_error_before_draft_parsing",
         "tests/test_output_gate.py::test_nothing_analyzed_cannot_become_a_clean_result",
         "tests/test_output_gate.py::test_bad_server_args_raise_before_draft_parsing_without_values",
         "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
@@ -396,10 +396,27 @@
       ]
     },
     "evidence_pointer_resolves": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Evidence Locator 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위",
+      "verification_tests": [
+        "tests/test_output_gate.py::test_valid_locator_of_each_variant_is_accepted",
+        "tests/test_output_gate.py::test_json_pointer_escapes_tilde_and_slash",
+        "tests/test_output_gate.py::test_uppercase_header_name_is_normalized_and_stored_lowercase",
+        "tests/test_output_gate.py::test_param_name_case_is_not_normalized",
+        "tests/test_output_gate.py::test_range_counts_codepoints_not_utf16_units",
+        "tests/test_output_gate.py::test_rejects_unresolvable_pointer",
+        "tests/test_output_gate.py::test_rejects_json_pointer_into_truncated_ambiguous_or_non_standard_json",
+        "tests/test_output_gate.py::test_rejects_body_pointer_into_omitted_or_base64_body",
+        "tests/test_output_gate.py::test_rejects_locator_valid_in_one_transaction_but_pointing_at_another",
+        "tests/test_output_gate.py::test_rejects_malformed_json_pointer_at_schema",
+        "tests/test_output_gate.py::test_rejects_locus_field_in_draft_evidence",
+        "tests/test_output_gate.py::test_rejects_locator_mixing_fields_of_another_variant",
+        "tests/test_output_gate.py::test_rejects_locator_type_coercion_or_bad_shape",
+        "tests/test_output_gate.py::test_unresolvable_pointer_audit_has_no_header_name_path_or_range_values",
+        "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
+        "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "server_assigned_status": {
       "status": "enforced",
