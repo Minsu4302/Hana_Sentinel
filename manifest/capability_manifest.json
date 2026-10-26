@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.10",
+  "spec": "docs/design-decision.md §3 매핑표 v1.11",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -526,13 +526,25 @@
     "eval_harness": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "5번 주제",
+      "target": "평가 하네스 구현 시",
       "verification_tests": []
     },
     "canonical_address": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
       "target": "정규화 함수 구현 시",
+      "verification_tests": []
+    },
+    "label_isolation": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "평가 하네스 구현 시",
+      "verification_tests": []
+    },
+    "dataset_version_freeze": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "데이터셋 첫 동결 시",
       "verification_tests": []
     }
   }

@@ -1,4 +1,4 @@
-# Sentinel Harness — Claude Code 인계문서 (B) · 1주차  〔(A) v1.11 기준〕
+# Sentinel Harness — Claude Code 인계문서 (B) · 1주차  〔(A) v1.12 기준〕
 
 > **이 문서의 성격**: 건조한 실행 지시서. '왜'는 담지 않는다 — 근거·트레이드오프·기각대안은 전부 **(A) 설계확정서(레포 `docs/design-decision.md`, 정본)**에 있다.
 > **정본 관계**: 규칙 '값'의 정본은 (A)의 FROZEN 블록(§1 범위 / §2 데이터계약 / §3 가드레일 매핑표)이다. 이 문서는 그것을 **실행 순서로 추출**만 한다. 값이 (A)와 (B)에서 다르면 **(A)가 맞다.**
@@ -150,7 +150,7 @@
 - Java/Montoya Extension — **1주차엔 붙이지 않음**. 적대적 입력은 손으로 주입. (Java 실제 마스킹은 Java 연결 후 통합 테스트로 별도 증명.)
 - 2주차 항목(출력 스키마 불변식군) — manifest에 `not_implemented`로 정직 표기, 구현 안 함.
 - 이월 항목 — `token_hardening`·`receipt_hmac`(→ Java 연결 시), `audit_write_failure`(→ 수용 요청 감사(B-6) 범위 확정 시). manifest에 `not_implemented`로 정직 표기, 구현 안 함.
-- 3주차 이후(`hallucinated_literal_isolation`, `anomaly_aggregation`), 5번 평가(`eval_harness`) — 손대지 않음.
+- 3주차 이후(`hallucinated_literal_isolation`, `anomaly_aggregation`), 평가 하네스(`eval_harness` → 평가 하네스 구현 시, 프로토콜은 (A) §6) — 손대지 않음.
 
 ---
 
