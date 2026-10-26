@@ -78,7 +78,7 @@ class HeaderLocator(_Common):
 
 class ParamLocator(_Common):
     locus: Literal["req_param"]
-    location: Literal["query", "form", "json", "path"]
+    location: Literal["query", "form"]  # (A) v1.9 §2.6 — §2.2 Param.location과 같은 값
     name: str  # 대소문자 유지
     occurrence: NonNegative = 0
     range: Range | None = None

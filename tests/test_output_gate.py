@@ -60,7 +60,7 @@ def _tx_dict(ref: uuid.UUID, **over) -> dict:
                       "query_params": [{"name": "q", "value": "apple", "location": "query"},
                                        {"name": "Q", "value": "x", "location": "query"},
                                        {"name": "q", "value": "banana🍌", "location": "query"},
-                                       {"name": "email", "value": _masked("ref_01", "pii"), "location": "json"}],
+                                       {"name": "email", "value": _masked("ref_01", "pii"), "location": "query"}],
                       "headers": [{"name": "Content-Type", "value": "application/json"},
                                   {"name": "Cookie", "value": _masked("ref_02", "cookie")},
                                   {"name": "X-Trace", "value": "a"},
@@ -432,7 +432,7 @@ VALID_POINTERS = {
     "req_param": {"locus": "req_param", "location": "query", "name": "q"},
     "req_param_case_kept": {"locus": "req_param", "location": "query", "name": "Q"},
     "req_param_occurrence": {"locus": "req_param", "location": "query", "name": "q", "occurrence": 1},
-    "req_param_masked_without_range": {"locus": "req_param", "location": "json", "name": "email"},
+    "req_param_masked_without_range": {"locus": "req_param", "location": "query", "name": "email"},
     "req_body_json_root": {"locus": "req_body", "body": {"kind": "json", "path": ""}},
     "req_body_json_array": {"locus": "req_body", "body": {"kind": "json", "path": "/user/tags/1"}},
     "req_body_json_range": {"locus": "req_body", "body": {"kind": "json", "path": "/user/email",
@@ -495,8 +495,8 @@ UNRESOLVABLE = {
     "missing_param": {"locus": "req_param", "location": "query", "name": "zz"},
     "param_wrong_location": {"locus": "req_param", "location": "form", "name": "q"},
     "param_occurrence_out_of_range": {"locus": "req_param", "location": "query", "name": "q", "occurrence": 2},
-    "param_case_differs": {"locus": "req_param", "location": "json", "name": "EMAIL"},
-    "range_on_masked_param": {"locus": "req_param", "location": "json", "name": "email",
+    "param_case_differs": {"locus": "req_param", "location": "query", "name": "EMAIL"},
+    "range_on_masked_param": {"locus": "req_param", "location": "query", "name": "email",
                               "range": {"start": 0, "end": 1}},
     "req_line_range_beyond": {"locus": "req_line", "part": "method", "range": {"start": 0, "end": 5}},
     "missing_json_path": {"locus": "req_body", "body": {"kind": "json", "path": "/user/phone"}},
@@ -578,6 +578,9 @@ def test_rejects_locator_mixing_fields_of_another_variant(pointer):
     {"locus": "req_line", "part": "Path"},
     {"locus": "req_body", "body": {"kind": "JSON", "path": ""}},
     {"locus": "req_header"},
+    # (A) v1.9 §2.6: req_param location은 query|form만 — json·path는 enum 위반
+    {"locus": "req_param", "location": "json", "name": "email"},
+    {"locus": "req_param", "location": "path", "name": "q"},
 ])
 def test_rejects_locator_type_coercion_or_bad_shape(pointer):
     _rejected(_one(pointer), "draft_schema_invalid")

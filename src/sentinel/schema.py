@@ -61,7 +61,7 @@ class SanitizationReceipt(_Strict):
 class Param(_Strict):
     name: str
     value: str | MaskedRef
-    location: Literal["query", "form", "json", "path"]
+    location: Literal["query", "form"]  # (A) v1.9 §2.2: json·path 제거(본문 값은 BodyPointer, 경로 파라미터는 Java가 판별 불가)
 
 
 class Header(_Strict):
@@ -89,10 +89,19 @@ class Request(_Strict):
     scheme: Literal["http", "https"]
     host: str
     port: Port
-    path: str
+    path: str  # 쿼리 미포함 — 쿼리는 query_params(location=query)로만((A) §2.2)
     query_params: list[Param]
     headers: list[Header]
     body: Body
+
+    @field_validator("path")
+    @classmethod
+    def _no_query_string(cls, v: str) -> str:
+        # 디코딩 전 raw 문자열에서 리터럴 '?'만 본다. 인코딩된 '%3F'는 경로 세그먼트의 정상 일부라 통과.
+        # 'Java가 쿼리를 분리했다'는 계약을 믿지 않고 ②에서 재검증한다(path_no_query_string). 메시지에 값 없음.
+        if "?" in v:
+            raise ValueError("request.path에 쿼리 문자열('?') 포함 — 쿼리는 query_params로만")
+        return v
 
 
 class Response(_Strict):
