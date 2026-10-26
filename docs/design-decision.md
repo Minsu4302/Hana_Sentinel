@@ -25,6 +25,7 @@
 > **v1.9 (매핑표 v1.8):** §2.2 Param.location을 query|form으로 축소 + request.path 쿼리 미포함(raw '?'는 ② 거부) + §2.4 중복 처리 규칙 교체((category, Evidence CNA 집합) 정확 일치만 병합) + §2.6 Locator req_param location 축소·CNA(정규 노드 주소)·정규화 함수 신설·BodyPointer `json` = RFC 8259 엄격 파싱 명문화 + §3 신규 키 `path_no_query_string`(§3.2)·`canonical_address`(§3.5).
 >   - Param.location에서 json·path 제거 = 비가산, 소비자 0이라 유지. json: 중첩을 표현하지 못하면서 본문 JSON Pointer와 중복되고 정보도 잃는다. path: Java는 구문 파싱만 하므로 경로 파라미터를 판별할 수 없다(path_template은 Python이 내부에서 파생 — A-3/A-4). 계약이 Java에 불가능한 일을 요구하던 것을 교정했다.
 >   - request.path 쿼리 미포함 = 비가산(이전에는 '?' 포함 path가 ②·③을 통과했다), 소비자 0이라 유지.
+>   - 같은 버전(v1.9) 안의 정정: §2.6 CNA 근거가 레포에 정의 없는 설계 대화 라벨("D4")을 가리키던 거짓 색인을 실제 절(§2.6 e 헤더 이름 정규화)로 교체. (A) 규범 본문의 다른 임시 라벨(D·E·F·G·H·I·J 계열)은 grep으로 0건 확인.
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26)
 
 ---
@@ -282,7 +283,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
     - `req_body{text, range}`: 폼 본문에서 range가 파라미터 값 하나의 구간 안에 완전히 들어가면 → 그 `param(form, …)` / JSON으로 파싱되는 본문에서 range가 들어가는 가장 깊은 문자열 노드 → 그 `body_json(path)` / 그 밖의 경우 → `body_text`
     - `header{…, range}` → header 노드(range 제거)
     - `req_line{path, range}` → `req_line.path`
-  - 근거: 형식이 다르다는 이유로 출력 전체를 거부하지 않는다(D4와 같은 원칙). 승격에 실패하면 거친 노드로 떨어지고, 그 결과로 생기는 FN은 평가에서 측정된다.
+  - 근거: 형식이 다르다는 이유로 출력 전체를 거부하지 않는다(§2.6 e의 헤더 이름 정규화와 같은 원칙(형식 차이를 이유로 출력 전체를 거부하지 않는다)). 승격에 실패하면 거친 노드로 떨어지고, 그 결과로 생기는 FN은 평가에서 측정된다.
 
 ---
 
