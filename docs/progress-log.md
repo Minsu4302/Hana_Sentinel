@@ -586,3 +586,4 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 
 ### 깨진 가정 · 미해결
 - **회신 전제 교정**: 회신은 "기존 `engine_tools_isolation`이 엔진 → tools/ import 0을 이미 강제"라고 했으나, 이 키는 not_implemented(→ fixture 마스커 구현 시)다. (A) §2.7 문구는 "강제하게 되며"로 사실에 맞게 씀. → **마스커-A는 `engine_no_rawtransaction`과 함께 `engine_tools_isolation`도 구현·승격해야 한다**(전자의 증명이 후자에 기대므로). 마스커-A 발주문의 승격 목록에는 아직 없다.
+- **`engine_no_rawtransaction`의 형태는 마스커-A에서 결정(ι 4번 보강)**: (ㄱ) 별도 테스트로 독립 enforced / (ㄴ) `engine_tools_isolation` 종속 derived. 판단 기준 = 'RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가'. (ㄱ)은 RawTransaction이 tools/ 밖으로 옮겨져도 '엔진 import 0'을 콕 집어 지킨다(위치 이동 경로까지 방어). (ㄴ)은 tools/ 안에 있는 한 충분하지만 tools/ 이탈 시 `engine_tools_isolation`이 침묵한다. 마스커-A에서 실제 구조를 보고 이 기준으로 답한다. ((A) §3.2 근거 주석과 같은 내용)

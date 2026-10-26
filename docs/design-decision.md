@@ -379,7 +379,10 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 마스커가 sentinel.pipeline.sanitization_check를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `masker_independence` |
 | 엔진(src/sentinel)이 RawTransaction을 import하지 않음(엔진은 마스킹 후 Transaction만 다룬다) | 아키텍처 테스트 | not_implemented → RawTransaction 타입 구현 시(마스커-A) | `engine_no_rawtransaction` |
 
-> **`engine_no_rawtransaction` 근거:** RawTransaction을 tools/에 두면(§2.7) `engine_tools_isolation`이 커버한다. 이 키는 그 커버가 RawTransaction에도 적용됨을 명시적으로 추적하는 항목이며, 마스커-A에서 '엔진에 RawTransaction import를 심으면 `engine_tools_isolation`이 잡는다'로 enforced. `masker_independence`(마스커 → 엔진 `sanitization_check` import 금지)와는 방향이 반대인 격리다.
+> **`engine_no_rawtransaction` 근거:**
+> - RawTransaction을 tools/에 두면(§2.7) `engine_tools_isolation`이 이미 커버한다(그 키 자체는 현재 not_implemented → fixture 마스커 구현 시). 이 키는 그 커버가 RawTransaction에도 적용됨을 추적하는 항목이다.
+> - ★ 마스커-A에서 결정할 것(지금 결정 아님): 이 키를 (ㄱ) 별도 테스트로 독립 enforced 할지 (ㄴ) `engine_tools_isolation` 종속 derived로 둘지. 판단 기준 = 'RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가'. 별도 테스트는 RawTransaction을 tools/ 밖으로 옮겨도 '엔진 import 0'을 콕 집어 지킨다(위치 이동 경로까지 방어). derived는 tools/ 안에 있는 한 충분하지만 tools/ 이탈 시 `engine_tools_isolation`이 침묵한다. 마스커-A에서 실제 구조를 보고 이 기준으로 답한다.
+> - `masker_independence`(마스커 → 엔진 `sanitization_check` import 금지)와는 방향이 반대인 격리다.
 
 ### 3.3 B. 민감정보경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
