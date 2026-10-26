@@ -1,24 +1,32 @@
-"""파이프라인 ② 스키마 검증 — `input_schema_gate` · `envelope_arity` · `maskedref_typing`.
+"""파이프라인 ② 스키마 검증 — `input_schema_gate` · `envelope_arity` · `maskedref_typing` · `path_no_query_string`.
 
 '위조 거부'로 증명한다: arity 위반, 계약 밖 구조·형 변환 우회, MaskedRef에 원문 밀반입을 거부하고,
 거부 감사·응답에 입력 값이 남지 않음을 확인한다. 테스트 데이터는 Juice Shop 형태의 더미(N5),
 토큰 형태 값은 런타임 생성(N7).
+변이 확인은 tools.mutation_guard로 '치환 성공 + 실행 중 로드된 모듈 = 변이본'을 먼저 증명한다.
 """
 from __future__ import annotations
 
 import copy
 import json
 import logging
+import os
 import secrets
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from sentinel.pipeline import schema_gate
+from sentinel.pipeline import execution, sanitization_check, schema_gate
 from sentinel.pipeline.schema_gate import SchemaRejected, parse_envelope
 from sentinel.schema import Envelope, MaskedRef
 from sentinel.server.app import create_app
 from tests.test_auth import HEADER, _drive, _scope, _status
+from tools.mutation_guard import assert_loaded_from, copy_with_mutation
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 BODY = {"content_type": "application/json", "size_bytes": 2, "truncated": False, "encoding": "utf8", "content": "{}"}
 TX: dict[str, Any] = {
@@ -112,6 +120,8 @@ VIOLATIONS = {
     "unknown_encoding": (f"{T0}.request.body.encoding", "gzip"),
     "content_not_string": (f"{T0}.request.body.content", 123),
     "unknown_param_location": (f"{T0}.request.query_params.0.location", "header"),
+    "removed_param_location_json": (f"{T0}.request.query_params.0.location", "json"),  # (A) v1.9 §2.2 축소
+    "removed_param_location_path": (f"{T0}.request.query_params.0.location", "path"),
     "unknown_redacted_kind": (f"{T0}.meta.sanitization.redacted_kinds.password", 1),
     "redacted_kinds_as_list": (f"{T0}.meta.sanitization.redacted_kinds", ["cookie"]),
     "redacted_kind_missing": (f"{T0}.meta.sanitization.redacted_kinds.host", _DEL),
@@ -227,3 +237,121 @@ def test_schema_gate_is_reached_after_token(token, monkeypatch):
     monkeypatch.setattr(schema_gate, "parse_envelope", lambda raw: calls.append(raw) or real(raw))
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
     assert _status(sent) == 200 and calls == [_raw(_env())]
+
+
+# ── 위조 거부: request.path에 쿼리 문자열(raw '?') — `path_no_query_string`, (A) §2.2 ─────────
+
+RAW_QUERY_PATHS = {
+    "query_appended": "/rest/products/search?q=apple",
+    "trailing": "/rest/products/search?",
+    "middle": "/rest/?/search",
+    "alone": "?",
+}
+ENCODED_QUERY_PATHS = {
+    "encoded_upper": "/rest/products/a%3Fb",
+    "encoded_lower": "/rest/products/a%3fb",
+    "encoded_trailing": "/rest/products/search%3F",
+}
+
+
+def _with_path(path: str) -> dict[str, Any]:
+    return _set(_env(), f"{T0}.request.path", path)
+
+
+@pytest.mark.parametrize("name", sorted(RAW_QUERY_PATHS))
+def test_rejects_raw_question_mark_in_path(name):
+    with pytest.raises(SchemaRejected):
+        parse_envelope(_raw(_with_path(RAW_QUERY_PATHS[name])))
+
+
+@pytest.mark.parametrize("name", sorted(ENCODED_QUERY_PATHS))
+def test_percent_encoded_question_mark_in_path_is_accepted(name):
+    """대조(과잉 거부 방지): 판정은 디코딩 전 raw 문자열 — '%3F'는 경로 세그먼트의 정상 일부."""
+    env = parse_envelope(_raw(_with_path(ENCODED_QUERY_PATHS[name])))
+    assert env.transactions[0].request.path == ENCODED_QUERY_PATHS[name]  # 디코딩하지 않고 그대로 보존
+
+
+def test_query_is_accepted_as_query_params():
+    """대조: 같은 쿼리를 path가 아니라 query_params(location=query)로 보내면 정상 수용."""
+    req = parse_envelope(_raw(_env())).transactions[0].request
+    assert req.path == "/rest/products/search" and "?" not in req.path
+    assert [(p.name, p.value, p.location) for p in req.query_params] == [("q", "apple", "query")]
+
+
+def _stage_recorders(monkeypatch) -> list[str]:
+    calls: list[str] = []
+    for module, name in ((schema_gate, "parse_envelope"), (sanitization_check, "verify_sanitization"),
+                         (execution, "build_execution_response")):
+        real = getattr(module, name)
+        monkeypatch.setattr(module, name, lambda *a, _n=name, _r=real, **k: calls.append(_n) or _r(*a, **k))
+    return calls
+
+
+def test_raw_question_mark_is_rejected_in_schema_stage_without_reflecting_input(token, monkeypatch, caplog):
+    """② 안에서 거부: 스키마 단계는 불렸고 ③ sanitization·④ 실행은 미호출. 응답·감사에 path 값 없음."""
+    marker = secrets.token_hex(8)
+    calls = _stage_recorders(monkeypatch)
+    with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
+        sent, _ = _drive(create_app(token), _scope([(HEADER, token)]),
+                         _raw(_with_path(f"/rest/{marker}?q={marker}")))
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    assert _status(sent) == 422 and json.loads(body) == {"error": "schema_rejected"}
+    assert calls == ["parse_envelope"]
+    audit = [r.getMessage() for r in caplog.records if r.name == "sentinel.audit"]
+    assert audit and all(marker not in m for m in audit) and marker.encode() not in body
+
+
+def test_encoded_question_mark_passes_every_stage(token, monkeypatch):
+    """대조: '%3F' path는 ②뿐 아니라 ③ 재검증도 통과해 ④까지 간다(어느 단계도 과잉 거부하지 않음)."""
+    calls = _stage_recorders(monkeypatch)
+    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_with_path("/rest/products/a%3Fb")))
+    assert _status(sent) == 200
+    assert calls == ["parse_envelope", "verify_sanitization", "build_execution_response"]
+
+
+def test_token_check_precedes_question_mark_check(token, monkeypatch):
+    """순서 불변(① → ②): 토큰이 없으면 '?' 검사(스키마 단계) 전에 401. 토큰이 있으면 같은 본문이 ②에서 422."""
+    calls = _stage_recorders(monkeypatch)
+    raw = _raw(_with_path("/rest/products/search?q=apple"))
+    sent, received = _drive(create_app(token), _scope([]), raw)
+    assert _status(sent) == 401 and calls == [] and received == 0
+    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), raw)
+    assert _status(sent) == 422 and calls == ["parse_envelope"]
+
+
+# ── 변이 확인: '?' 검사가 하중을 지지하고, 과잉 거부 방지(%3F 대조)도 하중을 진다 ─────────────
+
+STAMP = "path_query_probe"
+_DRIVER = """
+import sys, pytest
+import sentinel.schema  # pytest의 pythonpath 삽입 전에 변이본을 먼저 적재
+code = pytest.main(["-q", "-p", "no:cacheprovider", *sys.argv[2:]])
+print(f"{STAMP} module={sys.modules[sys.argv[1]].__file__} keys=-", flush=True)
+sys.exit(int(code))
+"""
+_T = "tests/test_schema.py::"
+MUTATIONS = {
+    # '?' 검사 무력화 → raw '?' path가 통과
+    "question_mark_check_off": ('        if "?" in v:\n', "        if False:\n",
+                                [_T + "test_rejects_raw_question_mark_in_path"]),
+    # 디코딩 후 판정(과잉 거부) → '%3F'까지 거부
+    "rejects_encoded_too": ('        if "?" in v:\n', '        if "?" in v or "%3f" in v.lower():\n',
+                            [_T + "test_percent_encoded_question_mark_in_path_is_accepted"]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(MUTATIONS))
+def test_path_query_check_is_load_bearing_under_verified_mutation(tmp_path, name):
+    old, new, nodes = MUTATIONS[name]
+    mutant = copy_with_mutation(REPO_ROOT / "src", ["sentinel"], tmp_path / "mut" / "src",
+                                "sentinel/schema.py", old, new)
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(tmp_path / "mut" / "src"), str(REPO_ROOT)]),
+           "PYTHONUTF8": "1"}
+    env.pop("PYTEST_ADDOPTS", None)
+    r = subprocess.run([sys.executable, "-c", _DRIVER.replace("{STAMP}", STAMP), "sentinel.schema", *nodes],
+                       cwd=REPO_ROOT, env=env, capture_output=True, text=True, encoding="utf-8", timeout=300)
+    out = r.stdout + r.stderr
+    assert_loaded_from(out, STAMP, mutant)  # 원본이 아니라 변이본이 돌았다
+    assert r.returncode == 1, f"변이 {name}가 살아남음\n{out}"
+    for node in nodes:
+        assert f"FAILED {node}" in out, f"{node}가 변이본에서 실패하지 않음\n{out}"

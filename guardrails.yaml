@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.8. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.9. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.8"
+derived_from: "docs/design-decision.md §3 매핑표 v1.9"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -261,9 +261,16 @@ guardrails:
     description: "raw path에 리터럴 '?' 없음(쿼리는 query_params로만)"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "ζ2(입력 스키마) 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위 — 입력 스키마"
+    verification_tests:
+      - "tests/test_schema.py::test_rejects_raw_question_mark_in_path"
+      - "tests/test_schema.py::test_percent_encoded_question_mark_in_path_is_accepted"
+      - "tests/test_schema.py::test_query_is_accepted_as_query_params"
+      - "tests/test_schema.py::test_raw_question_mark_is_rejected_in_schema_stage_without_reflecting_input"
+      - "tests/test_schema.py::test_encoded_question_mark_passes_every_stage"
+      - "tests/test_schema.py::test_token_check_precedes_question_mark_check"
+      - "tests/test_schema.py::test_path_query_check_is_load_bearing_under_verified_mutation"
     manifest_key: path_no_query_string
   - id: auth_precedence_noinvoke
     description: "인증 선행 — 함수 미호출 + 코드 물리분리"

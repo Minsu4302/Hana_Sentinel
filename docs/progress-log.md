@@ -488,3 +488,29 @@
 
 ### 이월
 - httptools가 의존성에 추가되면 `test_live_server_requires_token`의 100-continue 탐침과 egress 금지 목록(dep_egress)을 함께 재확인한다(#35 8번 한계).
+
+---
+
+## ζ2a — 입력 스키마 정렬: Param.location 축소 + raw '?' 거부 (Issue #40)
+
+### 0단계 (편집 전 구조 확인)
+- '?' 거부 위치 = **후보 A**(`sentinel.schema.Request`의 Pydantic `field_validator("path")`). `parse_envelope` → `Envelope.model_validate_json` 안에서 실행되므로 ② 단계이고, 거부는 기존 `SchemaRejected` → 422 `{"error":"schema_rejected"}` 그대로(감사에는 오류 유형 `value_error`만, 입력 미반사).
+- 스파이 자동 열거와 모순 없음: 열거 대상은 `sentinel.pipeline` 패키지의 함수이고 validator는 `sentinel.schema`(타입 층위)에 있다. 토큰 실패 시 `parse_envelope`·`BaseModel.model_validate_json` 스파이가 미호출이면 validator도 미호출이다.
+
+### manifest 상태 변화
+| manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
+|---|---|---|---|
+| `path_no_query_string` | not_implemented(→ ζ2(입력 스키마) 구현 시) | enforced(검증 함수 단위 — 입력 스키마) | `tests/test_schema.py::test_rejects_raw_question_mark_in_path` 외 6 — 목록은 `guardrails.yaml` |
+
+> enforced 26 → 27키. Param.location 축소는 새 키 없이 `input_schema_gate`가 덮는다(검증 노드 `test_rejects_schema_violation[removed_param_location_json|path]`). 출력 쪽 `ParamLocator.location` 축소는 `test_rejects_locator_type_coercion_or_bad_shape`(json·path → `draft_schema_invalid`).
+> 변이 확인(스위트 안, 변이본 로드 표지 먼저 확인): '?' 검사 무력화 → raw '?' 테스트 실패 / '%3F'까지 거부 → '%3F' 수용 대조 실패.
+> (A) v1.9 → v1.10, 매핑표 v1.8 → v1.9: §3.2 상태 칸과 이력만. `schema_version` 값 변화 없음.
+
+### 상호 참조
+- **req_line.path CNA가 쿼리와 겹치지 않는 것은 `path_no_query_string`이 raw '?'를 막은 결과다.** ζ1의 `req_line.path` Locator와 (A) §2.6 CNA의 `req_line.path` 노드는 이 전제 위에 선다 — 이 검사가 풀리면 같은 쿼리 값을 `req_line.path`와 `param(query, …)` 두 노드로 가리킬 수 있게 된다.
+
+### 정렬한 픽스처 (η 미해결 항목 해소)
+- `tests/test_output_gate.py`의 픽스처 Param `email`(MaskedRef)과 그것을 가리키던 Locator 3건(`req_param_masked_without_range`·`param_case_differs`·`range_on_masked_param`)을 `location: "query"`로 변경. 세 테스트가 검증하던 것은 MaskedRef 값 파라미터(범위 없이 가리킴 수용 / range 금지) · 파라미터 이름 대소문자 유지 — JSON 본문 노드가 아니다. `req_body{json, path}`로 바꾸면 `range_on_masked_param`의 거부 의도가 사라진다(본문 `/user/email`은 평문 문자열이라 range가 수용됨). 본문 `/user/email`은 기존 `DEFAULT_POINTER`가 이미 가리킨다.
+
+### 미해결
+- η 미해결 중 Param·ParamLocator location 4값, raw '?' 미거부, `location: "json"` 픽스처는 해소. 남은 것: `canonical_address`(정규화 함수 미구현), 본문 마스킹 쪽(MaskLabel 정규식·masked_spans·FILLER·MaskedRef 이동·`principal_01` 잔존)은 ζ2b.

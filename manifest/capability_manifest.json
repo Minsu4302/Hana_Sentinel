@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.8",
+  "spec": "docs/design-decision.md §3 매핑표 v1.9",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -231,10 +231,18 @@
       ]
     },
     "path_no_query_string": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "ζ2(입력 스키마) 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위 — 입력 스키마",
+      "verification_tests": [
+        "tests/test_schema.py::test_rejects_raw_question_mark_in_path",
+        "tests/test_schema.py::test_percent_encoded_question_mark_in_path_is_accepted",
+        "tests/test_schema.py::test_query_is_accepted_as_query_params",
+        "tests/test_schema.py::test_raw_question_mark_is_rejected_in_schema_stage_without_reflecting_input",
+        "tests/test_schema.py::test_encoded_question_mark_passes_every_stage",
+        "tests/test_schema.py::test_token_check_precedes_question_mark_check",
+        "tests/test_schema.py::test_path_query_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "auth_precedence_noinvoke": {
       "status": "enforced",
