@@ -302,7 +302,7 @@
    - 정책은 데이터 파일로 두고 공유한다.
 10. (큐만, 미확정) truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.
 
-남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의 / severity_if_true의 category 기본값 표와 신호 보정 규칙(β에서 추가 — (A) v1.5 §2.4는 둘 다 미정의로 둠).
+남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의 / severity_if_true의 등급 값 목록 자체(미정의 — 기본값 표·보정 규칙보다 먼저 정해야 함), category 기본값 표와 신호 보정 규칙(β에서 추가 — (A) v1.5 §2.4는 셋 다 미정의로 둠).
 
 ---
 
@@ -328,3 +328,4 @@
 
 ### 미해결
 - `src/sentinel/schema.py` `ExecutionResponse.analysis_status`는 `Literal["not_implemented"]` 그대로 — (A) §2.5의 3값 enum보다 좁다. 타입은 실제로 반환할 수 있는 값만 허용하므로 **LLM 결선 시** 넓힌다.
+- `tests/test_guardrails.py::test_spec_parser_rejects_unparseable_status`는 (A) 표의 특정 행 문구에 고정돼 있어 개정할 때마다 깨질 수 있다. 행을 동적으로 고르는 방식으로 바꾸는 것을 검토. 지금은 고치지 않는다.

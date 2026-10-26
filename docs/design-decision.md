@@ -159,7 +159,7 @@ Finding
 ├─ hypothesis : str                   # 조건·추정형만("~가능성/~로 보임"). 단정 토큰 금지
 ├─ evidence   : [Evidence]            # 최소 1개 필수(0개면 거부=환각 차단)
 ├─ claim_basis: enum(observed|inferred|speculative)   # 근거의 성격(자유숫자 금지)
-├─ severity_if_true?: enum|null       # 사실이라면의 위험도(사실성과 무관). 확신도 아님. 서버 부여(LLM 초안에 없음) ↓
+├─ severity_if_true: enum | null      # 항상 존재. null = 등급 매핑 미정의. 서버가 부여한다(LLM 초안에 없음). 사실이라면의 위험도(사실성과 무관), 확신도 아님 ↓
 ├─ status     : enum(unverified|verifying|confirmed|false_positive|needs_review)
 │               # ★LLM은 생성 불가. 서버가 unverified 부여. 승격은 ReviewEvent로만
 ├─ produced_by: enum(rule|llm|hybrid) # AI 기여도 분리 측정(평가 테제)
