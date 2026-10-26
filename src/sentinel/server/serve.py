@@ -60,6 +60,6 @@ class LoopbackOnlyServer(uvicorn.Server):
 
 def serve(cfg: ServerConfig) -> None:
     config = build_uvicorn_config(cfg)  # 토큰·manifest·바인드 주소 검증이 모두 끝난 뒤에만
-    attach_audit_store(audit_db_path())  # 감사 → SQLite (기록 실패 시 fail-closed는 2주차)
+    attach_audit_store(audit_db_path())  # 감사 → SQLite (기록 실패 시 fail-closed는 수용 요청 감사(B-6) 범위 확정 시)
     install_egress_audit_hook()  # egress 시도 관측·기록(차단 아님)
     LoopbackOnlyServer(config).run()

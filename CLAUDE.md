@@ -19,10 +19,10 @@
 > 아래는 **한 줄 요약 + (A) 정본 절 색인**이다. 각 줄의 상세·근거·재론조건은 괄호 안 절에 있다.
 > 요청이 이 중 하나를 건드리면, 코드를 내놓기 전에 **먼저 위험을 설명하고 멈춘다.**
 
-- **N1 외부 egress 금지** — 외부 인터넷/상용 AI API 전송 코드 금지. LLM은 로컬·사내 승인만. 외부 통신 라이브러리 추가 시 먼저 경고. → **(A) §1.3 ⓑ**
-- **N2 자율 전송 금지** — 도구가 대상 서버로 HTTP 요청을 보내는 코드 금지. "나중에 켤" 비활성 코드조차 0. → **(A) §1.3 ⓐ**
+- **N1 외부 egress 금지** — 외부 인터넷/상용 AI API 전송 코드 금지. LLM은 로컬·사내 승인만. 외부 통신 라이브러리 추가 시 먼저 경고. → **(A) §1.3 ⓑ** + §3.1 `masker_no_send`
+- **N2 자율 전송 금지** — 도구가 대상 서버로 HTTP 요청을 보내는 코드 금지. "나중에 켤" 비활성 코드조차 0. → **(A) §1.3 ⓐ** + §3.1 `masker_no_send`
 - **N3 Java에 로직 금지** — Java는 capture / transport / ui만. 분석·판정·프롬프트·취약점 로직 금지. → **(A) §3.2** `java_logic_isolation`
-- **N4 엔진은 Burp를 모른다** — Python 엔진에 `burp`/`montoya` import 0. 입력은 정규화 JSON만. → **(A) §3** `engine_burp_isolation`
+- **N4 엔진은 Burp를 모른다** — Python 엔진에 `burp`/`montoya` import 0. 입력은 정규화 JSON만. → **(A) §3** `engine_burp_isolation` + §3.2 `engine_tools_isolation`
 - **N5 실데이터 금지** — 실보고서·실트래픽·인증정보·내부 URL·토큰을 코드·테스트·저장소·프롬프트에 금지. 테스트는 Juice Shop + 더미. → **(A) §1.3 ⓒ**
 - **N6 main 직접 병합 금지** — Issue → feature 브랜치 → PR → merge. → **(A) §3** `branch_protection`
 - **N7 민감정보 커밋 금지** — 키·토큰·쿠키·비밀번호 커밋 금지. 저장·전송 전 마스킹. 원본(마스킹 전) 트래픽 커밋 금지. → **(A) §1.3 ⓕ + §3.3** `secret_scan_hook`

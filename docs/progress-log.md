@@ -302,4 +302,29 @@
    - 정책은 데이터 파일로 두고 공유한다.
 10. (큐만, 미확정) truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.
 
-남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의.
+남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의 / severity_if_true의 category 기본값 표와 신호 보정 규칙(β에서 추가 — (A) v1.5 §2.4는 둘 다 미정의로 둠).
+
+---
+
+## β — (A) v1.5 개정 (Issue #28)
+
+### (A) 정본 변경 여부
+- **변경 있음:** 문서 v1.4 → **v1.5**, §3 매핑표 v1.3 → **v1.4**(문서 버전과 매핑표 버전은 별개 — (A) 이력에 명시). 개정일 2026-10-26.
+  - §2 머리: 데이터 계약 버전 규칙(가산 변경은 소비자 유무로 판단, 비가산은 항상 증가).
+  - §2.2 Body: 본문 내부 마스킹 표기 정의처 "Java 연결 시" → "5번 설계(tools/ fixture 마스커가 참조 구현)". 현재 동작(평문 민감 패턴 fail-closed 거부) 유지.
+  - §2.4: analyzed_refs·severity_if_true 서버 부여(severity 기본값 표·보정 규칙 미정의 → null), corroboration `not_run` 추가, review_required 서버 기본 true, 출력 검증 실패 시 전체 폐기 + `output_rejected`. 출력 스키마 최초 동결본에 `not_run` 포함 — 소비자 0이라 `schema_version` 유지.
+  - §2.5: `analysis_status` 닫힌 enum `not_implemented | completed | output_rejected`.
+  - §3: 머리·`manifest_derivation` 규칙 칸의 "CI가 검증" → "make verify(로컬 게이트)" (서버측 CI 없음).
+  - §3.0·§3.1·§3.3: 이월처 재조정 — `token_hardening`·`receipt_hmac` → Java 연결 시 / `audit_write_failure`(및 §3.0 감사 기록 실패 fail-closed) → 수용 요청 감사(B-6) 범위 확정 시.
+  - 신규 키(not_implemented → fixture 마스커 구현 시): `masker_no_send`(§3.1), `engine_tools_isolation`(§3.2).
+  - §3.5 각주: 2주차 enforced 범위 = 검증 함수 단위(주입 테스트), 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
+- 뷰 동기화(같은 PR): `guardrails.yaml` 재파생(41키) + manifest 재생성 / CLAUDE.md N1·N2(+§3.1 `masker_no_send`)·N4(+§3.2 `engine_tools_isolation`) / (B) 제목 기준 버전·§5 이월 3키 분리·§3 W1-07 주의 줄.
+- **CLAUDE.md 색인 동기화: β까지 수동 확인, δ(`claude_md_sync_check`)부터 기계 검사.**
+- 이월 3키의 "2주차" 문구 전수 정렬: (A)·(B)·src 주석/docstring·tests docstring/주석·`tests/test_guardrails.py::test_spec_parser_rejects_unparseable_status`의 치환 문자열. 이 progress-log의 과거 섹션은 누적 규칙대로 그대로 둔다(과거 섹션의 "2주차" 표기는 작성 시점 기록).
+- claude.ai 발행본 재발행: merge 후 설계자에게 (A) 전문 전달.
+
+### manifest 상태 변화
+- enforced 집합 변화 없음(21키 그대로). 신규 2키는 not_implemented. 전체 39 → 41키(enforced 21 / not_implemented 17 / unverifiable 2 / derived 1).
+
+### 미해결
+- `src/sentinel/schema.py` `ExecutionResponse.analysis_status`는 `Literal["not_implemented"]` 그대로 — (A) §2.5의 3값 enum보다 좁다. 타입은 실제로 반환할 수 있는 값만 허용하므로 **LLM 결선 시** 넓힌다.

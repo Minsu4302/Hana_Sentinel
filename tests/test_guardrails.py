@@ -207,7 +207,7 @@ def test_spec_parser_rejects_unmapped_target_layer():
 
 def test_spec_parser_rejects_unparseable_status():
     text = SPEC_PATH.read_text(encoding="utf-8")
-    bad = text.replace("| not_implemented → 2주차 | `receipt_hmac` |", "| 거의 됨 | `receipt_hmac` |")
+    bad = text.replace("| not_implemented → Java 연결 시 | `receipt_hmac` |", "| 거의 됨 | `receipt_hmac` |")
     assert bad != text
     with pytest.raises(SpecError, match="해석할 수 없는 1주차 상태"):
         parse_spec(bad)

@@ -9,7 +9,7 @@
 - 클라이언트 전달: 요청 헤더 `X-Sentinel-Token` 한 개. 없음·중복·불일치 → 거부.
 - 비교: 양쪽 SHA-256 다이제스트를 `hmac.compare_digest`로 비교(상수시간, 길이 차이도 숨김).
 - 감사: 인증 실패만 기록하며 본문·서버 토큰·제시된 헤더값은 기록하지 않는다(사유·메서드·경로 구분만).
-토큰 회전·수명(`token_hardening`)은 2주차.
+토큰 회전·수명(`token_hardening`)은 Java 연결 시.
 """
 from __future__ import annotations
 
