@@ -27,9 +27,7 @@ analyzed_refs를 따로 받지 않고 transactions에서 파생한다 — 둘이
 """
 from __future__ import annotations
 
-import json
 import logging
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final, get_args
@@ -37,6 +35,7 @@ from uuid import UUID, uuid4
 
 from pydantic import ValidationError
 
+from sentinel import strict_json
 from sentinel.common_types import BodyLocator, HeaderLocator, ParamLocator, Range, ReqLineLocator, StatusLocator
 from sentinel.output_schema import (
     SERVER_ASSIGNED_FIELDS, AdvisorySignal, AnalysisDraft, AnalysisMeta, AnalysisResult, Evidence, EvidenceDraft,
@@ -57,7 +56,6 @@ REASON_CODES: Final = (
     "result_build_failed",            # 방어: 검사 통과 후 저장용 타입 구성 실패
 )
 
-_ARRAY_INDEX: Final = re.compile(r"^(0|[1-9][0-9]*)$")
 
 
 @dataclass(frozen=True)
@@ -187,29 +185,11 @@ def _body_resolves(body: Body, at) -> bool:
     if body.truncated:
         return False  # 잘린 content는 'content 전체'가 아니다
     try:
-        node = json.loads(body.content, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constant)
+        doc = strict_json.parse(body.content)  # (A) §2.6 엄격 파싱 — ③과 같은 정의
     except ValueError:
         return False
-    for token in at.path.split("/")[1:]:
-        token = token.replace("~1", "/").replace("~0", "~")
-        if isinstance(node, dict) and token in node:
-            node = node[token]
-        elif isinstance(node, list) and _ARRAY_INDEX.match(token) and int(token) < len(node):
-            node = node[int(token)]
-        else:
-            return False
-    return _range_fits(node, at.range)
-
-
-def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    keys = [k for k, _ in pairs]
-    if len(set(keys)) != len(keys):
-        raise ValueError("중복 키 — 경로가 노드 1개를 가리키지 못함")
-    return dict(pairs)
-
-
-def _no_constant(_: str) -> Any:
-    raise ValueError("NaN·Infinity는 표준 JSON이 아님")
+    found, node = strict_json.resolve(doc, at.path)
+    return found and _range_fits(node, at.range)
 
 
 # ── 거부·부여 ─────────────────────────────────────────────────────

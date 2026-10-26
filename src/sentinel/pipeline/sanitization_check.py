@@ -8,8 +8,10 @@
 - **fail-closed**: `applied`가 true가 아니거나 `failed`가 true면 데이터가 깨끗해 보여도 거부. 영수증 필드
   누락·타입 오류는 ② 스키마에서 이미 거부된다.
 - **보조 — 이름 화이트리스트**: 정책 `header_rules` 대상 헤더가 평문이면 거부.
-- **본문 계약**: `omitted`인데 content가 있음, base64 디코드 불가, 내용 상한 초과((A) §2.2 req 64KB /
-  resp 256KB) → 거부.
+- **본문 계약**: base64 디코드 불가, 내용 상한 초과((A) §2.2 req 64KB / resp 256KB) → 거부.
+- **본문 마스킹 표기**(`masked_span_check`, `masked_span_integrity`): Body 불변식 1~6(omitted 계약 2' 포함) 위반 → 거부.
+  값 재스캔은 선언된 span 위치의 FILLER만 걷어낸 본문(`masked_span_check.rescan_view`)에 대해 돈다. span 위치를
+  값과 무관하게 건너뛰지 않는다 — 그 위치가 정확히 FILLER임은 불변식 3이 독립으로 검증한다. 둘 다 성립해야 통과.
 
 한계((A) §2.3 그대로): 패턴 검사는 '정책에 정의된 패턴'만 탐지하며 '모든 비밀값 부재'를 증명하지 않는다
 (불투명 세션 ID는 일반 문자열과 구분 불가). 이 재검증(Python, 2차 방어선)은 Java의 전송 전 마스킹(1차)을
@@ -25,6 +27,7 @@ import re
 from typing import Any, Final
 from urllib.parse import unquote_plus
 
+from sentinel.pipeline import masked_span_check
 from sentinel.sanitization_policy import DEFAULT_POLICY, SanitizationPolicy
 from sentinel.schema import Body, Envelope, Transaction
 
@@ -96,7 +99,7 @@ def body_bytes(body: Body) -> bytes | None:
 
 def check_body(body: Body, where: str, cap: int) -> list[str]:
     if body.encoding == "omitted":
-        return [f"omitted_with_content@{where}"] if body.content is not None else []
+        return []  # omitted 계약(불변식 2')은 masked_span_check가 본다
     try:
         data = body_bytes(body)
     except ValueError:
@@ -116,13 +119,16 @@ def check_transaction(tx: Transaction, where: str, policy: SanitizationPolicy) -
         found.append(f"receipt_not_applied@{where}.meta")
     if receipt.failed is not False:
         found.append(f"receipt_failed@{where}.meta")
-    found += check_body(tx.request.body, f"{where}.request.body", REQ_BODY_CAP)
-    found += check_body(tx.response.body, f"{where}.response.body", RESP_BODY_CAP)
+    dump = tx.model_dump(mode="python")
+    for side, body, cap in (("request", tx.request.body, REQ_BODY_CAP), ("response", tx.response.body, RESP_BODY_CAP)):
+        found += check_body(body, f"{where}.{side}.body", cap)
+        found += masked_span_check.check_body_invariants(body, f"{where}.{side}.body")
+        dump[side]["body"]["content"] = masked_span_check.rescan_view(body)
     for side, headers in (("request", tx.request.headers), ("response", tx.response.headers)):
         for i, h in enumerate(headers):
             if isinstance(h.value, str) and policy.requires_masked_header(h.name):
                 found.append(f"plaintext_sensitive_header@{where}.{side}.headers[{i}]")
-    for loc, text in _walk_strings(tx.model_dump(mode="python"), where):
+    for loc, text in _walk_strings(dump, where):
         found += [f"{p}@{loc}" for p in scan_text(text)]
     return found
 
