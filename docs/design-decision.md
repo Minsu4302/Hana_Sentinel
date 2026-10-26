@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.12 — Sentinel Harness
+# (A) 설계확정서 v1.13 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.12 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.11(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.13 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.12(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -31,7 +31,9 @@
 >   - 근거(§2.3 한 줄): 기존 패턴 3종(`credential_json_field`·`credential_form_field`·`session_cookie_pair`)이 값 자리의 FILLER 자체에 걸려, 올바르게 마스킹한 자격증명·세션 필드가 거부됐다(ζ2b 0단계 실측). '정책 패턴만 탐지'와 충돌하지 않는다 — 면제 대상은 선언된 위치의 문자 그대로의 FILLER뿐이다.
 > **v1.12 (매핑표 v1.11):** 5번(평가) 프로토콜 응고 — §6 신설, 평가 키 등재. §6 = 5번 결정점 ①(판정)②(데이터셋)③(지표) 응고. §3.5 `eval_harness` 목표 "5번 주제" → "평가 하네스 구현 시"(상태 그대로) + 신규 `label_isolation`·`dataset_version_freeze`(둘 다 not_implemented). enforced 집합·`schema_version` 값 변화 없음.
 >   - 감사 추적: §6.1 매칭·남은 중복·category 대표/보조·advisory 비채점은 설계 대화의 H1~H5, §6.2는 I1~I8, §6.1 판정 단위는 G1~G6의 응고다. 규범 본문에는 이 라벨을 두지 않는다(§6.3의 J1~J9는 그 절 안에서 정의된 항목 ID).
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27)
+> **v1.13 (매핑표 v1.12):** §2.7 RawTransaction 신설(§2.2 Transaction의 마스킹 전 쌍 — RawParam·RawHeader·RawBody, 타입은 tools/ 아래에만) + §1.3 ⓕ 해석 두 줄(금지선 문구 불변) + §3.2 신규 키 `engine_no_rawtransaction`(not_implemented).
+>   - RawTransaction 1.0 정의 — 소비자 0(첫 소비자 = fixture 마스커, 마스커-A). Envelope·AnalysisResult `schema_version` 값 변화 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27)
 
 ---
 
@@ -95,6 +97,8 @@
 | ⓖ | 멀티에이전트 / 사내 사례 RAG | 1인 MVP 범위 초과, 디버깅·거버넌스 비용 | MVP 검증 + 데이터 승인 후(P2) |
 
 > **ⓕ 해석:** 사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고, 시스템(엔진·tools)은 이를 영속화하지 않는다.
+> - RawTransaction(§2.7)은 원본을 담는 유일한 타입이며, 마스킹 경계(마스커) 안에서만 존재한다. 엔진·저장소·커밋 어디에도 RawTransaction 인스턴스나 실제 트래픽에서 나온 평문이 남지 않는다.
+> - '평문 내용'의 범위: ⓕ가 막는 것은 RawTransaction 인스턴스와 실제 트래픽에서 나온 평문이다. N5 더미 규칙을 따르는 가짜 리터럴(faketoken_…·example.test 등)은 실제 트래픽에서 나온 것이 아니므로 '평문 내용'에 해당하지 않는다 — ⓕ의 예외가 아니라 애초에 대상이 아니다. 이에 따라 마스커 테스트는 원본 픽스처를 파일로 커밋하지 않고 실행 중에만 만든다.
 
 ---
 
@@ -292,9 +296,34 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
     - `req_line{path, range}` → `req_line.path`
   - 근거: 형식이 다르다는 이유로 출력 전체를 거부하지 않는다(§2.6 e의 헤더 이름 정규화와 같은 원칙(형식 차이를 이유로 출력 전체를 거부하지 않는다)). 승격에 실패하면 거친 노드로 떨어지고, 그 결과로 생기는 FN은 평가에서 측정된다.
 
+### 2.7 RawTransaction — §2.2 Transaction의 마스킹 전 쌍
+```
+RawEnvelope    = { schema_version: "1.0", transactions: [RawTransaction] }      # 버전 자리는 Envelope(§2.1)와 같다
+RawTransaction                                                                  # 구조는 Transaction(§2.2)과 같고 아래만 다르다
+├─ meta: { transaction_id(UUID), captured_at(ISO8601+tz), origin_ref }       # sanitization 없음 — 아직 마스킹 전
+├─ request:  { method, scheme(http|https), host, port, path(원본, 쿼리 미포함),
+│              query_params:[RawParam], headers:[RawHeader], body: RawBody }
+└─ response: { status, headers:[RawHeader], body: RawBody, elapsed_ms(int|null) }
+
+RawParam  = { name, value: str, location(query|form) }                         # MaskedRef 없음 — 평문 str만
+RawHeader = { name, value: str }
+RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } # truncated·size_bytes·masked_spans 없음
+```
+- **성격:** Transaction(§2.2)의 '마스킹 전' 쌍이다. 사람이 Burp에서 내보낸 원본의 레포 내 형식이며, 미래 Java Extension의 출력 직전 형식이기도 하다(fixture 마스커가 참조 구현).
+- **Transaction과의 차이(이것만 다르고 나머지 구조는 같다):**
+  - 모든 value가 평문 str이다. MaskedRef가 없다.
+  - meta.sanitization(SanitizationReceipt)이 없다(아직 마스킹 전).
+  - RawBody는 { content_type, encoding, content }만 갖는다. truncated·size_bytes·masked_spans가 없다 — 셋 다 마스킹 산출물이기 때문이다.
+  - 이름(RawParam·RawHeader·RawBody)으로 Transaction 쪽과 구분한다(원본을 엔진에 넘기는 혼동 방지).
+- **절단 금지(§2.2 순서와 정합):** RawBody에 truncated 필드가 없으므로 잘린 원본은 타입으로 표현할 수 없다. 절단과 size_bytes는 마스커가 마스킹을 끝낸 뒤에 산출한다(§2.2 "절단은 마스킹 뒤 — 먼저 자르면 비밀값 반쪽이 ③을 통과").
+- **분석의 입력이 아니다:** RawTransaction은 '마스킹의 입력'일 뿐, 분석의 입력이 절대 아니다. 엔진(src/sentinel)은 이 타입을 모른다.
+- **배치(안전 층위 결정 — 구현 재량 아님):** RawTransaction 타입은 tools/ 아래에만 둔다(마스커·평가기 공용, 둘 다 tools/). src/sentinel은 이 타입을 참조하지 않는다. 엔진 → tools/ import는 `engine_tools_isolation`(현재 not_implemented → fixture 마스커 구현 시)이 강제하게 되며, 엔진에 심은 RawTransaction import는 그 아키텍처 테스트가 잡는다(`engine_no_rawtransaction`, §3.2).
+  - 근거: common_types(§2.6)에 두면 엔진이 물리적으로 import할 수 있어 '있는데 안 쓴다'를 따로 지켜야 한다. 코드 응집도를 이유로 common_types를 택하지 않는다.
+- **schema_version:** 원본 JSON 최상위에 `schema_version: "1.0"`을 둔다(Envelope가 버전을 지는 것과 같은 자리). 마스커는 이 버전을 읽고, 모르는 버전이면 거부한다. 첫 소비자 = fixture 마스커(마스커-A에서 생긴다). 지금은 정의만이다 — §2 버전 규칙.
+
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.11 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.12 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -348,6 +377,12 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 | 인증 선행 — 함수 미호출 + 코드 물리분리 | 테스트 | enforced | `auth_precedence_noinvoke` |
 | 엔진(src/sentinel)이 tools/를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `engine_tools_isolation` |
 | 마스커가 sentinel.pipeline.sanitization_check를 import하지 않음 | 아키텍처 테스트 | not_implemented → fixture 마스커 구현 시 | `masker_independence` |
+| 엔진(src/sentinel)이 RawTransaction을 import하지 않음(엔진은 마스킹 후 Transaction만 다룬다) | 아키텍처 테스트 | not_implemented → RawTransaction 타입 구현 시(마스커-A) | `engine_no_rawtransaction` |
+
+> **`engine_no_rawtransaction` 근거:**
+> - RawTransaction을 tools/에 두면(§2.7) `engine_tools_isolation`이 이미 커버한다(그 키 자체는 현재 not_implemented → fixture 마스커 구현 시). 이 키는 그 커버가 RawTransaction에도 적용됨을 추적하는 항목이다.
+> - ★ 마스커-A에서 결정할 것(지금 결정 아님): 이 키를 (ㄱ) 별도 테스트로 독립 enforced 할지 (ㄴ) `engine_tools_isolation` 종속 derived로 둘지. 판단 기준 = 'RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가'. 별도 테스트는 RawTransaction을 tools/ 밖으로 옮겨도 '엔진 import 0'을 콕 집어 지킨다(위치 이동 경로까지 방어). derived는 tools/ 안에 있는 한 충분하지만 tools/ 이탈 시 `engine_tools_isolation`이 침묵한다. 마스커-A에서 실제 구조를 보고 이 기준으로 답한다.
+> - `masker_independence`(마스커 → 엔진 `sanitization_check` import 금지)와는 방향이 반대인 격리다.
 
 ### 3.3 B. 민감정보경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |

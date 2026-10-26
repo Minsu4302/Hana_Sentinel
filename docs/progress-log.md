@@ -567,3 +567,23 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 ### 미해결
 - §6.1 "결정론적 동점 처리"의 구체 규칙은 정본에 없다 — 평가 하네스 구현 시 정한다(구현 재량이 아니라 정본에 올려야 할 값인지 그때 판단).
 - §3.5 `assertive_token_guard`·`corroboration_check`의 목표 "5번 평가 데이터로 기준 확정 시"는 그대로 둠(데이터셋 동결 이후의 일 — 발주 범위 밖).
+
+---
+
+## ι — (A) v1.13: RawTransaction(마스킹 전 원본) 계약 신설 (Issue #46)
+
+### 결정
+- **마스커 입력 형식 = (가) 원본 JSON(RawTransaction) 확정.** 최상위 `schema_version: "1.0"`(Envelope와 같은 자리), 모르는 버전은 마스커가 거부.
+- 0단계 멈춤 → 회신: ① RawBody는 { content_type, encoding, content }만 — truncated·size_bytes·masked_spans 없음(마스킹 산출물). 잘린 원본은 타입으로 표현 불가(§2.2 마스킹 → 절단 순서와 정합). ② ⓕ 금지선 문구는 그대로, 해석에 두 줄 — N5 가짜 리터럴은 ⓕ의 '평문 내용'이 아니다(예외가 아니라 대상 밖). 마스커 테스트는 원본 픽스처를 커밋하지 않고 실행 중에만 만든다.
+- 배치: RawTransaction 타입은 tools/ 아래에만(안전 층위 결정). common_types에 두면 엔진이 물리적으로 import 가능해진다.
+
+### (A) 정본 변경
+- 문서 v1.12 → **v1.13**, 매핑표 v1.11 → **v1.12**. §2.7 신설(§2 끝 — §2.2~§2.6 번호 유지), §1.3 ⓕ 해석 두 줄, §3.2 `engine_no_rawtransaction` + 표 아래 근거 주석.
+- 뷰 동기화: `guardrails.yaml` 재파생(50키) + manifest 재생성 / (B) 제목 v1.13 / CLAUDE.md 변경 없음.
+
+### manifest 상태 변화
+- enforced 집합 변화 없음. 신규 `engine_no_rawtransaction`(not_implemented → RawTransaction 타입 구현 시(마스커-A)).
+
+### 깨진 가정 · 미해결
+- **회신 전제 교정**: 회신은 "기존 `engine_tools_isolation`이 엔진 → tools/ import 0을 이미 강제"라고 했으나, 이 키는 not_implemented(→ fixture 마스커 구현 시)다. (A) §2.7 문구는 "강제하게 되며"로 사실에 맞게 씀. → **마스커-A는 `engine_no_rawtransaction`과 함께 `engine_tools_isolation`도 구현·승격해야 한다**(전자의 증명이 후자에 기대므로). 마스커-A 발주문의 승격 목록에는 아직 없다.
+- **`engine_no_rawtransaction`의 형태는 마스커-A에서 결정(ι 4번 보강)**: (ㄱ) 별도 테스트로 독립 enforced / (ㄴ) `engine_tools_isolation` 종속 derived. 판단 기준 = 'RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가'. (ㄱ)은 RawTransaction이 tools/ 밖으로 옮겨져도 '엔진 import 0'을 콕 집어 지킨다(위치 이동 경로까지 방어). (ㄴ)은 tools/ 안에 있는 한 충분하지만 tools/ 이탈 시 `engine_tools_isolation`이 침묵한다. 마스커-A에서 실제 구조를 보고 이 기준으로 답한다. ((A) §3.2 근거 주석과 같은 내용)
