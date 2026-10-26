@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.4",
+  "spec": "docs/design-decision.md §3 매핑표 v1.5",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -171,7 +171,11 @@
         "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests",
         "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced",
         "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim",
-        "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
+        "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest",
+        "tests/test_guardrails.py::test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down",
+        "tests/test_guardrails.py::test_targetless_derived_is_accepted_with_no_target",
+        "tests/test_guardrails.py::test_spec_parser_still_requires_target_for_not_implemented",
+        "tests/test_guardrails.py::test_targetless_derived_without_child_list_is_rejected"
       ]
     },
     "claude_md_sync_check": {
@@ -346,33 +350,73 @@
       "verification_tests": []
     },
     "evidence_min_one": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위",
+      "verification_tests": [
+        "tests/test_output_gate.py::test_rejects_finding_without_evidence",
+        "tests/test_output_gate.py::test_unusable_draft_is_an_explicit_rejection_not_an_exception_or_empty_result",
+        "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
+        "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation",
+        "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content",
+        "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
+      ]
     },
     "evidence_ref_integrity": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위",
+      "verification_tests": [
+        "tests/test_output_gate.py::test_rejects_transaction_ref_outside_analyzed_refs",
+        "tests/test_output_gate.py::test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing",
+        "tests/test_output_gate.py::test_nothing_analyzed_cannot_become_a_clean_result",
+        "tests/test_output_gate.py::test_bad_server_args_raise_before_draft_parsing_without_values",
+        "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
+        "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation",
+        "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content",
+        "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
+      ]
     },
     "server_assigned_status": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위",
+      "verification_tests": [
+        "tests/test_output_gate.py::test_rejects_injected_status",
+        "tests/test_output_gate.py::test_rejects_each_server_assigned_field_injected",
+        "tests/test_output_gate.py::test_rejects_server_evidence_field_injected_into_advisory_basis",
+        "tests/test_output_gate.py::test_rejects_null_severity_injected_even_though_it_equals_the_server_value",
+        "tests/test_output_gate.py::test_server_assigned_field_list_is_pinned",
+        "tests/test_output_gate.py::test_draft_type_has_no_server_assigned_field_anywhere",
+        "tests/test_output_gate.py::test_stored_finding_allows_only_null_severity",
+        "tests/test_output_gate.py::test_stored_finding_requires_severity_field_present",
+        "tests/test_output_gate.py::test_stored_evidence_allows_only_empty_anomaly_flags",
+        "tests/test_output_gate.py::test_clean_draft_is_a_result_with_empty_findings_not_a_rejection",
+        "tests/test_output_gate.py::test_reason_codes_are_a_closed_list",
+        "tests/test_output_gate.py::test_gate_is_in_pipeline_package_so_auth_spies_cover_it",
+        "tests/test_output_gate.py::test_mutant_shadowed_by_original_module_is_detected",
+        "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
+        "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation",
+        "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content",
+        "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
+      ]
     },
     "category_closed_enum": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2주차",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "검증 함수 단위",
+      "verification_tests": [
+        "tests/test_output_gate.py::test_rejects_category_outside_closed_four",
+        "tests/test_output_gate.py::test_rejects_type_coercion_bypass",
+        "tests/test_output_gate.py::test_partial_violation_rejects_whole_result",
+        "tests/test_output_gate.py::test_each_gate_check_is_load_bearing_under_verified_mutation",
+        "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content",
+        "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
+      ]
     },
     "output_schema_gate": {
       "status": "derived",
-      "effective_status": "not_implemented",
-      "target": "2주차",
+      "effective_status": "enforced",
       "derived_from": [
         "evidence_min_one",
         "evidence_ref_integrity",
@@ -384,13 +428,13 @@
     "assertive_token_guard": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "5번 평가 데이터로 기준 확정 시",
       "verification_tests": []
     },
     "corroboration_check": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "5번 평가 데이터로 기준 확정 시",
       "verification_tests": []
     },
     "hallucinated_literal_isolation": {

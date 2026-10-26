@@ -61,7 +61,9 @@ def test_output_schema_gate_is_a_derived_rollup_not_an_enforced_claim(spec, entr
         "evidence_min_one", "evidence_ref_integrity", "server_assigned_status", "category_closed_enum"]
     assert gate["verification_tests"] == []
     cap = derive_manifest(entries, spec, REPO_ROOT)["capabilities"]["output_schema_gate"]
-    assert cap["effective_status"] != "enforced"
+    children = {e["id"]: e["week1_status"]["state"] for e in entries if e["id"] in gate["week1_status"]["derived_from"]}
+    assert cap["status"] == "derived"  # 자체 enforced 주장이 아니다 — 실효 상태는 하위 4키의 AND
+    assert cap["effective_status"] == ("enforced" if set(children.values()) == {"enforced"} else "not_implemented")
 
 
 def test_derived_rollup_is_enforced_only_when_every_child_is_enforced():
@@ -76,6 +78,43 @@ def test_derived_rollup_is_enforced_only_when_every_child_is_enforced():
     assert effective_state(gate, {**kids, "gate": gate}) == "enforced"
     kids["b"] = entry("b", "not_implemented")
     assert effective_state(gate, {**kids, "gate": gate}) == "not_implemented"
+
+
+@pytest.mark.parametrize("forged_state", ["not_implemented", "disabled", "unverifiable"])
+@pytest.mark.parametrize("child", ["evidence_min_one", "evidence_ref_integrity", "server_assigned_status",
+                                   "category_closed_enum"])
+def test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down(entries, child, forged_state):
+    """실제 레지스트리에서 하위 키 하나만 낮춰도 파생값이 enforced가 되지 않는다(OR로 잘못 동작하면 잡힘)."""
+    by_id = {e["id"]: e for e in entries}
+    gate = by_id["output_schema_gate"]
+    assert child in gate["week1_status"]["derived_from"]
+    by_id[child]["week1_status"] = {"state": forged_state, "target": "위조"}
+    assert effective_state(gate, by_id) == "not_implemented"
+
+
+def test_targetless_derived_is_accepted_with_no_target(spec):
+    gate = spec.by_key()["output_schema_gate"]
+    assert gate.state == "derived" and gate.target is None and len(gate.derived_from) == 4
+    cap = derive_manifest(load_registry(REGISTRY_PATH), spec, REPO_ROOT)["capabilities"]["output_schema_gate"]
+    assert "target" not in cap
+
+
+def test_spec_parser_still_requires_target_for_not_implemented():
+    """목표 없는 형태는 derived에만 — not_implemented 완화 아님."""
+    text = SPEC_PATH.read_text(encoding="utf-8")
+    bad = text.replace("| not_implemented → Java 연결 시 | `receipt_hmac` |", "| not_implemented | `receipt_hmac` |")
+    assert bad != text
+    with pytest.raises(SpecError, match="해석할 수 없는 1주차 상태"):
+        parse_spec(bad)
+
+
+def test_targetless_derived_without_child_list_is_rejected():
+    text = SPEC_PATH.read_text(encoding="utf-8")
+    bad = text.replace("`evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`",
+                       "`evidence_min_one`")
+    assert bad != text
+    with pytest.raises(SpecError, match="하위 키 목록"):
+        parse_spec(bad)
 
 
 def test_enforced_keys_point_only_to_real_tests(entries):

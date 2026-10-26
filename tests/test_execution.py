@@ -59,7 +59,11 @@ def test_snapshot_does_not_claim_unproven_protection(token, entries):
     proven = {e["id"] for e in entries if e["week1_status"]["state"] == "enforced" and e["verification_tests"]}
     assert {k for k, v in caps.items() if v["status"] == "enforced"} == proven
     assert caps["audit_write_failure"]["status"] == "not_implemented"
-    assert caps["output_schema_gate"] == {"status": "derived", "effective_status": "not_implemented"}
+    gate = next(e for e in entries if e["id"] == "output_schema_gate")
+    children_enforced = all(e["week1_status"]["state"] == "enforced"
+                            for e in entries if e["id"] in gate["week1_status"]["derived_from"])
+    assert caps["output_schema_gate"] == {"status": "derived",
+                                          "effective_status": "enforced" if children_enforced else "not_implemented"}
 
 
 def test_tampered_manifest_file_would_diverge_from_ssot(tmp_path, spec, entries):

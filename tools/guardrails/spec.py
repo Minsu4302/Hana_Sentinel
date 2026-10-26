@@ -75,6 +75,8 @@ def _parse_state(raw: str, key: str) -> tuple[str, str | None, str | None]:
         return "not_implemented", m.group(1).strip(), None
     if m := _STATE_DERIVED_RE.match(raw):
         return "derived", m.group(1).strip(), None
+    if raw == "derived":  # 목표 없는 derived — 자기 목표가 없는 롤업. not_implemented는 여전히 목표 필수
+        return "derived", None, None
     raise SpecError(f"{key}: 해석할 수 없는 1주차 상태 표기 {raw!r}")
 
 
