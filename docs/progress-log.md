@@ -305,6 +305,10 @@
 
 ε에서 함께 (A)에 반영: pointer 문법(§2.6 Locator·BodyPointer·Range), Body 불변식(§2.2), FILLER·라벨 접두사 ref(§2.6·§2.3), 버전 규칙 통합(§2 머리), 공용 소절 §2.6 + MaskedRef 이동
 
+5번 ① 정규 주소·서버 중복 처리 결정(G1~G6, H1) — η에서 (A) §2.2·§2.4·§2.6·§3.5에 반영(+ path 쿼리 금지 §2.2·§3.2, json 엄격 파싱 §2.6 d).
+
+원칙이 작동한 기록: G3: 계약이 Java에 불가능한 출력(Param.location=path)을 요구하던 숨은 경계 위반을 교정(SanitizationReceipt 신뢰 경계와 같은 계열).
+
 ### 큐 (미확정)
 10. (큐만, 미확정) truncation 경계 표기.
     - 오프셋 기준(저장 content)은 (A) §2.2에서 정해짐 — 큐 10에서 분리. (작성 당시 문구: "truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.")
@@ -312,6 +316,7 @@
 12. 첫 소비자 경계 강제 장치 — 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이는 실패하는 테스트. 평가 데이터셋을 처음 동결할 때 키 신설.
 
 남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의 / severity_if_true의 등급 값 목록 자체(미정의 — 기본값 표·보정 규칙보다 먼저 정해야 함), category 기본값 표와 신호 보정 규칙(β에서 추가 — (A) v1.5 §2.4는 셋 다 미정의로 둠).
+- (η에서 갱신) 평가 프로토콜(H2~H5: 1:1 최대 매칭·남은 중복=FP+중복률 진단·category 대표 엄격/보조 위치만+혼동 행렬·advisory 비채점) + 라벨링 지침(더 세밀한 노드가 있으면 거친 노드 body_text·req_line.path를 anchor로 쓰지 않음) — 확정. 5번 결론 개정 때 (A)에 새 평가 절로 반영.
 
 ---
 
@@ -449,3 +454,29 @@
 - 반복: 같은 pytest·픽스처 조건에서 수정 전 방식 500회 중 **8회 실패**(ConnectionAborted/Reset) / 수정 후 **500 + 500회 모두 통과**.
 - 변이(수동 1회): 게이트가 거부 전에 `receive()`를 부르게 한 변이본(로드 확인) → `AssertionError: HTTP/1.1 100 Continue`로 실패, 원본은 통과.
   - 첫 시도는 변이 사본에 manifest가 없어 **셋업 오류로 종료코드 1** — 단언 실패가 아니었다(거짓 증거). manifest를 함께 두고 다시 확인. '종료코드 ≠ 0은 거부 증거가 아니다'(W1-09)의 재현.
+
+---
+
+## η — (A) v1.9 개정 (Issue #38)
+
+### 0단계 (편집 전 코드 확인)
+- `src/sentinel/schema.py` `Request.path: str` — 제약 없음. `/rest/products/search?q=apple`가 ② 스키마와 ③ 재검증을 모두 통과(확인). path와 `query_params`의 관계를 검사하는 코드 없음 → 멈춤 보고 후 설계자 결정(raw '?'는 ②에서 거부, 강제는 ζ2, 키 `path_no_query_string`).
+
+### (A) 정본 변경 여부
+- **변경 있음:** 문서 v1.8 → **v1.9**, 매핑표 v1.7 → **v1.8**. §2.2 Param.location query|form / request.path 쿼리 미포함(raw '?' → ② 거부, '%3F'는 허용) / §2.4 중복 처리((category, Evidence CNA 집합) 정확 일치만 병합, advisory는 같은 집합의 finding이 있으면 버림) / §2.6 Locator req_param location 축소 · CNA 신설 + 정규화 규칙 · BodyPointer json = RFC 8259 엄격 파싱 / §3.2 `path_no_query_string` · §3.5 `canonical_address`(둘 다 not_implemented).
+- `schema_version` 값 변화 없음(비가산·소비자 0, 이력 기록).
+- 뷰 동기화: `guardrails.yaml` 재파생(47키) + manifest 재생성 / (B) 제목 v1.9 / CLAUDE.md 변경 없음.
+
+### manifest 상태 변화
+- enforced 집합 변화 없음(26키). 신규 not_implemented: `path_no_query_string`(→ ζ2(입력 스키마) 구현 시), `canonical_address`(→ 정규화 함수 구현 시, `output_schema_gate` 하위 키 아님).
+
+### 미해결 — 코드가 (A)보다 낡은 지점(의도됨, 이월처 ζ2)
+- `src/sentinel/schema.py:64` `Param.location` 4값(json·path 포함) → (A)는 query|form.
+- `src/sentinel/common_types.py` `ParamLocator.location` 4값 → (A)는 query|form.
+- `Request.path`의 raw '?' 미거부(`path_no_query_string`).
+- 중복 처리·정규화 함수 미구현(`canonical_address`).
+- `location: "json"`을 쓰는 테스트·픽스처: `tests/test_output_gate.py:63`(픽스처 Param `email`), `:435`(`req_param_masked_without_range`), `:498`(`param_case_differs`), `:499`(`range_on_masked_param`). `location: "path"` 사용처 없음.
+- (A) §2.6 CNA 근거의 "D4와 같은 원칙"은 레포 안에 D4 정의가 없다(발주문 원문 그대로 옮김) — 참조 대상 확인 필요.
+
+### 이월
+- httptools가 의존성에 추가되면 `test_live_server_requires_token`의 100-continue 탐침과 egress 금지 목록(dep_egress)을 함께 재확인한다(#35 8번 한계).

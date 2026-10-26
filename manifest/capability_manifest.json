@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.7",
+  "spec": "docs/design-decision.md §3 매핑표 v1.8",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -229,6 +229,12 @@
         "tests/test_schema.py::test_rejects_unknown_analysis_type_until_p1",
         "tests/test_schema.py::test_valid_envelope_passes"
       ]
+    },
+    "path_no_query_string": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "ζ2(입력 스키마) 구현 시",
+      "verification_tests": []
     },
     "auth_precedence_noinvoke": {
       "status": "enforced",
@@ -495,6 +501,12 @@
       "status": "not_implemented",
       "effective_status": "not_implemented",
       "target": "5번 주제",
+      "verification_tests": []
+    },
+    "canonical_address": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "정규화 함수 구현 시",
       "verification_tests": []
     }
   }
