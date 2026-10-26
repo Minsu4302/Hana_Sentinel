@@ -270,6 +270,7 @@ guardrails:
       - "tests/test_auth.py::test_token_module_is_physically_separated_from_body_parsing"
       - "tests/test_auth.py::test_pipeline_spies_cover_every_stage_function_and_detect_calls_as_control"
       - "tests/test_schema.py::test_schema_gate_is_never_reached_without_token"
+      - "tests/test_auth.py::test_live_server_requires_token"
       - "tests/test_auth.py::test_no_unauthenticated_app_construction_path"
     manifest_key: auth_precedence_noinvoke
   - id: engine_tools_isolation

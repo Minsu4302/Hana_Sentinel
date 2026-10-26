@@ -15,8 +15,7 @@ import json
 import logging
 import pkgutil
 import secrets
-import urllib.error
-import urllib.request
+import socket
 
 import pydantic
 import pytest
@@ -239,21 +238,49 @@ def live(monkeypatch, token):
     run.stop()
 
 
-def _post(port, headers, body=None) -> int:
-    body = _valid_envelope() if body is None else body
-    req = urllib.request.Request(f"http://{BIND_HOST}:{port}{ANALYZE_PATH}", data=body, method="POST",
-                                 headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return resp.status
-    except urllib.error.HTTPError as exc:
-        return exc.code
+def _open_expect_continue(port, headers: dict[str, str], body: bytes) -> tuple[socket.socket, str]:
+    """`Expect: 100-continue`로 요청 머리만 보내고 본문은 보내지 않은 채 첫 응답 줄을 읽는다.
+
+    uvicorn은 앱이 본문 수신(receive)을 호출할 때만 `100 Continue`를 보낸다. 그래서 첫 줄이 곧바로 401이면
+    서버가 본문을 요청하지 않고 거부한 것이다. 본문을 미리 보내면 인증 실패 시 서버가 미수신 본문을 남긴 채
+    연결을 닫아 Windows가 RST로 클라이언트 전송을 끊는다(WinError 10053/10054 간헐 실패, Issue #35) — 그래서
+    인증 실패 확인은 본문을 보내기 전에 응답을 읽는다. 연결 오류는 잡지 않는다(서버가 죽은 경우와 구별되게).
+    """
+    head = [f"POST {ANALYZE_PATH} HTTP/1.1", f"Host: {BIND_HOST}:{port}", "Content-Type: application/json",
+            f"Content-Length: {len(body)}", "Expect: 100-continue", "Connection: close",
+            *(f"{k}: {v}" for k, v in headers.items()), "", ""]
+    sock = socket.create_connection((BIND_HOST, port), timeout=5)
+    sock.sendall("\r\n".join(head).encode("latin-1"))
+    return sock, _read_head(sock).split(b"\r\n", 1)[0].decode("latin-1")
 
 
-def test_live_server_requires_token(live, token):
-    assert _post(live, {}) == 401
-    assert _post(live, {TOKEN_HEADER: secrets.token_urlsafe(32)}) == 401
-    assert _post(live, {TOKEN_HEADER: token.decode()}) == 200  # 대조군: 유효 토큰 + 정상 Envelope → ExecutionResponse
+def _read_head(sock: socket.socket) -> bytes:
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = sock.recv(4096)
+        assert chunk, f"응답 머리 전에 연결이 닫힘: {data!r}"
+        data += chunk
+    return data
+
+
+def test_live_server_requires_token(live, token, parse_spies):
+    """실서버: 토큰 없음·위조 → 본문을 요청하지도 않고(100 Continue 없음) 401, 하위 앱·본문 읽기·역직렬화 미호출."""
+    before = list(parse_spies)  # 앱 구성 시점 기록과 분리 — 요청 구간만 본다
+    body = _valid_envelope()
+    for headers in ({}, {TOKEN_HEADER: secrets.token_urlsafe(32)}):
+        sock, first = _open_expect_continue(live, headers, body)
+        sock.close()
+        assert first.split()[:2] == ["HTTP/1.1", "401"], first
+    assert parse_spies == before
+
+    # 대조군: 유효 토큰이면 서버가 본문을 요청한다(100 Continue) → 본문 전송 → ExecutionResponse(200)
+    sock, first = _open_expect_continue(live, {TOKEN_HEADER: token.decode()}, body)
+    with sock:
+        assert first.split()[:2] == ["HTTP/1.1", "100"], first
+        sock.sendall(body)
+        final = _read_head(sock).split(b"\r\n", 1)[0].decode("latin-1")
+    assert final.split()[:2] == ["HTTP/1.1", "200"], final
+    assert "sentinel.pipeline.schema_gate.parse_envelope" in parse_spies
 
 
 # ── 위조 거부: 서버 측 토큰 미설정·빈값 → 기동 거부 ─────────────────────────

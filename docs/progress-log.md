@@ -429,3 +429,23 @@
 - 배열 인덱스 선행 0은 형태 검사가 아니라 해석 단계에서 거부(형태만으로는 객체 키 "01"과 구별 불가) → 사유 코드는 `pointer_unresolvable`.
 - ε 미해결의 '코드가 (A)보다 낡은 지점' 중 Evidence(locus·pointer: str)는 해소. 나머지(MaskLabel 정규식·Body masked_spans·FILLER·principal_01 잔존)는 ζ2.
 - **간헐 실패 재발**: `tests/test_auth.py::test_live_server_requires_token`이 ζ1의 `make verify`에서 WinError 10053으로 다시 실패(selfcheck가 `request_token_validation` 노드 미통과로 세션 실패 처리). 코드 변경 없이 재실행해 종료코드 0 — **재실행으로 통과**. 규칙대로 별도 Issue #35 등재(원인 가설: 인증 실패 시 본문 미수신 + 연결 종료 → Windows RST, 미확인).
+
+---
+
+## Issue #35 — `test_live_server_requires_token` 간헐 실패: 테스트 쪽 수정
+
+### 원인 (재현으로 확인)
+- 재현 스크립트(커밋 안 함)로 실서버(루프백)에 변형별 2000회 요청:
+  토큰 없음 + 본문 1015B → 401 1974 / **10053 24 / 10054 2** · 토큰 없음 + 본문 없음 → 401 2000 / 중단 0 ·
+  토큰 없음 + 본문 64KiB → 401 1983 / 중단 17 · 유효 토큰 + 본문(서버가 본문을 읽음) → 200 2000 / 중단 0.
+- 가설 확인: 인증 실패 시 게이트가 본문을 받지 않고(안전 불변식) 응답 후 연결을 닫는데, 클라이언트가 본문을 보내는 중이면 Windows가 RST로 클라이언트 전송을 끊는다. 제품 동작은 맞고, 테스트 클라이언트가 이 경로를 견디지 못했다.
+
+### 수정 (제품 코드 변경 없음)
+- 인증 실패 확인 요청은 `Expect: 100-continue`로 머리만 보내고 본문을 보내기 전에 응답을 읽는다. uvicorn은 앱이 `receive()`를 부를 때만 `100 Continue`를 보내므로(`uvicorn/protocols/http/h11_impl.py` `receive`), 첫 응답 줄이 곧바로 401이면 '본문을 요청하지 않고 거부'가 실서버에서 관측된다. 연결 오류는 잡지 않고 재시도도 없다.
+- 유지한 단언: 401을 실제로 받음 / 하위 앱·본문 읽기·역직렬화 스파이 미호출(`parse_spies`). 추가: 100 Continue 없음. 대조: 유효 토큰이면 첫 줄이 `100 Continue`(탐침이 본문 수신을 잡는다) → 본문 전송 → 200, `parse_envelope` 호출됨.
+- 이 테스트를 `auth_precedence_noinvoke` 검증 노드에도 등록(실서버에서 본문 미수신을 관측하므로).
+
+### 확인
+- 반복: 같은 pytest·픽스처 조건에서 수정 전 방식 500회 중 **8회 실패**(ConnectionAborted/Reset) / 수정 후 **500 + 500회 모두 통과**.
+- 변이(수동 1회): 게이트가 거부 전에 `receive()`를 부르게 한 변이본(로드 확인) → `AssertionError: HTTP/1.1 100 Continue`로 실패, 원본은 통과.
+  - 첫 시도는 변이 사본에 manifest가 없어 **셋업 오류로 종료코드 1** — 단언 실패가 아니었다(거짓 증거). manifest를 함께 두고 다시 확인. '종료코드 ≠ 0은 거부 증거가 아니다'(W1-09)의 재현.
