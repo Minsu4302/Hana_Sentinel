@@ -51,6 +51,7 @@
 - **manifest 정직성**: `not_implemented`를 `enforced`로 주장하면 빌드 실패. **실제 통과 테스트가 있는 것만** `enforced`. 목표 주차 ≠ 현재 상태.
 - **미구현을 안전으로 오인 금지**: 외부 의존 통제(OS 격리·레포 설정)는 `unverifiable`로 정직 표기.
 - **진행 기록**: 각 주차(또는 마일스톤) 완료 시 `docs/progress-log.md`를 갱신한다 — 검증된 승격·깨진 가정·미해결을 남긴다(리스크 관리; (B) §6 가정 검증 루프).
+- **리뷰 팩**: PR마다 `docs/review-pack-rule.md` 형식으로 제출한다. 승인 전 merge 금지.
 
 ---
 
