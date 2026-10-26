@@ -21,7 +21,8 @@ import pytest
 
 from sentinel.pipeline import execution, sanitization_check, schema_gate
 from sentinel.pipeline.schema_gate import SchemaRejected, parse_envelope
-from sentinel.schema import Envelope, MaskedRef
+from sentinel.common_types import MaskedRef
+from sentinel.schema import Envelope
 from sentinel.server.app import create_app
 from tests.test_auth import HEADER, _drive, _scope, _status
 from tools.mutation_guard import assert_loaded_from, copy_with_mutation
@@ -37,7 +38,7 @@ TX: dict[str, Any] = {
     "request": {"method": "GET", "scheme": "http", "host": "127.0.0.1", "port": 3000,
                 "path": "/rest/products/search",
                 "query_params": [{"name": "q", "value": "apple", "location": "query"}],
-                "headers": [{"name": "Cookie", "value": {"masked": True, "label": "session_01", "kind": "cookie"}}],
+                "headers": [{"name": "Cookie", "value": {"masked": True, "label": "ref_01", "kind": "cookie"}}],
                 "body": dict(BODY)},
     "response": {"status": 200, "headers": [{"name": "Content-Type", "value": "application/json"}], "body": dict(BODY),
                  "elapsed_ms": 12},
@@ -152,14 +153,18 @@ def test_rejects_non_envelope_bytes(raw):
 
 def _smuggles() -> dict[str, Any]:
     raw = secrets.token_urlsafe(24)  # 원문 토큰을 흉내 낸 런타임 값
-    ok = {"masked": True, "label": "session_01", "kind": "cookie"}
+    ok = {"masked": True, "label": "ref_01", "kind": "cookie"}
     return {
         "extra_value_field": {**ok, "value": raw},
         "extra_original_field": {**ok, "original": raw},
         "label_is_raw_token": {**ok, "label": raw},
-        "label_with_space": {**ok, "label": "Bearer abc_01"},
-        "label_uppercase": {**ok, "label": "Session_01"},
-        "label_one_digit": {**ok, "label": "session_1"},
+        "label_with_space": {**ok, "label": "ref _01"},
+        "label_uppercase": {**ok, "label": "REF_01"},
+        "label_one_digit": {**ok, "label": "ref_1"},
+        "label_too_many_digits": {**ok, "label": "ref_01234"},
+        "label_not_digits": {**ok, "label": "ref_abc"},
+        "label_old_semantic_prefix": {**ok, "label": "principal_01"},  # (A) §2.3: 의미 있는 접두사 금지(ref만)
+        "label_trailing_newline": {**ok, "label": "ref_01\n"},
         "label_too_long": {**ok, "label": "a" * 40 + "_01"},
         "masked_false": {**ok, "masked": False},
         "masked_string": {**ok, "masked": "true"},
@@ -191,7 +196,7 @@ def test_masked_ref_type_has_no_field_that_can_carry_a_raw_value():
 
 
 def test_null_label_is_allowed_as_contract_says():
-    """(A) §2.3: label은 "principal_01" | null."""
+    """(A) §2.6: label은 "ref_NN" | null."""
     env = _set(_env(), f"{T0}.request.headers.0.value", {"masked": True, "label": None, "kind": "token"})
     assert parse_envelope(_raw(env)).transactions[0].request.headers[0].value.label is None
 

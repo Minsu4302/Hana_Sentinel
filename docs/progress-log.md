@@ -514,3 +514,30 @@
 
 ### 미해결
 - η 미해결 중 Param·ParamLocator location 4값, raw '?' 미거부, `location: "json"` 픽스처는 해소. 남은 것: `canonical_address`(정규화 함수 미구현), 본문 마스킹 쪽(MaskLabel 정규식·masked_spans·FILLER·MaskedRef 이동·`principal_01` 잔존)은 ζ2b.
+
+---
+
+## ζ2b — 본문 마스킹 표기: MaskedRef 이동 + FILLER + masked_spans + masked_span_integrity (Issue #42)
+
+### 0단계 멈춤 → 설계자 결정
+- 발주문 5번 전제("FILLER 위치는 비밀 패턴에 걸리지 않는다")가 실측과 달랐다: `credential_json_field`·`credential_form_field`·`session_cookie_pair`가 값 자리의 `[MASKED]` 자체에 걸려, 올바르게 마스킹한 password·token·session 필드가 ③에서 거부됐다. 재스캔 '위치 건너뛰기'는 금지 → 멈춤 보고.
+- 결정((가) 교정판): 값 재스캔은 **선언된 span 위치에서 값이 정확히 FILLER일 때만 그 FILLER를 걷어낸 본문**에 돈다. 위치를 값과 무관하게 건너뛰지 않는다. span 위치 = FILLER는 불변식 3이 독립으로 본다. (A) §2.3에 한 줄, §2.2 불변식 5에 적용 범위(같은 kind 안) 한 줄.
+
+### manifest 상태 변화
+| manifest 키 | 이전 | 이후 | 증명한 테스트 노드 |
+|---|---|---|---|
+| `masked_span_integrity` | not_implemented(→ 본문 마스킹 표기 구현 시) | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `tests/test_masked_spans.py::test_rejects_body_invariant_violation` 외 — 목록은 `guardrails.yaml` |
+
+> `label_consistency`·`masker_independence`는 그대로 not_implemented(생산자·마스커 몫). (A) v1.10 → v1.11, 매핑표 v1.9 → v1.10. `schema_version` 값 변화 없음.
+> 변이 확인(스위트 안 11종, 변이본 로드 표지 먼저 확인): 불변식 1·2·2'·3·4·5·6 각각 해제 / 불변식 3을 위치 한정 → 전역 FILLER 검색 / 재스캔 '값 무관 위치 건너뛰기' / 재스캔 면제를 FILLER 리터럴 전역으로 / integrity 전체 해제 — 모두 대응 적대 테스트 실패.
+
+### 깨진 가정 · 발견된 문제
+- **변이가 테스트 약점을 잡음**: '값 무관 건너뛰기' 변이가 처음엔 살아남았다. 가짜 비밀값이 9자라 8자 span을 걷어내도 1자가 남아 패턴에 걸렸기 때문. 비밀값을 FILLER와 같은 8자로 고치고 길이를 단언으로 고정.
+- 0단계: 발주문 목록 밖 라벨 잔존 `session_01`(`tests/test_schema.py` 픽스처·밀반입 기준값)도 새 정규식에 어긋나 함께 교체.
+
+### 미해결 · 이월
+- **두 kind를 섞은 본문은 fail-closed**: json span이 있으면 문서를 다시 직렬화해 재스캔하므로 text span의 FILLER는 걷어내지 않는다 → 자격증명 이름 뒤 text-span FILLER는 거부될 수 있다(과잉 거부 방향, 테스트로 고정). 이월: fixture 마스커 구현 시(마스커가 섞어 쓰는지 확인).
+- **json span 본문의 재스캔은 재직렬화본 대상**: 원문 오프셋을 모르므로 파싱한 문서에서 FILLER를 걷어낸 뒤 `json.dumps(ensure_ascii=False)`를 스캔한다. 이스케이프가 풀린 값을 보므로 원문 스캔보다 대체로 넓지만, 공백·이스케이프 차이로 원문에서만 걸리는 패턴이 없다는 증명은 없다. 이월: Java 연결 시 차분 테스트.
+- **불변식 5는 같은 kind 안**: text span과 json span이 같은 문자를 가리켜도 검사하지 않는다((A) §2.2 적용 범위 한 줄).
+- **불변식 6 비교자**: 코드포인트 순서. Java `String.compareTo`(UTF-16 단위)와 BMP 밖 문자에서 순서가 다르다 → Java 연결 시.
+- 엄격 JSON·Pointer 해석을 `sentinel.strict_json`(파이프라인 밖 순수 함수)으로 옮김 — 출력 게이트와 ③이 같은 정의를 쓴다. 출력 게이트 변이 8종의 대상 문자열은 이동 범위 밖이라 그대로(스위트 통과로 확인).

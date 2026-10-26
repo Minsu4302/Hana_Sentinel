@@ -170,7 +170,7 @@ def test_plaintext_whitelisted_header_is_rejected_even_without_pattern_match(sid
 def test_masked_whitelisted_header_passes():
     env = _lying_receipt(_env())
     env["transactions"][0]["request"]["headers"].append(
-        {"name": "Authorization", "value": {"masked": True, "label": "principal_01", "kind": "token"}})
+        {"name": "Authorization", "value": {"masked": True, "label": "ref_02", "kind": "token"}})
     verify_sanitization(parse_envelope(_raw(env)))
 
 

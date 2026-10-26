@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.10 — Sentinel Harness
+# (A) 설계확정서 v1.11 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.10 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.9(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.11 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.10(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -27,7 +27,9 @@
 >   - request.path 쿼리 미포함 = 비가산(이전에는 '?' 포함 path가 ②·③을 통과했다), 소비자 0이라 유지.
 >   - 같은 버전(v1.9) 안의 정정: §2.6 CNA 근거가 레포에 정의 없는 설계 대화 라벨("D4")을 가리키던 거짓 색인을 실제 절(§2.6 e 헤더 이름 정규화)로 교체. (A) 규범 본문의 다른 임시 라벨(D·E·F·G·H·I·J 계열)은 grep으로 0건 확인.
 > **v1.10 (매핑표 v1.9):** §3.2 `path_no_query_string` 승격(not_implemented → enforced(검증 함수 단위 — 입력 스키마), 증명은 같은 PR의 ζ2a). 바꾼 것은 상태 칸과 이력뿐 — §2.2·§2.6 문구 변경 없음. Envelope·AnalysisResult `schema_version` 값 변화 없음(축소·쿼리 금지의 비가산 변경은 v1.9 이력에 기재).
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26)
+> **v1.11 (매핑표 v1.10):** §3.3 `masked_span_integrity` 승격(not_implemented → enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안), 증명은 같은 PR의 ζ2b) + §2.2 불변식 5 적용 범위 한 줄(같은 kind 안) + §2.3 값 재스캔 대상 한 줄(선언된 span 위치의 FILLER를 걷어낸 본문). `schema_version` 값 변화 없음(`masked_spans` 가산·라벨 `ref_NN` 축소는 v1.7 이력에 기재).
+>   - 근거(§2.3 한 줄): 기존 패턴 3종(`credential_json_field`·`credential_form_field`·`session_cookie_pair`)이 값 자리의 FILLER 자체에 걸려, 올바르게 마스킹한 자격증명·세션 필드가 거부됐다(ζ2b 0단계 실측). '정책 패턴만 탐지'와 충돌하지 않는다 — 면제 대상은 선언된 위치의 문자 그대로의 FILLER뿐이다.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26)
 
 ---
 
@@ -145,6 +147,7 @@ Body   = { content_type, size_bytes(원본크기), truncated(bool),
   3. span이 가리키는 저장 값은 정확히 FILLER다. range가 있으면 `값[start:end] == FILLER`이고 `end − start == len(FILLER)`. json에 range가 없으면 노드 값 자체가 문자열 FILLER다.
   4. `json`은 content 전체가 JSON으로 파싱될 때만 허용한다.
   5. span끼리 겹치지 않는다. 같은 노드에 '노드 전체 span'과 'range span'이 함께 있을 수 없다.
+     - 적용 범위: 겹침은 같은 kind 안에서만 검사한다. 서로 다른 kind는 좌표계가 분리되어(text = content 오프셋, json = 노드 안 오프셋) 서로 비교하지 않는다.
   6. 정규 순서는 (kind, path, start) 오름차순이다. 같은 입력이면 출력이 바이트 단위까지 같아야 한다(Java 차분 테스트의 전제).
 - **설계 의도(FILLER ↔ 사이드카 비대칭):** FILLER에는 kind가 없고, kind·라벨은 `masked_spans.ref`에만 있다. 본문은 신뢰할 수 없는 데이터라 정보를 최소화하고, 마스킹 여부의 권위는 사이드카에 둔다. "일관성을 위해 채움값에 kind를 넣자"는 변경은 금지한다.
 - **오프셋:** 저장된 content 기준, 유니코드 코드포인트 단위. 마스커는 유니코드 정규화를 하지 않는다. Java의 UTF-16 → 코드포인트 변환은 Java 쪽 책임이다.
@@ -178,6 +181,7 @@ SanitizationReceipt   # 각 Transaction.meta에 필수
 - **2단계 적용:** Java(transport 보호 — 고정 화이트리스트 헤더 치환) + Python(정밀 — body PII 스캔, 가명화 일관성, object_id 민감성 판정).
 
 > **신뢰 경계 (★구현 전 반드시):** `applied==true`는 요청자가 쓰는 주장일 뿐이다. **Python은 '마스킹됐다는 주장'을 믿지 말고 '마스킹됐음을 스스로 재검증'한다.** 수신 데이터에 토큰·쿠키·키 생문자열이 남았는지 Python이 독립 재스캔 → 발견 시 `applied` 값과 무관하게 거부(영수증≠데이터면 데이터를 믿고 거부). **전송 전 보호(Java, 1차)와 수신 후 재검증(Python, 2차 방어선)은 다른 보장이며, 재검증은 1차를 대체하지 않는다.** 패턴 검사는 '정책에 정의된 패턴'만 탐지하며 '모든 비밀값 부재'를 증명하지 않는다(불투명 세션 ID는 일반 문자열과 구분 불가).
+> - 값 재스캔은 masked_spans가 가리키는 위치의 FILLER를 걷어낸 본문에 대해 수행한다. 이는 선언된 span 위치를 값과 무관하게 건너뛰는 것이 아니다 — span 위치가 정확히 FILLER임은 masked_span_integrity(불변식 3)가 독립으로 검증하며, FILLER가 아니면 거부된다. 두 검사가 함께 성립해야 통과한다.
 
 ### 2.4 AnalysisResultSchema (출력 — LLM 환각을 계약으로 차단)
 ```
@@ -288,7 +292,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.9 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.10 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -354,7 +358,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
 | 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 수용 요청 감사(B-6) 범위 확정 시 | `audit_write_failure` |
-| Body 불변식 1~6을 ③에서 검증 | validator+테스트 | not_implemented → 본문 마스킹 표기 구현 시 | `masked_span_integrity` |
+| Body 불변식 1~6을 ③에서 검증 | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `masked_span_integrity` |
 | 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | not_implemented → fixture 마스커 구현 시 | `label_consistency` |
 
 ### 3.4 전 층위 공통

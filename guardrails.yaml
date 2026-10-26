@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.9. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.10. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.9"
+derived_from: "docs/design-decision.md §3 매핑표 v1.10"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -411,9 +411,26 @@ guardrails:
     description: "Body 불변식 1~6을 ③에서 검증"
     target_layer: "스키마·validator"
     week1_status:
-      state: not_implemented
-      target: "본문 마스킹 표기 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "검증 함수 단위 — ③, 불변식 5는 같은 kind 안"
+    verification_tests:
+      - "tests/test_masked_spans.py::test_rejects_body_invariant_violation"
+      - "tests/test_masked_spans.py::test_kind_order_json_before_text"
+      - "tests/test_masked_spans.py::test_filler_elsewhere_does_not_vouch_for_a_span_on_another_value"
+      - "tests/test_masked_spans.py::test_correctly_masked_body_with_credential_names_passes"
+      - "tests/test_masked_spans.py::test_span_on_non_filler_harmless_value_is_caught_by_integrity_only"
+      - "tests/test_masked_spans.py::test_span_declared_on_a_raw_secret_is_caught_by_both_checks"
+      - "tests/test_masked_spans.py::test_undeclared_filler_under_credential_name_is_still_rescanned"
+      - "tests/test_masked_spans.py::test_raw_secret_outside_valid_spans_is_caught_by_rescan_only"
+      - "tests/test_masked_spans.py::test_secret_glued_to_a_declared_filler_is_rescanned"
+      - "tests/test_masked_spans.py::test_json_secret_outside_span_is_rescanned"
+      - "tests/test_masked_spans.py::test_rejects_label_outside_ref_nn_in_span_ref"
+      - "tests/test_masked_spans.py::test_filler_constant_equals_the_canonical_value_in_A"
+      - "tests/test_masked_spans.py::test_filler_and_masked_ref_are_defined_only_in_common_types"
+      - "tests/test_masked_spans.py::test_shared_definition_modules_import_nothing_else_from_sentinel"
+      - "tests/test_masked_spans.py::test_span_rejection_audit_has_no_path_range_or_content_values"
+      - "tests/test_masked_spans.py::test_each_masked_span_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_sanitization.py::test_omitted_body_with_content_is_rejected"
     manifest_key: masked_span_integrity
   - id: label_consistency
     description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"
