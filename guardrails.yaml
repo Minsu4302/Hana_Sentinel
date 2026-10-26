@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.11. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.12. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.11"
+derived_from: "docs/design-decision.md §3 매핑표 v1.12"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -304,6 +304,14 @@ guardrails:
       target: "fixture 마스커 구현 시"
     verification_tests: []
     manifest_key: masker_independence
+  - id: engine_no_rawtransaction
+    description: "엔진(src/sentinel)이 RawTransaction을 import하지 않음(엔진은 마스킹 후 Transaction만 다룬다)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "RawTransaction 타입 구현 시(마스커-A)"
+    verification_tests: []
+    manifest_key: engine_no_rawtransaction
   - id: maskedref_typing
     description: "원본 생문자열 유입 불가(MaskedRef 타입)"
     target_layer: "타입"
