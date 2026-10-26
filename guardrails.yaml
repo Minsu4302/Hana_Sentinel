@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.5. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.6. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.5"
+derived_from: "docs/design-decision.md §3 매핑표 v1.6"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -280,6 +280,14 @@ guardrails:
       target: "fixture 마스커 구현 시"
     verification_tests: []
     manifest_key: engine_tools_isolation
+  - id: masker_independence
+    description: "마스커가 sentinel.pipeline.sanitization_check를 import하지 않음"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "fixture 마스커 구현 시"
+    verification_tests: []
+    manifest_key: masker_independence
   - id: maskedref_typing
     description: "원본 생문자열 유입 불가(MaskedRef 타입)"
     target_layer: "타입"
@@ -383,6 +391,22 @@ guardrails:
       target: "수용 요청 감사(B-6) 범위 확정 시"
     verification_tests: []
     manifest_key: audit_write_failure
+  - id: masked_span_integrity
+    description: "Body 불변식 1~6을 ③에서 검증"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "본문 마스킹 표기 구현 시"
+    verification_tests: []
+    manifest_key: masked_span_integrity
+  - id: label_consistency
+    description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "fixture 마스커 구현 시"
+    verification_tests: []
+    manifest_key: label_consistency
   - id: branch_protection
     description: "main 직접 병합 금지"
     target_layer: "CI게이트"
@@ -421,6 +445,14 @@ guardrails:
       - "tests/test_output_gate.py::test_rejection_audit_has_reason_codes_only_no_draft_content"
       - "tests/test_output_gate.py::test_valid_draft_gets_exactly_the_server_assigned_values"
     manifest_key: evidence_ref_integrity
+  - id: evidence_pointer_resolves
+    description: "Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기)"
+    target_layer: "스키마·validator"
+    week1_status:
+      state: not_implemented
+      target: "Evidence Locator 구현 시"
+    verification_tests: []
+    manifest_key: evidence_pointer_resolves
   - id: server_assigned_status
     description: "status 서버부여·LLM 생성불가"
     target_layer: "스키마·validator"

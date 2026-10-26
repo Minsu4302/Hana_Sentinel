@@ -276,31 +276,40 @@
 
 ## 설계 트랙: 5번 평가 (진행 중)
 
-> **성격: 확정 — (A) 미반영. 5번 결론 개정 때 (A)로 옮긴다. 이 기록은 정본이 아니다.**
+> **성격: 큐(미확정)만 이 기록이 들고 있다. (A)에 반영된 항목은 원문을 남기되 정본은 (A)다(ε, v1.7). 이 기록은 정본이 아니다.**
+> (작성 당시 성격: "확정 — (A) 미반영. 5번 결론 개정 때 (A)로 옮긴다.")
 
-1. Body에 masked_spans: [{pointer, ref: MaskedRef}] 가산(사이드카 방식).
+### (A) 반영됨 — ε, (A) v1.7 (원문 보존 + 절 포인터)
+1. **→ (A) §2.2 Body `masked_spans` / §2.6 MaskedSpan** — Body에 masked_spans: [{pointer, ref: MaskedRef}] 가산(사이드카 방식).
    첫 평가 픽스처가 동결되기 전에 (A)에 반영한다.
-2. 채움값은 kind 없는 단일 고정 토큰이고, kind·라벨은 masked_spans.ref에만 둔다.
+2. **→ (A) §2.6 FILLER / §2.2 설계 의도(FILLER ↔ 사이드카 비대칭)** — 채움값은 kind 없는 단일 고정 토큰이고, kind·라벨은 masked_spans.ref에만 둔다.
    이 비대칭은 의도된 것이다(본문은 신뢰할 수 없으므로 정보 최소화, 권위는 사이드카).
-3. 오프셋은 저장된 content 기준, 유니코드 코드포인트 단위. 마스커는 정규화하지 않는다.
+3. **→ (A) §2.2 오프셋 / §2.6 Range** — 오프셋은 저장된 content 기준, 유니코드 코드포인트 단위. 마스커는 정규화하지 않는다.
    UTF-16 변환은 Java 쪽 책임이다.
-4. pointer 문법은 "JSONPath + 문자열 안 범위" 형태이고, Evidence.pointer와 공유한다
+4. **→ (A) §2.6 BodyPointer·Locator·Range** (JSONPath 대신 RFC 6901 JSON Pointer로 확정 — 이유는 §2.6) — pointer 문법은 "JSONPath + 문자열 안 범위" 형태이고, Evidence.pointer와 공유한다
    (문안은 아직 미작성).
-5. masked_spans가 비어 있지 않으면 encoding == utf8이어야 한다.
+5. **→ (A) §2.2 Body 불변식 1 / base64** — masked_spans가 비어 있지 않으면 encoding == utf8이어야 한다.
    base64 본문에서 비밀값이 발견되면 omitted로 처리한다.
-6. 라벨은 양방향 동치(같은 원본값 ⇔ 같은 라벨)이고, 순번으로 할당한다(HMAC은 매핑 테이블 키로만).
+6. **→ (A) §2.3 라벨 규칙** (라벨 형식 `ref_NN` — §2.6 MaskedRef) — 라벨은 양방향 동치(같은 원본값 ⇔ 같은 라벨)이고, 순번으로 할당한다(HMAC은 매핑 테이블 키로만).
    동치 기준은 원본값이며 kind와 무관하다. 라벨은 배치 안에서만 유효하다.
    (A) §2.3의 "HMAC → 짧은 라벨" 문구를 이 뜻으로 교정한다.
-7. 6번은 생산자 쪽에서만 강제할 수 있다(Python ③은 원본을 모름).
+7. **→ (A) §2.3 라벨 규칙 + §3.3 `label_consistency`** — 6번은 생산자 쪽에서만 강제할 수 있다(Python ③은 원본을 모름).
    manifest 키 1개를 신설하되 Python 런타임 보장으로 표기하지 않는다.
-8. ⓕ 해석: "사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고,
+8. **→ (A) §1.3 ⓕ 해석 주석** — ⓕ 해석: "사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고,
    시스템(엔진·tools)은 이를 영속화하지 않는다."
-9. fixture 마스커 불변식 4개:
+9. **→ (A) §3.2 `engine_tools_isolation`(β) · §2.3 + §3.2 `masker_independence` · §3.1 `masker_no_send`(β) · §2.3 정책 데이터 파일** — fixture 마스커 불변식 4개:
    - tools/에 둔다. 엔진은 tools/를 import하지 않는다.
    - 엔진의 sanitization_check를 재사용하지 않는다.
    - N1·N2 검사 범위에 포함한다.
    - 정책은 데이터 파일로 두고 공유한다.
-10. (큐만, 미확정) truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.
+
+ε에서 함께 (A)에 반영: pointer 문법(§2.6 Locator·BodyPointer·Range), Body 불변식(§2.2), FILLER·라벨 접두사 ref(§2.6·§2.3), 버전 규칙 통합(§2 머리), 공용 소절 §2.6 + MaskedRef 이동
+
+### 큐 (미확정)
+10. (큐만, 미확정) truncation 경계 표기.
+    - 오프셋 기준(저장 content)은 (A) §2.2에서 정해짐 — 큐 10에서 분리. (작성 당시 문구: "truncation 경계 표기, 그리고 오프셋을 저장 content와 원본 중 어느 쪽 기준으로 할지.")
+11. (큐만, 미확정) 헤더 값·경로의 부분 마스킹 표기 — (A) §2.2가 이 큐를 가리킨다. 현재는 fail-closed.
+12. 첫 소비자 경계 강제 장치 — 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이는 실패하는 테스트. 평가 데이터셋을 처음 동결할 때 키 신설.
 
 남은 5번 결정점: TP 판정 단위 / 데이터셋 구성 / 지표 정의 / severity_if_true의 등급 값 목록 자체(미정의 — 기본값 표·보정 규칙보다 먼저 정해야 함), category 기본값 표와 신호 보정 규칙(β에서 추가 — (A) v1.5 §2.4는 셋 다 미정의로 둠).
 
@@ -363,3 +372,34 @@
 
 ### (A) 정본 변경 여부
 - **변경 있음:** 문서 v1.5 → **v1.6**, 매핑표 v1.4 → **v1.5**. §3.5 4키 enforced(검증 함수 단위) / `assertive_token_guard`·`corroboration_check` 목표 재조정 / §3.5 제목 "C·E (출력·검증)" / † 각주. 뷰 동기화: `guardrails.yaml` 재파생·manifest 재생성·(B) 제목 기준 버전. CLAUDE.md 영향 없음. claude.ai 발행본 재발행: merge 후 설계자에게 (A) 전달.
+
+---
+
+## γ 리뷰 반영 (PR #31, merge 전 추가 커밋) — 기록
+
+> 위 γ 섹션의 '결정 대기' 두 곳은 작성 시점 기록이다(누적 규칙). 현재 상태는 아래가 맞다.
+- `output_schema_gate` 상태 칸 → `derived †`(목표 없는 derived). `tools/guardrails/spec.py`가 목표 없는 `derived`만 명시적으로 수용(not_implemented는 여전히 목표 필수), manifest target 없음. 적대 테스트: `tests/test_guardrails.py::test_spec_parser_still_requires_target_for_not_implemented`, `::test_targetless_derived_without_child_list_is_rejected`, `::test_targetless_derived_is_accepted_with_no_target`.
+- 파생 규칙 위조 거부: `tests/test_guardrails.py::test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down`(실제 레지스트리, 하위 4키 × not_implemented·disabled·unverifiable). 파생기를 OR로 바꾼 변이본(로드 확인)에서 이 테스트 12개 인스턴스와 기존 `test_derived_rollup_is_enforced_only_when_every_child_is_enforced`가 실패함을 확인(수동 1회, 스위트 자동화 아님). 위 4노드는 `manifest_derivation` 검증 노드로 등록.
+- `analyzed_refs` 사전조건: 비었거나 중복이면 초안 파싱 전 ValueError(값 미반사) — '아무것도 분석하지 않았는데 깨끗함' 결과 차단((A) §2.5). `tests/test_output_gate.py::test_empty_or_duplicate_analyzed_refs_is_a_server_arg_error_before_draft_parsing`, `::test_nothing_analyzed_cannot_become_a_clean_result`.
+
+---
+
+## ε — (A) v1.7 개정 (Issue #32)
+
+### (A) 정본 변경 여부
+- **변경 있음:** 문서 v1.6 → **v1.7**, 매핑표 v1.5 → **v1.6**. §2 머리 버전 규칙 통합(소비자 우선 2단 분기) / §2.6 공용 타입 신설(MaskedRef 이동·FILLER·Range·BodyPointer·Locator·MaskedSpan) / §2.2 Body `masked_spans`·불변식 1~6·2'·오프셋·base64·마스킹→절단 순서 / §2.3 라벨 규칙(`ref_NN`, 순번, HMAC은 매핑 키) / §2.4 Evidence.pointer = Locator(locus 필드 제거)·중복 키·무결성 문구 / §1.3 ⓕ 해석 주석 / §3 신규 3키.
+- `schema_version` 값 변화 없음(Envelope·AnalysisResult 모두 "1.0") — 비가산 변경이 있으나 소비자 0(통합 규칙 첫 적용, 이력 기록).
+- 뷰 동기화: `guardrails.yaml` 재파생(44키) + manifest 재생성 / (B) 제목 기준 버전 v1.7 / CLAUDE.md 변경 없음.
+- claude.ai 발행본 재발행: merge 후 설계자에게 (A) 전달.
+
+### manifest 상태 변화
+- enforced 집합 변화 없음(25키). 신규 not_implemented: `masked_span_integrity`(→ 본문 마스킹 표기 구현 시), `label_consistency`·`masker_independence`(→ fixture 마스커 구현 시).
+
+### 미해결 — 코드가 (A)보다 낡은 지점(의도됨, 이월처 ζ)
+- `src/sentinel/output_schema.py` `EvidenceDraft`·`Evidence`: `locus` 필드 + `pointer: str` → (A)는 locus 제거·`pointer: Locator`.
+- `src/sentinel/schema.py` `MaskLabel` 정규식(`^[a-z][a-z0-9]{0,23}_[0-9]{2,4}$`) → (A)는 `ref_` + 숫자 2~4자리.
+- `src/sentinel/schema.py` `Body`: `masked_spans` 필드·Body 불변식(1~6, 2' 중 `truncated == false`) 없음. FILLER 정의 없음.
+- `principal_01` 잔존(src·tests): `src/sentinel/schema.py:8`, `:20`, `tests/test_sanitization.py:173`, `tests/test_schema.py:184`.
+- 중복 처리 키 `(transaction_ref, pointer.locus, …)` — 중복 병합 자체가 미구현.
+- 파생기 OR 변이 확인(`test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down`)은 수동 1회 실행. 스위트에서 자동 실행되지 않는다(W1-01~08 변이 확인과 같은 성격).
+- `evidence_pointer_resolves`(§3.5, not_implemented → Evidence Locator 구현 시) 추가 — 리뷰 반영, 이월처 ζ1.
