@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.10. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.11. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.10"
+derived_from: "docs/design-decision.md §3 매핑표 v1.11"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -586,7 +586,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "5번 주제"
+      target: "평가 하네스 구현 시"
     verification_tests: []
     manifest_key: eval_harness
   - id: canonical_address
@@ -597,3 +597,19 @@ guardrails:
       target: "정규화 함수 구현 시"
     verification_tests: []
     manifest_key: canonical_address
+  - id: label_isolation
+    description: "엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리)"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: not_implemented
+      target: "평가 하네스 구현 시"
+    verification_tests: []
+    manifest_key: label_isolation
+  - id: dataset_version_freeze
+    description: "동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12)"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "데이터셋 첫 동결 시"
+    verification_tests: []
+    manifest_key: dataset_version_freeze

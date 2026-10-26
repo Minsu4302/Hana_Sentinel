@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.11 — Sentinel Harness
+# (A) 설계확정서 v1.12 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.11 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.10(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격)}. 4번(LLM 전략)·5번(평가)은 이후 증분.
+> **버전:** v1.12 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리) + 가드레일 매핑표 v1.11(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -29,7 +29,9 @@
 > **v1.10 (매핑표 v1.9):** §3.2 `path_no_query_string` 승격(not_implemented → enforced(검증 함수 단위 — 입력 스키마), 증명은 같은 PR의 ζ2a). 바꾼 것은 상태 칸과 이력뿐 — §2.2·§2.6 문구 변경 없음. Envelope·AnalysisResult `schema_version` 값 변화 없음(축소·쿼리 금지의 비가산 변경은 v1.9 이력에 기재).
 > **v1.11 (매핑표 v1.10):** §3.3 `masked_span_integrity` 승격(not_implemented → enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안), 증명은 같은 PR의 ζ2b) + §2.2 불변식 5 적용 범위 한 줄(같은 kind 안) + §2.3 값 재스캔 대상 한 줄(선언된 span 위치의 FILLER를 걷어낸 본문). `schema_version` 값 변화 없음(`masked_spans` 가산·라벨 `ref_NN` 축소는 v1.7 이력에 기재).
 >   - 근거(§2.3 한 줄): 기존 패턴 3종(`credential_json_field`·`credential_form_field`·`session_cookie_pair`)이 값 자리의 FILLER 자체에 걸려, 올바르게 마스킹한 자격증명·세션 필드가 거부됐다(ζ2b 0단계 실측). '정책 패턴만 탐지'와 충돌하지 않는다 — 면제 대상은 선언된 위치의 문자 그대로의 FILLER뿐이다.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26)
+> **v1.12 (매핑표 v1.11):** 5번(평가) 프로토콜 응고 — §6 신설, 평가 키 등재. §6 = 5번 결정점 ①(판정)②(데이터셋)③(지표) 응고. §3.5 `eval_harness` 목표 "5번 주제" → "평가 하네스 구현 시"(상태 그대로) + 신규 `label_isolation`·`dataset_version_freeze`(둘 다 not_implemented). enforced 집합·`schema_version` 값 변화 없음.
+>   - 감사 추적: §6.1 매칭·남은 중복·category 대표/보조·advisory 비채점은 설계 대화의 H1~H5, §6.2는 I1~I8, §6.1 판정 단위는 G1~G6의 응고다. 규범 본문에는 이 라벨을 두지 않는다(§6.3의 J1~J9는 그 절 안에서 정의된 항목 ID).
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27)
 
 ---
 
@@ -292,7 +294,7 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.10 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.11 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -379,8 +381,10 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |
 | 반복 이상 → 세션 신호 | 테스트 | not_implemented → 3주차 | `anomaly_aggregation` |
-| 평가 하네스 | 테스트 | not_implemented → 5번 주제 | `eval_harness` |
+| 평가 하네스 | 테스트 | not_implemented → 평가 하네스 구현 시 | `eval_harness` |
 | 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | not_implemented → 정규화 함수 구현 시 | `canonical_address` |
+| 엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리) | 아키텍처 테스트 | not_implemented → 평가 하네스 구현 시 | `label_isolation` |
+| 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12) | 테스트 | not_implemented → 데이터셋 첫 동결 시 | `dataset_version_freeze` |
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
@@ -424,6 +428,52 @@ MaskedSpan  = { at: BodyPointer, ref: MaskedRef }
 5. **안전 검토 중단이 아니라, 중심을 문서 → 통과하는 테스트로 이동.**
 6. **AI는 가설 제시, 검증 엔진·사람은 근거 확인.** 자율 공격보다 분석 품질·검증 가능성 우선.
 7. **정본은 가장 많은 자동 강제가 닿는 곳에 둔다.** 문서 정본도 레포에 두고, 외부 발행본은 스냅샷으로 표시한다(기계가 못 하는 동기화를 기계인 척하지 않는다).
+
+---
+
+## 6. 평가 프로토콜 (FROZEN)
+> 평가 하네스(`eval_harness`)가 구현할 판정·데이터셋·지표의 정본. 하네스 구현은 이후 별도 작업이다.
+
+### 6.1 판정 단위
+- **TP·중복 처리 단위 = CNA**(§2.6). range는 판정에 넣지 않는다(힌트).
+- **서버 중복 처리:** Finding끼리 (category, CNA 집합)이 정확히 같을 때만 병합한다. 겹침 병합은 금지한다. advisory의 CNA 집합이 어떤 finding과 같으면 advisory를 버린다. (= §2.4 중복 처리, 상호 참조)
+- **평가 매칭:** 정답 라벨 V = {categories(집합), anchors(CNA 집합)}.
+  - 예측 p가 V와 매칭 = `p.category ∈ V.categories` ∧ `p.CNA ∩ V.anchors ≠ ∅`.
+  - 1:1 최대 매칭(결정론적 동점 처리). 매칭 안 된 p = FP, 매칭 안 된 V = FN.
+  - 채점 대상 = 서버 중복 처리를 거친 출력.
+  - 평가기는 엔진의 CNA 정규화 함수(§2.6, `canonical_address`)를 쓴다 — 서버 중복 처리와 같은 함수다(평가기 → 엔진 import는 허용 방향).
+  - advisory_signals는 P/R 채점 대상이 아니다(탐지가 아니다 — §2.4). advisory 지표는 따로 정한다.
+- **라벨링 지침:** 더 세밀한 노드가 있으면 거친 노드(body_text·req_line.path)를 anchor로 쓰지 않는다(자석 노드가 FP를 TP로 둔갑시킨다).
+
+### 6.2 데이터셋
+- **두 집합:** S(자체 더미 API, 라벨 완전) / J(Juice Shop, 라벨 불완전). 지표를 합산하지 않는다.
+- **라벨 상태 셋:** labeled_positive / verified_clean / unlabeled.
+  - unlabeled 위의 예측은 FP가 아니라 '미판정'으로 따로 집계한다. 정상 FP율은 verified_clean에서만 잰다.
+- **S 라벨의 출처:** 더미 API 정의에서 파생한다(SSOT). 라벨마다 source: construction | catalog | adjudication.
+- **hard negative:** S는 category마다 hard negative를 둔다.
+- **블라인드·버전 동결:** 모델 첫 실행 전에 라벨을 동결한다. 재심은 새 데이터셋 버전으로만 한다(실행 중 수정 금지, 흔적은 source=adjudication). 지표는 데이터셋 버전과 함께 보고한다.
+- **dev/test 분리:** 엔드포인트 단위로 분리한다. 튜닝은 dev에서만, test는 회귀 판정에만 쓴다.
+- **라벨 격리:** 라벨 파일은 픽스처와 분리하고 평가기만 읽는다. 엔진은 라벨 경로를 읽지 않는다(`label_isolation`).
+- **표본 부족 표기:** §6.3 J8을 따른다.
+- **동결 = 첫 소비자 발생:** 그 시점의 형태가 schema_version의 동결 형태로 확정된다(버전을 올리는 것이 아니다. 버전은 동결 이후 첫 변경에서 오른다 — §2 버전 규칙). 큐 12(`dataset_version_freeze`) 강제 장치를 동결과 같은 PR에서 만든다.
+- **한계 기록:** IDOR 사례는 relation_preserving + 한 배치 안에서 생성한다(라벨 일관성은 배치 안에서만, §2.3). 단일 라벨러(J)라 라벨러 간 일치도는 측정할 수 없다 — 팀 확장 시 이월.
+
+### 6.3 지표
+- **J1 P/R:** §6.1 매칭 규칙. Precision 대표값은 S에서만 낸다. J는 알려진 라벨 기준 Recall + 미판정 건수. category별 + 전체 micro. 대표 = S / 현실성 = J, 섞어 보고하지 않는다.
+  - 대표 지표 = 엄격 매칭(위치 + category).
+  - 보조 지표 = 위치만 일치(category 무관)한 P/R + category 혼동 행렬.
+  - category는 맞혔으나 위치가 틀린 예측은 어느 쪽 지표에도 TP로 들어가지 않는다(매칭 불성립).
+  - 정당하게 두 category에 걸치는 결함은 V.categories를 집합으로 둔다.
+- **중복:** 매칭 후 남은 중복 예측은 FP로 센다(1:1 매칭에서 둘째 예측은 자연히 FP). 이와 별도로 중복률을 진단 지표로 보고한다.
+- **J2 output_rejected 트랜잭션:** 그 라벨은 전부 FN이다(제외 금지). 거부율은 별도 보고한다.
+- **J3 정상 오탐률** = verified_clean 중 finding ≥ 1인 비율. hard negative 부분집합은 별도 보고한다.
+- **J4 검증 가능한 결과 비율** = 중복 처리 후 finding 중 corroboration=matched가 1개 이상인 비율. `corroboration_check` 구현 전에는 not_run으로 표기하고 숫자를 내지 않는다.
+- **J5 분석 시간 절감률:** 1인 단계에서는 보류한다(unverifiable 성격). 숫자화하지 않는다.
+  - 근거: 정답을 아는 사람이 잰 수동 시간은 거짓 보장이다. 팀 확장 시 결함 목록을 모르는 점검자 대상, 교차 배치, 트랜잭션 풀 분할, 시간은 정확도와 함께 보고 — 프로토콜로 이월.
+- **J6 AI 기여도:** 규칙 단독 vs 규칙+LLM ablation(같은 데이터셋, ΔP·ΔR), produced_by별 P/R, LLM만 찾은 TP 수.
+- **J7 불확실성:** 비율은 Wilson 95% 구간. 버전 간 비교는 트랜잭션 단위 쌍체 bootstrap. 대표 지표에서 차이 구간이 통째로 0 아래면 회귀이고, 개선 주장도 같은 기준을 쓴다.
+- **J8 최소 표본:** Wilson 구간 반폭 ≤ 0.15일 때만 점추정값을 낸다. 그보다 넓으면 "표본 부족(n=k)" + 구간. 0.15는 초기 임계값이다(설정값 — `DEFAULT_PORT`와 같은 성격(실측으로 조정 가능, 정본이되 불변식 아님)).
+- **J9 보고 머리:** 데이터셋 버전·집합(S/J)·분할(dev/test)·model_id·prompt_version·ruleset_version.
 
 ---
 
