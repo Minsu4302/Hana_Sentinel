@@ -587,3 +587,34 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 ### 깨진 가정 · 미해결
 - **회신 전제 교정**: 회신은 "기존 `engine_tools_isolation`이 엔진 → tools/ import 0을 이미 강제"라고 했으나, 이 키는 not_implemented(→ fixture 마스커 구현 시)다. (A) §2.7 문구는 "강제하게 되며"로 사실에 맞게 씀. → **마스커-A는 `engine_no_rawtransaction`과 함께 `engine_tools_isolation`도 구현·승격해야 한다**(전자의 증명이 후자에 기대므로). 마스커-A 발주문의 승격 목록에는 아직 없다.
 - **`engine_no_rawtransaction`의 형태는 마스커-A에서 결정(ι 4번 보강)**: (ㄱ) 별도 테스트로 독립 enforced / (ㄴ) `engine_tools_isolation` 종속 derived. 판단 기준 = 'RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가'. (ㄱ)은 RawTransaction이 tools/ 밖으로 옮겨져도 '엔진 import 0'을 콕 집어 지킨다(위치 이동 경로까지 방어). (ㄴ)은 tools/ 안에 있는 한 충분하지만 tools/ 이탈 시 `engine_tools_isolation`이 침묵한다. 마스커-A에서 실제 구조를 보고 이 기준으로 답한다. ((A) §3.2 근거 주석과 같은 내용)
+
+---
+
+## 마스커-A — fixture 마스커: ⓕ 안전 경계와 골격 (Issue #48)
+
+### 결정
+- **`engine_no_rawtransaction` = (ㄱ) 독립 enforced.** 판단 기준('RawTransaction이 tools/를 벗어나는 변경을 방어할 필요가 있는가')에 답: 있다 — (A) §2.7이 common_types 이동을 따로 경고할 만큼 실재하는 유혹이고, 이동하면 `engine_tools_isolation`은 침묵한다. 원본 타입 이름(import·속성 접근·정의)을 위치와 무관하게 잡는 검사로 구현하고, '엔진 공용 모듈로 옮긴 모의에서 tools 검사는 침묵·이 검사는 잡음'을 테스트로 고정.
+- **`masker_independence`는 `sentinel.pipeline` 패키지 전체를 막는다**((A) 행은 sanitization_check를 명시). 같은 ③ 로직을 담은 형제 모듈(`masked_span_check`)이 우회로가 되지 않게. pipeline 밖 공용 정의(`strict_json`·`schema`·`common_types`·정책)는 허용 — 마스커는 실제로 `strict_json`을 쓴다(구분을 대조 테스트로 고정).
+- 격리 검사는 기존 `tools/arch_boundary.py`(AST)에 종류(TOOLS·RAW·PIPELINE)를 더하고, 대상 패키지마다 금지 종류를 거른다(엔진: BURP·SEND·DYNAMIC·TOOLS·RAW / 마스커: SEND·DYNAMIC·PIPELINE). `masker_no_send` = 기존 송신 검사를 `tools/fixture_masker`에 적용.
+
+### manifest 상태 변화
+| manifest 키 | 이전 | 이후 |
+|---|---|---|
+| `engine_tools_isolation` | not_implemented(→ fixture 마스커 구현 시) | enforced |
+| `engine_no_rawtransaction` | not_implemented(→ 마스커-A) | enforced((ㄱ) 독립) |
+| `masker_independence` | not_implemented(→ fixture 마스커 구현 시) | enforced |
+| `masker_no_send` | not_implemented(→ fixture 마스커 구현 시) | enforced |
+
+> 증명 노드 목록은 `guardrails.yaml`. (A) v1.13 → v1.14, 매핑표 v1.12 → v1.13. RawTransaction 1.0 첫 소비자 발생(마스커) — 이 형태가 동결 형태. `label_consistency`·`canonical_address`는 그대로(마스커-B).
+
+### 깨진 가정 · 발견된 문제
+- **변이 장치가 거짓 통과를 막음**: tools/ 변이는 `python -c`가 현재 디렉터리(레포 루트)를 sys.path 맨 앞에 넣어 원본 tools/가 변이본을 가렸다 — `assert_loaded_from`이 '다른 사본'으로 잡았다(src 변이에서는 레포 루트에 `sentinel`이 없어 드러나지 않던 경로). 드라이버에서 현재 디렉터리를 경로에서 뺌.
+- **유출 검사의 약점을 테스트가 잡음**: 첫 구현은 마스킹한 헤더 값 전체(`sid=<토큰>`)만 찾아, 토큰 조각만 본문·파라미터로 새는 경우를 놓쳤다 → 구분자로 나눈 8자 이상 구성요소도 찾도록 강화(fail-closed).
+
+### 미해결 · 이월
+- **HMAC 키 미생성(발주문 이탈)**: (A) §2.3에서 HMAC 키의 유일한 용도는 매핑 테이블 키이고, 매핑 테이블 = 라벨 일관성(마스커-B 범위). 쓰지 않는 키를 만들면 '키가 새지 않음' 테스트가 공허하다 → 마스커-B에서 매핑 테이블과 함께 만들고 그때 키 유출 테스트를 둔다.
+- **A의 fail-closed 범위**: 마스킹한 값(또는 8자 이상 조각)이 본문·파라미터·다른 헤더에도 있으면 아무것도 쓰지 않는다. 쿠키 이름 같은 8자 이상 비밀 아닌 조각이 다른 곳에 있으면 과잉 거부(비밀이 새는 방향 아님). 본문 masked_spans가 생기는 마스커-B에서 재검토.
+- (A)에 마스킹 모드(strict_redaction)와 라벨 null의 관계는 정의돼 있지 않다 — A는 단순 순번 라벨. 이월: 마스커-B(라벨 일관성).
+- omitted 본문의 size_bytes: RawBody에 원본 크기가 없어 0으로 산출. 이월: 마스커-B 또는 Java 연결 시.
+- 런타임 egress 차단(`egress_runtime_block`)은 마스커 실행에 걸지 않았다 — 정적 검사(`masker_no_send`)만.
+- 실행: `PYTHONPATH=src python -m tools.fixture_masker <원본(레포 밖)> <출력 디렉터리>` — make 타깃 없음.
