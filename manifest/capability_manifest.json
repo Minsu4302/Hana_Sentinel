@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.12",
+  "spec": "docs/design-decision.md §3 매핑표 v1.13",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -185,10 +185,13 @@
       "verification_tests": []
     },
     "masker_no_send": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "fixture 마스커 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_fixture_masker.py::test_masker_has_no_send_socket_or_dynamic_import",
+        "tests/test_fixture_masker.py::test_rejects_send_import_planted_in_masker",
+        "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "engine_burp_isolation": {
       "status": "enforced",
@@ -260,22 +263,34 @@
       ]
     },
     "engine_tools_isolation": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "fixture 마스커 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_fixture_masker.py::test_engine_imports_nothing_from_tools",
+        "tests/test_fixture_masker.py::test_rejects_tools_import_planted_in_engine",
+        "tests/test_fixture_masker.py::test_allowed_engine_like_imports_pass_as_control",
+        "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "masker_independence": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "fixture 마스커 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_fixture_masker.py::test_masker_does_not_import_engine_pipeline_but_uses_shared_strict_json",
+        "tests/test_fixture_masker.py::test_rejects_engine_pipeline_import_planted_in_masker",
+        "tests/test_fixture_masker.py::test_shared_definitions_outside_pipeline_are_allowed_for_masker_as_control",
+        "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "engine_no_rawtransaction": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "RawTransaction 타입 구현 시(마스커-A)",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_fixture_masker.py::test_engine_has_no_raw_transaction_names",
+        "tests/test_fixture_masker.py::test_rejects_raw_transaction_wherever_it_lives",
+        "tests/test_fixture_masker.py::test_raw_type_moved_out_of_tools_is_caught_where_tools_isolation_is_silent",
+        "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "maskedref_typing": {
       "status": "enforced",
