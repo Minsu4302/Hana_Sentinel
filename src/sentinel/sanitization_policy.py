@@ -3,13 +3,36 @@
 파이프라인 ③에서 이 정책의 `header_rules`는 **보조** 방어선으로만 쓴다: action이 redact/pseudonymize인
 헤더가 평문으로 오면 거부. 주 방어선은 값 기반 재스캔(`sentinel.pipeline.sanitization_check`)이며,
 이 목록 밖 헤더의 평문 비밀값도 그쪽이 잡아야 한다.
+
+`PATTERNS`는 '무엇을 찾나'의 정책 데이터다((A) §2.3 "정책에 정의된 패턴"). 엔진 ③(`sanitization_check`)과 fixture
+마스커가 같은 목록을 쓰되, 그 목록으로 스캔·판정하는 로직은 각자 따로 구현한다(R-11 — 같은 코드를 공유하지 않음).
 """
 from __future__ import annotations
 
+import re
 from fnmatch import fnmatchcase
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+_CRED_NAMES = r"(?:password|passwd|pwd|secret|client_secret|api_key|apikey|access_token|refresh_token|id_token|auth_token|token)"
+_SESSION_NAMES = (r"(?:jsessionid|phpsessid|asp\.net_sessionid|connect\.sid|sessionid|session|sid|token|auth|"
+                  r"access_token|refresh_token|id_token|csrftoken|xsrf-token)")
+
+# 정책에 정의된 패턴(이것만 탐지한다). 패턴 이름만 감사에 남는다.
+PATTERNS: Final[dict[str, re.Pattern[str]]] = {
+    "private_key_block": re.compile(r"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----"),
+    "jwt": re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
+    "auth_scheme_credential": re.compile(r"(?i)\b(?:bearer|basic|digest|negotiate|ntlm)\s+[A-Za-z0-9._~+/=-]{8,}"),
+    "aws_access_key_id": re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    "github_token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b"),
+    "slack_token": re.compile(r"\bxox[abposr]-[A-Za-z0-9-]{10,}\b"),
+    "api_secret_key": re.compile(r"\b(?:sk-(?:ant-)?[A-Za-z0-9_-]{32,}|AIza[0-9A-Za-z_-]{35})\b"),
+    "session_cookie_pair": re.compile(rf"(?i)(?:^|[\s;&?/]){_SESSION_NAMES}=[^;\s&/]{{8,}}"),  # '/'·';' = URL 재작성 세션
+    "credential_json_field": re.compile(rf'(?i)"{_CRED_NAMES}"\s*:\s*"[^"]+"'),
+    "credential_form_field": re.compile(rf"(?i)(?:^|[&?]){_CRED_NAMES}=[^&\s]+"),
+}
 
 
 class _Strict(BaseModel):

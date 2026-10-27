@@ -30,7 +30,7 @@ from tools.mutation_guard import assert_loaded_from, copy_with_mutation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENGINE_ROOT = REPO_ROOT / "src" / "sentinel"
-MASKER_ROOT = REPO_ROOT / "tools" / "fixture_masker"
+MASKER_ROOT = Path(masker.__file__).resolve().parent  # 실제 로드된 마스커 — 변이 실행에서는 변이본을 검사한다
 
 # N5 더미 규칙: 토큰·쿠키 값 = faketoken_ + 16 hex, 호스트 = *.example.test. 실행마다 새로 만든다.
 N5_TOKEN = re.compile(r"faketoken_[0-9a-f]{16}")
