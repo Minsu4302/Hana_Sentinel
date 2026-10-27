@@ -279,6 +279,8 @@
         "tests/test_fixture_masker.py::test_masker_does_not_import_engine_pipeline_but_uses_shared_strict_json",
         "tests/test_fixture_masker.py::test_rejects_engine_pipeline_import_planted_in_masker",
         "tests/test_fixture_masker.py::test_shared_definitions_outside_pipeline_are_allowed_for_masker_as_control",
+        "tests/test_masker_cross_validation.py::test_masker_runtime_import_graph_has_no_engine_pipeline_even_on_the_base64_path",
+        "tests/test_masker_cross_validation.py::test_patterns_are_shared_policy_data_not_pipeline_code",
         "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
       ]
     },

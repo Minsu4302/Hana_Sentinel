@@ -3,7 +3,7 @@
 `applied==true`는 요청자가 쓰는 주장일 뿐이다. 여기서는 마스킹됐다는 주장을 믿지 않고 데이터를 스스로
 재검증한다:
 - **주 방어선 — 값 기반 재스캔**: Envelope의 모든 문자열(헤더·파라미터의 이름과 값, 경로, 본문, 메타)과
-  base64 본문의 디코드 결과, 퍼센트 디코드 결과를 아래 PATTERNS로 스캔한다. 하나라도 걸리면 `applied`
+  base64 본문의 디코드 결과, 퍼센트 디코드 결과를 정책 패턴(`sanitization_policy.PATTERNS`)으로 스캔한다. 하나라도 걸리면 `applied`
   값과 무관하게 거부(영수증 ≠ 데이터면 데이터를 믿고 거부).
 - **fail-closed**: `applied`가 true가 아니거나 `failed`가 true면 데이터가 깨끗해 보여도 거부. 영수증 필드
   누락·타입 오류는 ② 스키마에서 이미 거부된다.
@@ -23,36 +23,18 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
-import re
 from typing import Any, Final
 from urllib.parse import unquote_plus
 
 from sentinel.pipeline import masked_span_check
-from sentinel.sanitization_policy import DEFAULT_POLICY, SanitizationPolicy
+# 패턴은 정책 데이터다(pipeline 밖, 마스커와 공유) — 이 모듈은 스캔·판정 로직만 갖는다. 기존 import 호환을 위해 재노출.
+from sentinel.sanitization_policy import DEFAULT_POLICY, PATTERNS, SanitizationPolicy
 from sentinel.schema import Body, Envelope, Transaction
 
 audit_log = logging.getLogger("sentinel.audit")
 
 REQ_BODY_CAP: Final = 64 * 1024  # (A) §2.2 config화 대상 — 현재 기본값
 RESP_BODY_CAP: Final = 256 * 1024
-
-_CRED_NAMES = r"(?:password|passwd|pwd|secret|client_secret|api_key|apikey|access_token|refresh_token|id_token|auth_token|token)"
-_SESSION_NAMES = (r"(?:jsessionid|phpsessid|asp\.net_sessionid|connect\.sid|sessionid|session|sid|token|auth|"
-                  r"access_token|refresh_token|id_token|csrftoken|xsrf-token)")
-
-# 정책에 정의된 패턴(이것만 탐지한다). 패턴 이름만 감사에 남는다.
-PATTERNS: Final[dict[str, re.Pattern[str]]] = {
-    "private_key_block": re.compile(r"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----"),
-    "jwt": re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
-    "auth_scheme_credential": re.compile(r"(?i)\b(?:bearer|basic|digest|negotiate|ntlm)\s+[A-Za-z0-9._~+/=-]{8,}"),
-    "aws_access_key_id": re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
-    "github_token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b"),
-    "slack_token": re.compile(r"\bxox[abposr]-[A-Za-z0-9-]{10,}\b"),
-    "api_secret_key": re.compile(r"\b(?:sk-(?:ant-)?[A-Za-z0-9_-]{32,}|AIza[0-9A-Za-z_-]{35})\b"),
-    "session_cookie_pair": re.compile(rf"(?i)(?:^|[\s;&?/]){_SESSION_NAMES}=[^;\s&/]{{8,}}"),  # '/'·';' = URL 재작성 세션
-    "credential_json_field": re.compile(rf'(?i)"{_CRED_NAMES}"\s*:\s*"[^"]+"'),
-    "credential_form_field": re.compile(rf"(?i)(?:^|[&?]){_CRED_NAMES}=[^&\s]+"),
-}
 
 
 class SanitizationRejected(ValueError):

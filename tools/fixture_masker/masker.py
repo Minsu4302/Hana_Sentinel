@@ -18,6 +18,12 @@
   HMAC 키는 실행마다 새로 만들고 실행이 끝나면 버린다(디스크·로그·출력에 쓰지 않음).
 - 출력 전 자체 검증: Body 불변식 1~6(엔진 ③을 쓰지 않는 독립 구현), 모드별 라벨 규칙(strict = 전부 null /
   relation = 원본값 ↔ 라벨 양방향 일대일), 유출 검사. 하나라도 어긋나면 아무것도 쓰지 않는다.
+- base64 본문(마스커-B2, (A) §2.2 'base64에는 span을 두지 않는다 — 비밀값이 있으면 omitted'): 디코드 바이트를 정책 패턴
+  (`sanitization_policy.PATTERNS` — 공유 데이터)으로 스캔해 걸리면 omitted(content=null, size_bytes=디코드 길이),
+  아니면 그대로 둔다. 스캔·판정 로직(`_finds_secret`)은 마스커 자체 구현이다 — 엔진 ③의 `scan_text`를 쓰지 않는다.
+  독립성의 실체는 이 판정 로직이다. base64 디코드·퍼센트 디코드 자체는 표준 라이브러리라 양쪽이 같다(독립 아님 — 정직 표기).
+  변형 범위는 ③과 같게 맞춘다: utf-8(errors=replace) 텍스트 + '%'·'+'가 있으면 퍼센트(+) 디코드 변형.
+  변형 규칙은 '언제 어떤 표준 함수를 부르나'라 데이터로 빼지 않았다 — 같은 변형을 본다는 것은 동등성 테스트가 고정한다.
 - size_bytes는 마스킹 뒤 content로 산출, truncated=false(절단하지 않음 — §2.2 절단은 마스킹 뒤).
 
 독립성(`masker_independence`, R-11): 엔진 검증 파이프라인(`sentinel.pipeline`)을 쓰지 않는다. 엔진의 공용 정의
@@ -42,7 +48,7 @@ from pydantic import ValidationError
 
 from sentinel import strict_json
 from sentinel.common_types import FILLER
-from sentinel.sanitization_policy import DEFAULT_POLICY
+from sentinel.sanitization_policy import DEFAULT_POLICY, PATTERNS
 from sentinel.schema import Envelope
 from tools.fixture_masker.raw import RAW_SCHEMA_VERSION, RawBody, RawEnvelope, RawHeader, RawTransaction
 
@@ -238,14 +244,25 @@ def _body(b: RawBody, run: _Run, globs: dict[str, list[str]]) -> dict[str, Any]:
             content, spans = _mask_form(content, globs["form"], run)
         elif _declares_json(b):
             raise MaskerRejected("body_unparseable")
+    if b.encoding == "base64" and content is not None:
+        decoded = base64.b64decode(content, validate=True)  # 디코드 불가 → transform_failed
+        if _finds_secret(decoded.decode("utf-8", errors="replace")):  # 디코드 바이트는 이 함수 밖으로 나가지 않는다
+            return {"content_type": b.content_type, "size_bytes": len(decoded), "truncated": False,
+                    "encoding": "omitted", "content": None, "masked_spans": []}  # (A) §2.2 불변식 2'
+        return {"content_type": b.content_type, "size_bytes": len(decoded), "truncated": False, "encoding": "base64",
+                "content": content, "masked_spans": []}
     if b.encoding == "omitted" or content is None:
         size = 0
-    elif b.encoding == "base64":
-        size = len(base64.b64decode(content, validate=True))  # 디코드 불가 → transform_failed
     else:
         size = len(content.encode("utf-8"))
     return {"content_type": b.content_type, "size_bytes": size, "truncated": False, "encoding": b.encoding,
             "content": None if b.encoding == "omitted" else content, "masked_spans": spans}
+
+
+def _finds_secret(text: str) -> bool:
+    """정책 패턴이 text(또는 그 퍼센트(+) 디코드 변형)에서 하나라도 걸리는가 — 마스커 자체 판정(엔진 ③과 독립 구현)."""
+    variants = [text, unquote_plus(text)] if ("%" in text or "+" in text) else [text]
+    return any(pattern.search(v) for v in variants for pattern in PATTERNS.values())
 
 
 def _transaction(tx: RawTransaction, run: _Run, globs: dict[str, list[str]]) -> dict[str, Any]:
