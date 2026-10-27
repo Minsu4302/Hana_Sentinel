@@ -4,16 +4,18 @@ from __future__ import annotations
 import argparse
 import sys
 
-from tools.fixture_masker.masker import MaskerRejected, run
+from tools.fixture_masker.masker import MODES, MaskerRejected, run
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="fixture_masker", description="원본(레포 밖) → 마스킹된 Envelope")
     parser.add_argument("raw_path")
     parser.add_argument("out_dir")
+    parser.add_argument("--mode", choices=MODES, default="strict_redaction",
+                        help="라벨 모드 — 원본에 싣지 않고 실행 옵션으로만 받는다((A) §2.3)")
     args = parser.parse_args(argv)
     try:
-        count = run(args.raw_path, args.out_dir)
+        count = run(args.raw_path, args.out_dir, args.mode)
     except MaskerRejected as exc:
         print(f"fixture_masker rejected: {exc.code}", file=sys.stderr)
         return 2

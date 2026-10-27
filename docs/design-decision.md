@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.14 — Sentinel Harness
+# (A) 설계확정서 v1.15 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.14 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.13(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.15 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.14(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -34,7 +34,10 @@
 > **v1.13 (매핑표 v1.12):** §2.7 RawTransaction 신설(§2.2 Transaction의 마스킹 전 쌍 — RawParam·RawHeader·RawBody, 타입은 tools/ 아래에만) + §1.3 ⓕ 해석 두 줄(금지선 문구 불변) + §3.2 신규 키 `engine_no_rawtransaction`(not_implemented).
 >   - RawTransaction 1.0 정의 — 소비자 0(첫 소비자 = fixture 마스커, 마스커-A). Envelope·AnalysisResult `schema_version` 값 변화 없음.
 > **v1.14 (매핑표 v1.13):** 마스커-A — §3.1 `masker_no_send`, §3.2 `engine_tools_isolation`·`masker_independence`·`engine_no_rawtransaction` 승격(not_implemented → enforced, 증명은 같은 PR). `engine_no_rawtransaction`은 (ㄱ) 독립 enforced로 결정(§3.2 근거 주석). §2.7 배치 문장과 §3.2 근거 주석의 '현재 not_implemented'·'지금 결정 아님' 표현을 승격 결과에 맞게 갱신. RawTransaction 1.0 첫 소비자 발생(fixture 마스커) — 이 시점의 형태가 동결 형태. Envelope·AnalysisResult `schema_version` 값 변화 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27)
+> **v1.15 (매핑표 v1.14):** 마스커-B1 — 규칙 명문화(모드가 라벨 유무를 결정: strict_redaction → label=null / relation_preserving → ref_NN 순번) + §2.3 body_rules matcher 문법(json:<키 glob> 모든 깊이 / form:<이름 glob>, 마스커·Java 공유 계약) + §3 `label_consistency`(relation_preserving 출력에만)·`canonical_address`(모드 무관) 승격(not_implemented → enforced, 증명은 같은 PR). §2.3 라벨 규칙 첫 줄에 '(relation_preserving에서)' 한정.
+>   - 라벨 모드 규칙은 확인이 아니라 새 규칙이다(이전 (A)에는 모드와 라벨 null의 관계가 없었다 — 마스커-A 이월). MaskedRef `label: "ref_NN" | null`(§2.6)·§6.2 IDOR 사례 = relation_preserving과 정합.
+>   - Envelope·AnalysisResult `schema_version` 값 변화 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27)
 
 ---
 
@@ -178,10 +181,18 @@ SanitizationReceipt   # 각 Transaction.meta에 필수
 # MaskedRef → §2.6으로 이동
 ```
 - **라벨 규칙:**
-  - 매핑 테이블의 키 = HMAC(배치 키, 원본값). 라벨은 순번으로 할당한다(`ref_01`, `ref_02`, …). 해시를 잘라 라벨로 쓰지 않는다. Python으로는 라벨만 간다. 원본값은 Java 경계를 넘지 않는다.
+  - **모드가 라벨 유무를 결정한다:** strict_redaction → label=null(같은 값이어도 라벨로 연결하지 않는다) / relation_preserving → label=ref_NN(순번 할당). 모드는 원본에 싣지 않고 생산자(마스커·Java)의 실행 옵션으로 받는다.
+  - 매핑 테이블의 키 = HMAC(배치 키, 원본값). 라벨은 (relation_preserving에서) 순번으로 할당한다(`ref_01`, `ref_02`, …). 해시를 잘라 라벨로 쓰지 않는다. Python으로는 라벨만 간다. 원본값은 Java 경계를 넘지 않는다.
   - 같은 원본값 ⇔ 같은 라벨(양방향). 동치 기준은 원본값이며 kind와 무관하다. 헤더·파라미터·본문 span에 공통으로 적용한다. 배치 안에서만 유효하다.
   - 이 불변식은 생산자(마스커·Java) 쪽에서만 강제할 수 있다. Python ③은 원본을 모른다.
+  - label_consistency(라벨 양방향 동치)는 relation_preserving 모드에서만 강제된다. strict_redaction은 label=null이라 이 불변식의 대상이 아니다.
   - 접두사 `ref`의 근거: 의미 있는 접두사는 LLM이 근거 없이 추론하게 만든다(R-9와 같은 문제). 의미는 `ref.kind`에만 둔다.
+- **body_rules matcher 문법(마스커·Java 공유 계약):**
+  - `json:<키 glob>` — 모든 깊이에서 이름이 glob과 일치하는 JSON 객체 멤버 중 값이 문자열인 노드 → 그 노드 전체 span(JSON Pointer). 중첩 포함: `{"user":{"password":"x"}}`에서 `json:password`는 중첩된 password도 잡는다. 본문이 엄격 JSON(§2.6)으로 파싱될 때만 적용한다.
+  - `form:<이름 glob>` — 이름이 glob과 일치하는 폼 본문 파라미터의 값 구간 → text range span(저장 content 기준 코드포인트 오프셋).
+  - glob은 헤더 규칙과 같이 대소문자를 무시한다.
+  - action(redact / pseudonymize): 지금은 둘 다 'FILLER + span'으로 같게 처리한다. 차이는 미정(큐).
+  - text 본문의 정규식 matcher는 아직 없다. 규칙 값(어떤 이름을 가리나)은 정본이 아닌 설정값이다.
 - **정책은 데이터 파일로 둔다.** fixture 마스커(참조 구현)와 Java가 같은 정책 파일을 해석한다. fixture 마스커가 픽스처에 대해 Java의 1차 역할을 대신한다. 마스커는 엔진의 `sanitization_check`를 재사용하지 않는다(독립성 — R-11 정신).
 - **키·매핑 테이블:** 프로세스 메모리 전용. 디스크·로그·예외 메시지 기록 금지. **일관성 범위 = 분석 배치 단위**(→ 키 영속화 불필요, 평가 재현성과 보안 트레이드오프 해소).
 - **기본 모드 = strict_redaction.** relation_preserving은 IDOR/BOLA 세션에서만 opt-in.
@@ -324,7 +335,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.13 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.14 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -398,7 +409,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
 | 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 수용 요청 감사(B-6) 범위 확정 시 | `audit_write_failure` |
 | Body 불변식 1~6을 ③에서 검증 | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `masked_span_integrity` |
-| 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | not_implemented → fixture 마스커 구현 시 | `label_consistency` |
+| 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | enforced(relation_preserving 출력에만 — strict는 label=null이라 대상 아님) | `label_consistency` |
 
 ### 3.4 전 층위 공통
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -419,7 +430,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |
 | 반복 이상 → 세션 신호 | 테스트 | not_implemented → 3주차 | `anomaly_aggregation` |
 | 평가 하네스 | 테스트 | not_implemented → 평가 하네스 구현 시 | `eval_harness` |
-| 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | not_implemented → 정규화 함수 구현 시 | `canonical_address` |
+| 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | enforced(모드 무관 — 항상 적용) | `canonical_address` |
 | 엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리) | 아키텍처 테스트 | not_implemented → 평가 하네스 구현 시 | `label_isolation` |
 | 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12) | 테스트 | not_implemented → 데이터셋 첫 동결 시 | `dataset_version_freeze` |
 

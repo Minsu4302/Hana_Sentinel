@@ -52,3 +52,59 @@ def resolve(doc: Any, pointer: str) -> tuple[bool, Any]:
     if not found:
         return False, None
     return True, (doc if parent is None else parent[key])
+
+
+def _skip_ws(s: str, i: int) -> int:
+    while i < len(s) and s[i] in " \t\n\r":
+        i += 1
+    return i
+
+
+def _string_end(s: str, i: int) -> int:
+    j = i + 1  # s[i] == '"'
+    while s[j] != '"':
+        j += 2 if s[j] == "\\" else 1
+    return j + 1
+
+
+def _escape(token: str) -> str:
+    return token.replace("~", "~0").replace("/", "~1")
+
+
+def _scan(s: str, i: int, pointer: str, key: str | None, out: list) -> int:
+    c = s[i]
+    if c == '"':
+        end = _string_end(s, i)
+        out.append((pointer, key, i, end))
+        return end
+    if c in "{[":
+        close, index = ("}" if c == "{" else "]"), 0
+        i = _skip_ws(s, i + 1)
+        if s[i] == close:
+            return i + 1
+        while True:
+            if c == "{":
+                name_end = _string_end(s, i)
+                name = json.loads(s[i:name_end])
+                i = _skip_ws(s, _skip_ws(s, name_end) + 1)  # ':' 건너뜀
+                i = _scan(s, i, f"{pointer}/{_escape(name)}", name, out)
+            else:
+                i = _scan(s, i, f"{pointer}/{index}", None, out)
+                index += 1
+            i = _skip_ws(s, i)
+            if s[i] == close:
+                return i + 1
+            i = _skip_ws(s, i + 1)  # ','
+    j = i
+    while j < len(s) and s[j] not in ",]} \t\n\r":
+        j += 1
+    return j
+
+
+def string_value_spans(content: str) -> list[tuple[str, str | None, int, int]]:
+    """문자열 *값* 토큰마다 (JSON Pointer, 멤버 이름 | None, 시작, 끝). 구간은 저장 content의 코드포인트 반열림이며
+    따옴표를 포함한다. 객체 멤버 이름은 값이 아니므로 제외. 배열 원소·루트는 멤버 이름 None.
+    content는 `parse`를 통과한 엄격 JSON이어야 한다(호출자가 먼저 확인 — 여기서는 문법을 다시 검사하지 않는다)."""
+    out: list[tuple[str, str | None, int, int]] = []
+    _scan(content, _skip_ws(content, 0), "", None, out)
+    return out
