@@ -45,4 +45,9 @@ DEFAULT_POLICY = SanitizationPolicy(
         "authorization", "proxy-authorization", "cookie", "set-cookie",
         "x-api-key", "*api-key*", "*apikey*", "*token*", "*secret*", "*session*",
     )),
+    # 본문 규칙((A) §2.3 matcher 문법): json:<키 glob> = 모든 깊이의 이름 일치 멤버 중 문자열 값 노드 /
+    # form:<이름 glob> = 폼 본문 파라미터 값. 대소문자 무시. 소비자는 fixture 마스커(와 미래 Java) — ③은 쓰지 않는다.
+    body_rules=tuple(BodyRule(matcher=f"{kind}:{p}", action="redact") for kind in ("json", "form") for p in (
+        "password", "passwd", "pwd", "*token*", "*secret*", "*session*", "*api*key*", "*apikey*",
+    )),
 )

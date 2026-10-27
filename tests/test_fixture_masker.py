@@ -103,16 +103,19 @@ def test_no_committed_file_is_a_raw_envelope():
 
 # ── 대조: 정상 변환 ────────────────────────────────────────────────
 
-def test_masks_policy_headers_host_and_writes_only_masked_envelopes(fakes, tmp_path):
+@pytest.mark.parametrize("mode,labels", [
+    ("strict_redaction", [None, None, None, None]),        # (A) §2.3: strict → label=null
+    ("relation_preserving", ["ref_01", "ref_02", "ref_03", "ref_04"]),
+])
+def test_masks_policy_headers_host_and_writes_only_masked_envelopes(fakes, tmp_path, mode, labels):
     out = tmp_path / "out"
-    assert masker.run(_write_raw(tmp_path, _raw_doc(fakes)), out) == 1
+    assert masker.run(_write_raw(tmp_path, _raw_doc(fakes)), out, mode) == 1
     [path] = list(out.iterdir())
-    env = parse_envelope(path.read_bytes())  # ② 스키마로 읽힘(①②③ 교차 검증은 마스커-B)
+    env = parse_envelope(path.read_bytes())  # ② 스키마로 읽힘(①②③ 교차 검증은 마스커-B2)
     tx = env.transactions[0]
     masked = {h.name: h.value for h in tx.request.headers + tx.response.headers if not isinstance(h.value, str)}
-    assert {n: (v.label, v.kind) for n, v in masked.items()} == {
-        "Host": ("ref_01", "host"), "Cookie": ("ref_02", "cookie"), "Authorization": ("ref_03", "token"),
-        "Set-Cookie": ("ref_04", "cookie")}
+    assert {n: (v.label, v.kind) for n, v in masked.items()} == dict(zip(
+        ["Host", "Cookie", "Authorization", "Set-Cookie"], zip(labels, ["host", "cookie", "token", "cookie"])))
     assert tx.request.host == "masked-host-01.invalid"
     assert [h.value for h in tx.request.headers if h.name == "Content-Type"] == ["application/json"]
     receipt = tx.meta.sanitization
@@ -235,7 +238,7 @@ def test_masked_value_also_present_in_unmasked_place_is_rejected_fail_closed(fak
 
 def test_transform_exception_leaves_no_raw_fragment(fakes, tmp_path, monkeypatch, caplog):
     """변환 중 예외의 메시지에 원본 조각이 있어도(모의) 밖으로 나가는 예외·트레이스백·로그에는 사유 코드뿐."""
-    def explode(b):
+    def explode(*_args, **_kwargs):  # 서명과 무관하게 — 인자 수가 바뀌면 TypeError로 공허하게 통과했다(B1 변이가 잡음)
         raise ValueError(f"cannot handle {fakes['bearer_token']} at {fakes['host']}")
     monkeypatch.setattr(masker, "_body", explode)
     with caplog.at_level(logging.DEBUG), pytest.raises(MaskerRejected) as exc:
@@ -378,8 +381,8 @@ MUTATIONS = {
     "leak_guard_off": (*_M, "    if _leaked(serialized, run.originals):\n", "    if False:\n",
                        [_T + "test_leak_guard_rejects_transform_bug_and_writes_nothing",
                         _T + "test_masked_value_also_present_in_unmasked_place_is_rejected_fail_closed"]),
-    "exception_chain_kept": (*_M, '    except Exception:\n        raise MaskerRejected("transform_failed") from None',
-                             '    except Exception as exc:\n        raise MaskerRejected("transform_failed") from exc',
+    "exception_chain_kept": (*_M, '        except Exception:\n            raise MaskerRejected("transform_failed") from None',
+                             '        except Exception as exc:\n            raise MaskerRejected("transform_failed") from exc',
                              [_T + "test_transform_exception_leaves_no_raw_fragment"]),
     "schema_error_chain_kept": (*_M, '    except ValidationError:\n        raise MaskerRejected("raw_schema_invalid") from None',
                                 '    except ValidationError as exc:\n        raise MaskerRejected("raw_schema_invalid") from exc',

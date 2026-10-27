@@ -325,7 +325,9 @@
 11. (큐만, 미확정) 헤더 값·경로의 부분 마스킹 표기 — (A) §2.2가 이 큐를 가리킨다. 현재는 fail-closed.
 - (큐 12는 θ에서 큐 목록 밖으로 — (A) §6.2 + §3.5 `dataset_version_freeze`로 닫힘. 작성 당시 문구: "첫 소비자 경계 강제 장치 — 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이는 실패하는 테스트. 평가 데이터셋을 처음 동결할 때 키 신설.")
 
-남은 큐는 10·11뿐이다 — 둘 다 마스킹 표기 큐로 5번(평가)과 독립.
+남은 큐는 10·11뿐이다 — 둘 다 마스킹 표기 큐로 5번(평가)과 독립. (θ 시점)
+13. (큐만, 미확정 — 마스커-B1에서 등재) query 파라미터 마스킹 규칙. 지금은 규칙이 없고, 다른 자리에서 마스킹한 값이 query에 남으면 마스커 유출 검사가 거부한다(fail-closed로 안전).
+14. (큐만, 미확정 — 마스커-B1에서 등재) body_rules action redact / pseudonymize의 차이. 지금은 둘 다 'FILLER + span'((A) §2.3).
 
 severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)은 θ에서 '4번 주제(LLM 전략) 이월'로 옮김(목표: 4번 또는 이후).
 
@@ -618,3 +620,31 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - omitted 본문의 size_bytes: RawBody에 원본 크기가 없어 0으로 산출. 이월: 마스커-B 또는 Java 연결 시.
 - 런타임 egress 차단(`egress_runtime_block`)은 마스커 실행에 걸지 않았다 — 정적 검사(`masker_no_send`)만.
 - 실행: `PYTHONPATH=src python -m tools.fixture_masker <원본(레포 밖)> <출력 디렉터리>` — make 타깃 없음.
+
+---
+
+## 마스커-B1 — masked_spans·라벨·CNA 생산 (Issue #50)
+
+### 0단계 멈춤 → 설계자 결정
+- 발주문의 CNA 함수 위치 'tools/ 공용'이 (A) §2.6("엔진 안의 순수 함수")·§6.1("서버 중복 처리와 같은 함수")과 충돌 → (가): `src/sentinel/canonical_address.py`(엔진 안, pipeline 밖). "엔진 코드 변경 0"은 이 모듈만큼 예외.
+- body_rules matcher 의미가 (A)에 없었고 기본값이 비어 있었다 → (A) §2.3에 matcher 문법(json:<키 glob> 모든 깊이 / form:<이름 glob>) 명문화, 기본값은 설정값으로 채움.
+- '확인'으로 발주된 strict → label=null은 (A)에 없던 새 규칙 → 규칙 명문화로 기록하고 버전을 올림.
+
+### manifest 상태 변화
+| manifest 키 | 이전 | 이후 |
+|---|---|---|
+| `label_consistency` | not_implemented(→ fixture 마스커 구현 시) | enforced(relation_preserving 출력에만 — strict는 label=null이라 대상 아님) |
+| `canonical_address` | not_implemented(→ 정규화 함수 구현 시) | enforced(모드 무관 — 항상 적용) |
+
+> 증명 노드는 `guardrails.yaml`. `label_consistency` 검증 목록에 strict 테스트를 넣지 않았다(null==null 자명 통과로 enforced를 주장하지 않음). (A) v1.14 → v1.15, 매핑표 v1.13 → v1.14. `dataset_version_freeze`·`eval_harness`는 그대로.
+
+### 깨진 가정 · 발견된 문제
+- **변이가 공허해진 마스커-A 테스트를 잡음**: B1에서 `_body`의 인자가 늘자, A의 '변환 중 예외' 테스트가 쓰던 가짜 함수 `explode(b)`가 TypeError(표지 없음)로 터져 원본 조각 예외를 모의하지 못한 채 통과하고 있었다 → '예외 체인 유지' 변이가 살아남아 드러남. 서명 무관 가짜 함수로 고침.
+- 유출 검사 정밀화: A의 '8자 이상 조각 전수'를 '헤더 값의 비밀 구성요소(쌍의 값·스킴 뒤 자격증명)'로 좁힘 — 쿠키 이름·스킴 단어의 과잉 거부 제거. 값 전체·비밀 구성요소·폼 값의 인코딩 형태는 여전히 찾는다(변이 2종으로 방어 수준 유지 확인).
+
+### 미해결 · 이월
+- 헤더 값은 통째로 MaskedRef가 된다 → relation 모드에서 `Cookie: sid=<토큰>`과 본문의 `<토큰>`은 원본값이 달라 다른 라벨. 쌍 단위 부분 마스킹은 큐 11(헤더 부분 마스킹)과 같은 문제.
+- 본문 span의 kind는 전부 token(규칙에 kind가 없음). 이월: 정책 규칙에 kind를 둘지 — 마스커-B2 또는 Java 연결 시.
+- base64 본문은 규칙을 적용하지 않는다((A) §2.2: 비밀값 발견 시 omitted — 마스커가 디코드해 판정하는 로직은 아직 없음). 엔진 ③이 디코드 재스캔으로 2차 방어.
+- 아주 짧은 비밀값(1~2자)은 값 전체가 유출 검사 바늘이라 출력 전체가 과잉 거부될 수 있다(fail-closed 방향, A와 같음).
+- CNA 함수의 호출처는 아직 테스트뿐 — 평가 라벨 anchors(마스커-B2·데이터셋 동결)와 서버 중복 처리(LLM 결선)에서 쓴다.

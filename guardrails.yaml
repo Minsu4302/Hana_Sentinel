@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.13. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.14. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.13"
+derived_from: "docs/design-decision.md §3 매핑표 v1.14"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -455,9 +455,17 @@ guardrails:
     description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "fixture 마스커 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "relation_preserving 출력에만 — strict는 label=null이라 대상 아님"
+    verification_tests:
+      - "tests/test_masker_spans_labels.py::test_relation_mode_same_value_same_label_across_header_body_and_param"
+      - "tests/test_masker_spans_labels.py::test_relation_mode_labels_are_a_bijection_over_many_distinct_values"
+      - "tests/test_masker_spans_labels.py::test_labels_are_scoped_to_one_run"
+      - "tests/test_masker_spans_labels.py::test_label_self_check_rejects_inconsistent_relation_labels"
+      - "tests/test_masker_spans_labels.py::test_hmac_key_is_fresh_per_run_and_discarded_at_the_end"
+      - "tests/test_masker_spans_labels.py::test_hmac_key_is_discarded_even_when_the_run_fails"
+      - "tests/test_masker_spans_labels.py::test_hmac_key_never_reaches_output_logs_streams_or_exceptions"
+      - "tests/test_masker_spans_labels.py::test_each_b1_mechanism_is_load_bearing_under_verified_mutation"
     manifest_key: label_consistency
   - id: branch_protection
     description: "main 직접 병합 금지"
@@ -612,9 +620,19 @@ guardrails:
     description: "정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "정규화 함수 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "모드 무관 — 항상 적용"
+    verification_tests:
+      - "tests/test_canonical_address.py::test_text_range_inside_json_string_promotes_to_the_json_node"
+      - "tests/test_canonical_address.py::test_text_range_inside_nested_array_string_and_emoji_offsets"
+      - "tests/test_canonical_address.py::test_text_range_inside_form_value_promotes_to_the_form_param"
+      - "tests/test_canonical_address.py::test_header_range_and_name_case_are_dropped"
+      - "tests/test_canonical_address.py::test_req_line_path_range_is_dropped"
+      - "tests/test_canonical_address.py::test_response_side_json_promotion_and_status"
+      - "tests/test_canonical_address.py::test_failed_promotion_falls_back_to_body_text"
+      - "tests/test_canonical_address.py::test_different_nodes_or_transactions_get_different_cnas"
+      - "tests/test_canonical_address.py::test_function_lives_outside_the_pipeline_so_masker_may_import_it"
+      - "tests/test_canonical_address.py::test_each_normalization_rule_is_load_bearing_under_verified_mutation"
     manifest_key: canonical_address
   - id: label_isolation
     description: "엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리)"

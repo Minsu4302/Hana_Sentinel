@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.13",
+  "spec": "docs/design-decision.md §3 매핑표 v1.14",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -410,10 +410,19 @@
       ]
     },
     "label_consistency": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "fixture 마스커 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "relation_preserving 출력에만 — strict는 label=null이라 대상 아님",
+      "verification_tests": [
+        "tests/test_masker_spans_labels.py::test_relation_mode_same_value_same_label_across_header_body_and_param",
+        "tests/test_masker_spans_labels.py::test_relation_mode_labels_are_a_bijection_over_many_distinct_values",
+        "tests/test_masker_spans_labels.py::test_labels_are_scoped_to_one_run",
+        "tests/test_masker_spans_labels.py::test_label_self_check_rejects_inconsistent_relation_labels",
+        "tests/test_masker_spans_labels.py::test_hmac_key_is_fresh_per_run_and_discarded_at_the_end",
+        "tests/test_masker_spans_labels.py::test_hmac_key_is_discarded_even_when_the_run_fails",
+        "tests/test_masker_spans_labels.py::test_hmac_key_never_reaches_output_logs_streams_or_exceptions",
+        "tests/test_masker_spans_labels.py::test_each_b1_mechanism_is_load_bearing_under_verified_mutation"
+      ]
     },
     "branch_protection": {
       "status": "unverifiable",
@@ -551,10 +560,21 @@
       "verification_tests": []
     },
     "canonical_address": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "정규화 함수 구현 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "모드 무관 — 항상 적용",
+      "verification_tests": [
+        "tests/test_canonical_address.py::test_text_range_inside_json_string_promotes_to_the_json_node",
+        "tests/test_canonical_address.py::test_text_range_inside_nested_array_string_and_emoji_offsets",
+        "tests/test_canonical_address.py::test_text_range_inside_form_value_promotes_to_the_form_param",
+        "tests/test_canonical_address.py::test_header_range_and_name_case_are_dropped",
+        "tests/test_canonical_address.py::test_req_line_path_range_is_dropped",
+        "tests/test_canonical_address.py::test_response_side_json_promotion_and_status",
+        "tests/test_canonical_address.py::test_failed_promotion_falls_back_to_body_text",
+        "tests/test_canonical_address.py::test_different_nodes_or_transactions_get_different_cnas",
+        "tests/test_canonical_address.py::test_function_lives_outside_the_pipeline_so_masker_may_import_it",
+        "tests/test_canonical_address.py::test_each_normalization_rule_is_load_bearing_under_verified_mutation"
+      ]
     },
     "label_isolation": {
       "status": "not_implemented",
