@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "S-v1",
+  "frozen_at": "2026-10-29T00:03:33+00:00",
+  "frozen_against": {
+    "envelope_schema": "1.0",
+    "raw_schema": "1.0",
+    "labelfile_schema": "1.0",
+    "masking_modes": {
+      "0d851bfd-db38-46eb-ad00-1501b42137ed": "strict_redaction",
+      "d603e430-7c16-4075-8637-d3ccceeb5c7c": "strict_redaction",
+      "84547b2f-4eab-47f2-b190-66d9ef47a3c5": "strict_redaction",
+      "fab71ff6-1f53-4306-959e-6039927ea4c2": "relation_preserving",
+      "91640ac7-d590-45cc-8b2f-c207ec3301ed": "strict_redaction",
+      "e6f3ed03-2de5-4fa1-87d9-5ba58cdaf51a": "strict_redaction"
+    }
+  },
+  "labels": [
+    {
+      "transaction_ref": "0d851bfd-db38-46eb-ad00-1501b42137ed",
+      "hard_negative": false,
+      "source": "construction",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "q"
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/query"
+          }
+        }
+      ]
+    },
+    {
+      "transaction_ref": "d603e430-7c16-4075-8637-d3ccceeb5c7c",
+      "hard_negative": false,
+      "source": "construction",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/stack"
+          }
+        }
+      ]
+    },
+    {
+      "transaction_ref": "84547b2f-4eab-47f2-b190-66d9ef47a3c5",
+      "hard_negative": false,
+      "source": "construction",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin"
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials"
+        }
+      ]
+    },
+    {
+      "transaction_ref": "fab71ff6-1f53-4306-959e-6039927ea4c2",
+      "hard_negative": false,
+      "source": "construction",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "authorization"
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/UserId"
+          }
+        }
+      ]
+    },
+    {
+      "transaction_ref": "91640ac7-d590-45cc-8b2f-c207ec3301ed",
+      "hard_negative": false,
+      "source": "construction",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": []
+    },
+    {
+      "transaction_ref": "e6f3ed03-2de5-4fa1-87d9-5ba58cdaf51a",
+      "hard_negative": true,
+      "source": "construction",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": []
+    }
+  ]
+}

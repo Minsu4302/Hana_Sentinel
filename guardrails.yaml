@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.14. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.15. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.14"
+derived_from: "docs/design-decision.md §3 매핑표 v1.15"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -648,7 +648,42 @@ guardrails:
     description: "동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12)"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "데이터셋 첫 동결 시"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_dataset_freeze.py::test_frozen_dataset_reads_under_current_schemas_and_records_them"
+      - "tests/test_dataset_freeze.py::test_envelope_schema_change_without_version_bump_is_caught"
+      - "tests/test_dataset_freeze.py::test_labelfile_schema_change_without_version_bump_is_caught"
+      - "tests/test_dataset_freeze.py::test_frozen_label_anchors_resolve_in_their_envelopes"
+      - "tests/test_dataset_freeze.py::test_label_anchor_pointing_nowhere_is_rejected"
+      - "tests/test_dataset_freeze.py::test_label_for_missing_transaction_is_rejected"
+      - "tests/test_dataset_freeze.py::test_malformed_anchor_is_rejected_by_the_label_schema"
+      - "tests/test_dataset_freeze.py::test_label_status_constraints_are_enforced"
+      - "tests/test_dataset_freeze.py::test_builder_refuses_to_freeze_a_label_that_points_nowhere"
+      - "tests/test_dataset_freeze.py::test_builder_never_overwrites_a_frozen_dataset"
+      - "tests/test_dataset_freeze.py::test_first_freeze_covers_the_minimum_structure"
+      - "tests/test_dataset_freeze.py::test_frozen_files_hold_no_raw_transaction_or_n5_markers"
+      - "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
     manifest_key: dataset_version_freeze
+  - id: dataset_engine_regression
+    description: "동결 데이터셋의 Envelope가 엔진의 실제 ②③을 계속 통과(동결 자산 회귀 보호, 모드 무관)"
+    target_layer: "테스트"
+    week1_status:
+      state: enforced
+    verification_tests:
+      - "tests/test_dataset_freeze.py::test_frozen_envelopes_pass_the_real_engine"
+      - "tests/test_dataset_freeze.py::test_engine_regression_catches_a_frozen_envelope_the_engine_would_reject"
+      - "tests/test_dataset_freeze.py::test_engine_regression_catches_a_schema_broken_envelope"
+      - "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+    manifest_key: dataset_engine_regression
+  - id: dataset_mode_consistency
+    description: "동결 자산이 기록된 마스킹 모드의 라벨 규칙을 따름(strict → label 전부 null / relation → 전부 ref_NN)"
+    target_layer: "테스트"
+    week1_status:
+      state: enforced
+    verification_tests:
+      - "tests/test_dataset_freeze.py::test_frozen_envelopes_match_their_recorded_masking_modes"
+      - "tests/test_dataset_freeze.py::test_relation_envelope_recorded_as_strict_is_caught"
+      - "tests/test_dataset_freeze.py::test_strict_envelope_recorded_as_relation_is_caught"
+      - "tests/test_dataset_freeze.py::test_envelope_without_recorded_mode_is_caught"
+      - "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+    manifest_key: dataset_mode_consistency

@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.15 — Sentinel Harness
+# (A) 설계확정서 v1.16 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.15 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.14(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.16 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.15(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -37,7 +37,9 @@
 > **v1.15 (매핑표 v1.14):** 마스커-B1 — 규칙 명문화(모드가 라벨 유무를 결정: strict_redaction → label=null / relation_preserving → ref_NN 순번) + §2.3 body_rules matcher 문법(json:<키 glob> 모든 깊이 / form:<이름 glob>, 마스커·Java 공유 계약) + §3 `label_consistency`(relation_preserving 출력에만)·`canonical_address`(모드 무관) 승격(not_implemented → enforced, 증명은 같은 PR). §2.3 라벨 규칙 첫 줄에 '(relation_preserving에서)' 한정.
 >   - 라벨 모드 규칙은 확인이 아니라 새 규칙이다(이전 (A)에는 모드와 라벨 null의 관계가 없었다 — 마스커-A 이월). MaskedRef `label: "ref_NN" | null`(§2.6)·§6.2 IDOR 사례 = relation_preserving과 정합.
 >   - Envelope·AnalysisResult `schema_version` 값 변화 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27)
+> **v1.16 (매핑표 v1.15):** 마스커-B3 — 데이터셋 첫 동결(S v1). §6.2 LabelFile·Label 스키마(masking_modes·hard_negative 포함)·라벨 무결성·첫 동결 구성 + §3.5 `dataset_version_freeze` 승격, 신규 `dataset_engine_regression`·`dataset_mode_consistency`(enforced, 증명은 같은 PR).
+>   - 첫 소비자 발생: Envelope 1.0·LabelFile 1.0의 동결 형태가 이 시점에 확정된다(버전 숫자를 올리는 것이 아니다 — 이후 변경은 '소비자 있음' 규칙). RawTransaction 1.0의 첫 소비자는 이미 마스커-A(v1.14)에서 생겼다 — 동결 파일은 없고(원본 커밋 0) 버전만 frozen_against에 기록한다.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29)
 
 ---
 
@@ -335,7 +337,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.14 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.15 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -432,7 +434,9 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 평가 하네스 | 테스트 | not_implemented → 평가 하네스 구현 시 | `eval_harness` |
 | 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | enforced(모드 무관 — 항상 적용) | `canonical_address` |
 | 엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리) | 아키텍처 테스트 | not_implemented → 평가 하네스 구현 시 | `label_isolation` |
-| 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12) | 테스트 | not_implemented → 데이터셋 첫 동결 시 | `dataset_version_freeze` |
+| 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12) | 테스트 | enforced | `dataset_version_freeze` |
+| 동결 데이터셋의 Envelope가 엔진의 실제 ②③을 계속 통과(동결 자산 회귀 보호, 모드 무관) | 테스트 | enforced | `dataset_engine_regression` |
+| 동결 자산이 기록된 마스킹 모드의 라벨 규칙을 따름(strict → label 전부 null / relation → 전부 ref_NN) | 테스트 | enforced | `dataset_mode_consistency` |
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
@@ -505,6 +509,22 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **표본 부족 표기:** §6.3 J8을 따른다.
 - **동결 = 첫 소비자 발생:** 그 시점의 형태가 schema_version의 동결 형태로 확정된다(버전을 올리는 것이 아니다. 버전은 동결 이후 첫 변경에서 오른다 — §2 버전 규칙). 큐 12(`dataset_version_freeze`) 강제 장치를 동결과 같은 PR에서 만든다.
 - **한계 기록:** IDOR 사례는 relation_preserving + 한 배치 안에서 생성한다(라벨 일관성은 배치 안에서만, §2.3). 단일 라벨러(J)라 라벨러 간 일치도는 측정할 수 없다 — 팀 확장 시 이월.
+
+- **라벨 파일(LabelFile) — 픽스처와 분리된 파일, 평가기만 읽는다:**
+  ```
+  LabelFile = { schema_version: "1.0", dataset_id, frozen_at(ISO8601+tz),
+                frozen_against: { envelope_schema, raw_schema, labelfile_schema,
+                                  masking_modes: { transaction_ref → strict_redaction | relation_preserving } },
+                labels: [Label] }                         # 트랜잭션마다 라벨 정확히 1개, 모드 기록도 정확히 1개
+  Label     = { transaction_ref(UUID), label_status: labeled_positive | verified_clean | unlabeled,
+                categories: [category 4종], anchors: [Locator(§2.6)], hard_negative: bool,
+                source: construction | catalog | adjudication }
+  ```
+  - 상태 제약: labeled_positive → categories ≥ 1, anchors ≥ 1, hard_negative=false / verified_clean → anchors 0개, hard_negative=true면 categories = 흉내 낸 category(어느 category의 FP 후보인가), 아니면 categories 비움 / unlabeled → 둘 다 비움, hard_negative=false. J3의 'hard negative 부분집합'은 hard_negative로 거른다.
+  - anchors는 Locator로 적는다(예측 Evidence와 같은 형식). 평가기는 읽을 때 `canonical_address`로 CNA로 바꾼다(§6.1 매칭).
+  - masking_modes는 정답이 아니라 생산 조건이다. 동결 자산이 그 모드의 라벨 규칙(§2.3)을 따르는지 회귀 검사한다(`dataset_mode_consistency`). 엔진 ③은 모드를 모른다 — 모드별 ③ 경로는 없다.
+  - **라벨 무결성(동결 전에 막는다):** anchor는 Locator 타입으로만 읽히고(스키마), transaction_ref가 가리키는 마스킹된 Envelope에서 실제로 해석돼야 한다 — 예측 evidence와 같은 판정(출력 게이트의 `resolves`, §2.6 서버 검증)을 쓴다. 없는 위치를 가리키는 라벨은 동결하지 않는다. 라벨링 지침(§6.1, 거친 노드 회피)은 라벨러가 지키는 지침이며 기계 강제가 아니다.
+- **첫 동결(S v1):** 마스킹된 Envelope 6건 + 라벨 파일 — category 4종 각 labeled_positive 1건(그중 IDOR 1건은 relation_preserving, anchor가 헤더·본문에 걸침), verified_clean 1건, hard negative 1건. 원본은 커밋하지 않는다(§1.3 ⓕ). 표본 충족(J8)과 'category마다 hard negative'는 첫 동결의 목표가 아니다 — 구조 검증이 목적이고 사례는 평가 하네스 이후 새 데이터셋 버전으로 늘린다.
 
 ### 6.3 지표
 - **J1 P/R:** §6.1 매칭 규칙. Precision 대표값은 S에서만 낸다. J는 알려진 라벨 기준 Recall + 미판정 건수. category별 + 전체 micro. 대표 = S / 현실성 = J, 섞어 보고하지 않는다.
