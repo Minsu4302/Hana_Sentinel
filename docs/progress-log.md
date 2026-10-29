@@ -671,3 +671,24 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 ### 미해결 · 이월
 - 교차 검증 추적 키는 만들지 않았다(제안만 — 리뷰 팩 6c).
 - 데이터셋 동결·라벨 파일 형식은 B3.
+
+---
+
+## 마스커-B3 — 평가 데이터셋 첫 동결 S v1 (Issue #54)
+
+### 0단계 멈춤 → 설계자 결정
+- 발주문의 '각 Envelope를 그 모드의 ③에 넣는다'는 전제가 틀렸다 — 엔진 ③(`verify_sanitization`)은 모드를 받지 않는다. 모드 교차 검사는 공허 → (가): 모드 검사를 동결 자산에 건다(`dataset_mode_consistency` 신설). `dataset_engine_regression`은 모드 무관.
+- 라벨 anchor 해석에 재사용할 'engine_verdict의 resolve 경로'가 없었다(②③만 부름, Locator 해석은 출력 게이트의 비공개 함수) → (나): `output_gate.resolves(locator, transaction)` 공개 래퍼. 로직 변경 0 — 출력 게이트 180건 통과/거부 결과 노출 전후 동일(대조).
+- 0단계 스키마에 Envelope별 모드 칸과 hard negative 표지가 없었다 → `frozen_against.masking_modes`, `Label.hard_negative`를 첫 동결 형태(1.0)에 포함.
+
+### 결과
+- `datasets/S/v1`: 마스킹된 Envelope 6건(`envelopes/<transaction_id>.json`, 마스커 출력 바이트 그대로) + `labels.json`(LabelFile, 분리 파일). 원본 커밋 0, N5 표지(faketoken·example.test) 0. `.gitattributes`로 줄바꿈 변환 금지(동결 바이트 보존).
+- 생성기 `tools/dataset/build_s_v1.py`: 원본은 메모리에서만(RawEnvelope를 디스크에 쓰지 않고 `masker.mask`에 직접), 라벨 무결성·엔진 회귀·모드 정합·버전 검사를 임시 사본에서 모두 통과해야만 쓴다. 기존 데이터셋 디렉터리에는 쓰지 않는다(재심 = 새 버전).
+- 키: `dataset_version_freeze`(라벨 무결성 포함), `dataset_engine_regression`, `dataset_mode_consistency` → enforced. (A) v1.15 → v1.16, 매핑표 v1.14 → v1.15. 6c 교차 검증 추적 키 = `dataset_engine_regression`으로 결정(동결 데이터 회귀 근거).
+
+### 미해결 · 이월
+- 버전을 올린 경우 `version_freeze_problems`는 실패하지 않는다 — 그때는 새 데이터셋 버전으로 다시 동결해야 하고, 엔진 회귀 검사가 옛 데이터를 거부해 드러낸다(별도 '재동결 필요' 상태는 두지 않음).
+- Raw 1.0은 동결 파일이 없어(원본 커밋 0) frozen_against에 버전만 기록 — 검증 대상 없음.
+- 첫 동결은 작다: J8 표본 충족·'category마다 hard negative'((A) §6.2)는 평가 하네스 이후 새 데이터셋 버전에서.
+- `label_isolation`·`eval_harness`는 not_implemented 그대로(라벨을 읽는 평가기가 아직 없어 격리 검사는 공허).
+- 라벨링 지침(거친 노드 회피)은 기계 강제하지 않는다 — S v1 anchor는 세밀한 노드(헤더·파라미터·JSON 경로)만 쓴다.

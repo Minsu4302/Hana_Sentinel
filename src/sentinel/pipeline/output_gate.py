@@ -159,6 +159,12 @@ def _normalized(pointer):
     return pointer
 
 
+def resolves(locator, transaction: Transaction) -> bool:
+    """Locator가 그 transaction(마스킹 후 데이터)에서 해석되는가 — 검사 ⑤의 순수 판정만(거부·사유 코드·감사 없음).
+    예측 Evidence와 평가 라벨 anchor가 같은 정의를 쓴다((A) §2.6·§6.2). 헤더 이름은 비교 전에 소문자로 정규화한다."""
+    return _resolves(_normalized(locator), transaction)
+
+
 def _resolves(pointer, tx: Transaction) -> bool:
     if isinstance(pointer, StatusLocator):
         return True

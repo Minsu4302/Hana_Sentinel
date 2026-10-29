@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.14",
+  "spec": "docs/design-decision.md §3 매핑표 v1.15",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -585,10 +585,44 @@
       "verification_tests": []
     },
     "dataset_version_freeze": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "데이터셋 첫 동결 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_dataset_freeze.py::test_frozen_dataset_reads_under_current_schemas_and_records_them",
+        "tests/test_dataset_freeze.py::test_envelope_schema_change_without_version_bump_is_caught",
+        "tests/test_dataset_freeze.py::test_labelfile_schema_change_without_version_bump_is_caught",
+        "tests/test_dataset_freeze.py::test_frozen_label_anchors_resolve_in_their_envelopes",
+        "tests/test_dataset_freeze.py::test_label_anchor_pointing_nowhere_is_rejected",
+        "tests/test_dataset_freeze.py::test_label_for_missing_transaction_is_rejected",
+        "tests/test_dataset_freeze.py::test_malformed_anchor_is_rejected_by_the_label_schema",
+        "tests/test_dataset_freeze.py::test_label_status_constraints_are_enforced",
+        "tests/test_dataset_freeze.py::test_builder_refuses_to_freeze_a_label_that_points_nowhere",
+        "tests/test_dataset_freeze.py::test_builder_never_overwrites_a_frozen_dataset",
+        "tests/test_dataset_freeze.py::test_first_freeze_covers_the_minimum_structure",
+        "tests/test_dataset_freeze.py::test_frozen_files_hold_no_raw_transaction_or_n5_markers",
+        "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+      ]
+    },
+    "dataset_engine_regression": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_dataset_freeze.py::test_frozen_envelopes_pass_the_real_engine",
+        "tests/test_dataset_freeze.py::test_engine_regression_catches_a_frozen_envelope_the_engine_would_reject",
+        "tests/test_dataset_freeze.py::test_engine_regression_catches_a_schema_broken_envelope",
+        "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+      ]
+    },
+    "dataset_mode_consistency": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_dataset_freeze.py::test_frozen_envelopes_match_their_recorded_masking_modes",
+        "tests/test_dataset_freeze.py::test_relation_envelope_recorded_as_strict_is_caught",
+        "tests/test_dataset_freeze.py::test_strict_envelope_recorded_as_relation_is_caught",
+        "tests/test_dataset_freeze.py::test_envelope_without_recorded_mode_is_caught",
+        "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+      ]
     }
   }
 }
