@@ -102,3 +102,14 @@ def canonical_address(tx: Transaction, locator) -> CNA:
     else:
         raise TypeError("알 수 없는 Locator 변형")
     return CNA(tx.meta.transaction_id, node)
+
+
+def cna_sort_key(cna: CNA) -> tuple:
+    """CNA 전순서((A) §6.1, 정본): (transaction_ref 문자열, node 튜플) 사전순 — node 원소는 문자열이면 코드포인트 순,
+    정수면 수 순. 같은 자리에 타입이 다르면(종류가 다른 node끼리라 실제로는 첫 원소에서 갈린다) 정수 < 문자열.
+    파이썬 튜플 비교에 암묵적으로 맡기지 않는다 — CNA 구조가 바뀌면 순서가 조용히 바뀌므로 원소 타입을 명시적으로 다룬다."""
+    def element(value) -> tuple:
+        if isinstance(value, bool) or not isinstance(value, (int, str)):
+            raise TypeError("CNA node 원소는 문자열 또는 정수여야 한다")
+        return (0, value, "") if isinstance(value, int) else (1, 0, value)
+    return (str(cna.transaction_ref), tuple(element(v) for v in cna.node))

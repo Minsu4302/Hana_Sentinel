@@ -692,3 +692,28 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - 첫 동결은 작다: J8 표본 충족·'category마다 hard negative'((A) §6.2)는 평가 하네스 이후 새 데이터셋 버전에서.
 - `label_isolation`·`eval_harness`는 not_implemented 그대로(라벨을 읽는 평가기가 아직 없어 격리 검사는 공허).
 - 라벨링 지침(거친 노드 회피)은 기계 강제하지 않는다 — S v1 anchor는 세밀한 노드(헤더·파라미터·JSON 경로)만 쓴다.
+
+---
+
+## 평가 하네스 — eval_harness + label_isolation, 채점기 자기 증명 (Issue #56)
+
+### 0단계 → 설계자 결정
+- §6.1 '1:1 최대 매칭(결정론적 동점 처리)'에 빈칸 셋: 정렬로 고르는 절차, CNA 순서(정의 없음), 예측의 '첫 anchor'(evidence 순서는 임의). → 사전순 최소 최대 매칭 + 정렬 키(최소 CNA) + CNA 전순서(정본, `cna_sort_key`로 노출·고정) + finding_id 한계를 정본 값으로.
+
+### 결과
+- `tools/eval/harness.py`: `PredictionRun`(층 B 자리 — 실제 생산 출력이 들어올 인터페이스), `load_dataset`(동결 회귀·라벨 무결성 통과분만), `score`(중복 병합 → 사전순 최소 최대 매칭 → J1~J9).
+- 층 A 자기 증명: 정답을 아는 예측 픽스처로 TP/FP/FN·hard negative(J3)·output_rejected(J2)·정확 중복 병합(H1)·남은 중복 FP(H3)·category만 틀림/위치만 틀림(H4)·unlabeled 미판정(I2)·최대 매칭(탐욕이면 1 TP)·동점 결정론(입력 순서 섞어도 같은 보고).
+- `label_isolation`: `arch_boundary`에 종류 LABELS(라벨 경로 문자열·라벨 타입 import·이름·속성, 독스트링 제외).
+- 키: `eval_harness`(채점기 검증까지), `label_isolation`(정적 범위) → enforced. (A) v1.16 → v1.17, 매핑표 v1.15 → v1.16.
+
+### 발견된 문제 · 관찰
+- 라벨 격리 첫 구현이 속성 접근(`labelfile.LabelFile`, `m.LabelFile`)을 놓쳤다 — 심은 더미 테스트가 잡아 보강.
+- 1:1 변이 두 형태(used 건너뛰기만 끔 / 쓰인 라벨 금지만 없앰)가 살아남았다: '확정 수 + 남은 최대 == 전체 최대' 같음 검사가 1:1을 구조적으로 이중 보장하기 때문. 변이를 '재사용 허용 배정'으로 바꿔 하중을 확인.
+- J6 테스트의 기대값 오류(채점기는 §6.1대로 정렬상 앞선 llm 예측을 TP로 냄) — 테스트를 고침.
+
+### 미해결 · 이월
+- 층 B(실제 모델 채점)는 모델 결선 이후. 첫 동결(S v1)은 작아 대부분의 지표가 '표본 부족' — J8대로 숫자를 내지 않는다.
+- per-category FN: 여러 category를 가진 라벨이 매칭되지 않으면 그 category마다 FN으로 센다(전체 micro는 1회).
+- 보조(위치만) 지표의 FP 분모는 미판정을 뺀 근사다. J7 쌍체 bootstrap은 비교할 두 실행이 생기면.
+- 하네스는 예측 evidence가 실제로 해석되는지 다시 검사하지 않는다 — 출력 게이트(`evidence_pointer_resolves`)를 통과한 출력이 들어온다는 전제.
+- `label_isolation` 한계: 런타임 조립 경로·환경 변수·설정 파일로 받는 경로는 정적으로 못 잡는다(테스트로 고정).

@@ -1,10 +1,11 @@
 """아키텍처 경계 정적 검사 — 패키지의 금지 import 탐지.
 
 (A) §3.2 `engine_burp_isolation`(N4) / §3.1 `no_autonomous_send`(N2, §1.3 ⓐ) / §3.2 `engine_tools_isolation`·
-`engine_no_rawtransaction`·`masker_independence` / §3.1 `masker_no_send`.
+`engine_no_rawtransaction`·`masker_independence` / §3.1 `masker_no_send` / §3.5 `label_isolation`.
 소스의 AST를 읽어 (a) Burp/Montoya, (b) HTTP 송신·소켓 송신 모듈·심볼, (c) tools/ 패키지, (d) 마스킹 전 원본 타입
 (RawTransaction 계열 — 위치와 무관하게 이름으로, 정의 포함), (e) 엔진 검증 파이프라인(`sentinel.pipeline`)의
-import를 찾아 종류별로 분류한다. 어떤 종류가 금지인지는 대상 패키지마다 다르다(엔진: a·b·c·d / 마스커: b·e) —
+import를 찾고, (f) 평가 라벨 경로(문자열 상수의 'datasets'·'labels.json', LabelFile 이름 참조 — 독스트링 제외)를 찾아
+종류별로 분류한다. 어떤 종류가 금지인지는 대상 패키지마다 다르다(엔진: a·b·c·d·f / 마스커: b·e) —
 호출하는 쪽이 종류로 거른다.
 정적 검증이 불가능한 동적 import(비리터럴 인자)와 exec/eval은 우회 경로이므로 그 자체로 위반 처리(fail-closed).
 검사 대상이 비었거나 파싱할 수 없으면 '위반 없음'이 아니라 오류로 멈춘다.
@@ -25,6 +26,7 @@ DYNAMIC = "dynamic_import"
 TOOLS = "tools_import"            # 엔진 → tools/ (engine_tools_isolation)
 RAW = "raw_transaction"           # 엔진 → 마스킹 전 원본 타입, 위치 무관 (engine_no_rawtransaction)
 PIPELINE = "engine_pipeline"      # 마스커 → 엔진 검증 파이프라인 (masker_independence)
+LABELS = "eval_label_path"        # 엔진 → 평가 라벨 데이터 (label_isolation) — 정적 범위만
 
 # (a) Burp/Montoya — 이름 경로의 어느 구성요소든 해당하면 위반
 BURP_COMPONENTS = ("burp", "montoya", "portswigger")
@@ -55,6 +57,10 @@ RAW_NAMES = {"RawEnvelope", "RawTransaction", "RawMeta", "RawRequest", "RawRespo
 #     (masked_span_check 등)을 우회로로 쓰지 못하게 패키지 전체로 막는다. pipeline 밖 공용 모듈(strict_json·schema·
 #     common_types)은 대상이 아니다.
 PIPELINE_PACKAGE = "sentinel.pipeline"
+# (f) 평가 라벨 경로. 한계(정직 표기): 문자열 상수·이름만 본다 — 런타임 조립('data' + 'sets')·환경 변수·설정 파일로 받는
+#     경로는 정적으로 잡지 못한다(engine_tools_isolation과 같은 성격의 한계).
+LABEL_PATH_MARKERS = ("datasets", "labels.json")
+LABEL_NAMES = {"LabelFile", "Label", "anchor_problems"}
 FORBIDDEN_CALLS = {"exec", "eval"}
 
 
@@ -96,6 +102,8 @@ def _classify_from(module: str, name: str) -> list[str]:
         kinds.append(SEND)
     if name in RAW_NAMES:
         kinds.append(RAW)
+    if name in LABEL_NAMES and (name != "Label" or "dataset" in module):
+        kinds.append(LABELS)
     return kinds
 
 
@@ -146,11 +154,24 @@ class _Visitor(ast.NodeVisitor):
                 self._add(node, SEND, f"{module}.{node.attr}")
         if node.attr in RAW_NAMES:  # `import x.raw as r; r.RawTransaction`
             self._add(node, RAW, node.attr)
+        if node.attr in LABEL_NAMES and node.attr != "Label":  # `labelfile.LabelFile`
+            self._add(node, LABELS, node.attr)
         dotted = _dotted(node)  # `import sentinel` 후 `sentinel.pipeline.sanitization_check` 같은 속성 경로
         if dotted and dotted[0] in self.module_aliases:
             full = ".".join([self.module_aliases[dotted[0]], *dotted[1:]])
             if (kind := _classify(full)) in (PIPELINE, TOOLS):
                 self._add(node, kind, full)
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, str) and id(node) not in self.docstrings and any(
+                m in node.value.lower() for m in LABEL_PATH_MARKERS):
+            self._add(node, LABELS, "라벨 경로 문자열")  # 값 자체는 남기지 않는다
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in LABEL_NAMES and node.id != "Label":  # 'Label'은 흔한 이름 — import로만 본다
+            self._add(node, LABELS, node.id)
         self.generic_visit(node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
@@ -179,6 +200,9 @@ def scan_source(path: str, source: str) -> list[Violation]:
     except SyntaxError as exc:
         raise BoundaryScanError(f"{path}: 파싱 불가 — 검사 통과로 취급하지 않음 ({exc.msg})") from exc
     visitor = _Visitor(path)
+    visitor.docstrings = {id(n.body[0].value) for n in ast.walk(tree)
+                          if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+                          and n.body and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
     visitor.visit(tree)
     return visitor.found
 
