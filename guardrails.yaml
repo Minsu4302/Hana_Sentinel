@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.15. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.16. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.15"
+derived_from: "docs/design-decision.md §3 매핑표 v1.16"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -614,9 +614,30 @@ guardrails:
     description: "평가 하네스"
     target_layer: "테스트"
     week1_status:
-      state: not_implemented
-      target: "평가 하네스 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 실제 채점(층 B)은 모델 결선 이후, 하네스 완성 ≠ 실제 측정 가능"
+    verification_tests:
+      - "tests/test_eval_harness.py::test_all_correct_predictions_score_perfectly"
+      - "tests/test_eval_harness.py::test_planted_tp_fp_fn_counts_are_exact"
+      - "tests/test_eval_harness.py::test_finding_on_hard_negative_is_fp_and_counted_in_j3"
+      - "tests/test_eval_harness.py::test_output_rejected_transaction_turns_all_its_labels_into_fn"
+      - "tests/test_eval_harness.py::test_exact_duplicates_are_merged_before_scoring"
+      - "tests/test_eval_harness.py::test_left_over_duplicate_after_one_to_one_matching_is_fp"
+      - "tests/test_eval_harness.py::test_right_location_wrong_category_counts_only_in_location_metrics_and_confusion"
+      - "tests/test_eval_harness.py::test_right_category_wrong_location_is_tp_nowhere"
+      - "tests/test_eval_harness.py::test_prediction_on_unlabeled_transaction_is_undetermined_not_fp"
+      - "tests/test_eval_harness.py::test_maximum_matching_takes_both_where_greedy_would_take_one"
+      - "tests/test_eval_harness.py::test_tie_is_broken_by_the_sort_keys_and_is_deterministic_under_input_reordering"
+      - "tests/test_eval_harness.py::test_cna_total_order_is_explicit_and_fixed"
+      - "tests/test_eval_harness.py::test_j8_small_samples_get_no_point_estimate"
+      - "tests/test_eval_harness.py::test_unimplemented_metrics_are_reported_honestly"
+      - "tests/test_eval_harness.py::test_j6_counts_by_producer_and_llm_only_tp"
+      - "tests/test_eval_harness.py::test_advisory_signals_are_not_scored"
+      - "tests/test_eval_harness.py::test_report_is_identical_across_repeated_runs"
+      - "tests/test_eval_harness.py::test_harness_refuses_a_dataset_failing_freeze_checks"
+      - "tests/test_eval_harness.py::test_harness_refuses_labels_pointing_nowhere"
+      - "tests/test_eval_harness.py::test_prediction_interface_is_strict"
+      - "tests/test_eval_harness.py::test_each_harness_rule_is_load_bearing_under_verified_mutation"
     manifest_key: eval_harness
   - id: canonical_address
     description: "정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨"
@@ -640,9 +661,13 @@ guardrails:
     description: "엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리)"
     target_layer: "아키텍처테스트"
     week1_status:
-      state: not_implemented
-      target: "평가 하네스 구현 시"
-    verification_tests: []
+      state: enforced
+      note: "정적 범위 — 라벨 경로 문자열·라벨 타입 import·이름 0까지. 런타임 조립 경로는 범위 밖"
+    verification_tests:
+      - "tests/test_eval_harness.py::test_engine_has_no_label_path_or_label_types"
+      - "tests/test_eval_harness.py::test_planted_label_read_in_engine_is_caught"
+      - "tests/test_eval_harness.py::test_label_isolation_static_limits_are_pinned"
+      - "tests/test_eval_harness.py::test_each_harness_rule_is_load_bearing_under_verified_mutation"
     manifest_key: label_isolation
   - id: dataset_version_freeze
     description: "동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12)"
