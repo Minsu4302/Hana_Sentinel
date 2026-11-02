@@ -215,3 +215,14 @@ def scan_package(root: Path) -> list[Violation]:
     for f in files:
         found += scan_source(str(f), f.read_text(encoding="utf-8"))
     return found
+
+
+# `tools_no_external_send`((A) §3.1, §1.3 ⓑ 해석 — 목적지 기준이라 tools/도 외부로 송신하지 않는다): tools/ 전체의 송신·소켓
+# import와 정적으로 검증할 수 없는 동적 import. 대상은 tools/ 아래를 재귀로 열거한다 — 디렉터리 목록을 고정하지 않으므로 새
+# 하위 패키지도 자동으로 들어온다. 한계(정직 표기): tools/ 소스의 직접 import만 본다 — 개발 의존성 내부 동작·하위 프로세스는
+# 범위 밖이다. 테스트 egress 가드(소켓을 바꿔 끼워 '막는' 코드)는 tests/support에 있다(tests → egress_runtime_block).
+TOOLS_SEND_KINDS = (SEND, DYNAMIC)
+
+
+def tools_send_violations(tools_root: Path) -> list[Violation]:
+    return [v for v in scan_package(tools_root) if v.kind in TOOLS_SEND_KINDS]

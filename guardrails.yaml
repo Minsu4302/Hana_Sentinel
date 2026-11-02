@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.16. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.17. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.16"
+derived_from: "docs/design-decision.md §3 매핑표 v1.17"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -201,7 +201,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "2주차"
+      target: "CLAUDE.md 금지선 색인 다음 개정 시"
     verification_tests: []
     manifest_key: claude_md_sync_check
   - id: masker_no_send
@@ -214,6 +214,22 @@ guardrails:
       - "tests/test_fixture_masker.py::test_rejects_send_import_planted_in_masker"
       - "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
     manifest_key: masker_no_send
+  - id: tools_no_external_send
+    description: "tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import와 동적 import 0"
+    target_layer: "아키텍처테스트"
+    week1_status:
+      state: enforced
+      note: "정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖"
+    verification_tests:
+      - "tests/test_tools_no_send.py::test_real_tools_tree_has_no_send_or_dynamic_import"
+      - "tests/test_tools_no_send.py::test_send_import_in_a_brand_new_subpackage_is_caught"
+      - "tests/test_tools_no_send.py::test_send_import_in_a_deeply_nested_subpackage_is_caught"
+      - "tests/test_tools_no_send.py::test_dynamic_import_in_tools_is_caught"
+      - "tests/test_tools_no_send.py::test_allowed_imports_in_a_new_subpackage_pass_as_control"
+      - "tests/test_tools_no_send.py::test_egress_guard_lives_in_tests_not_tools"
+      - "tests/test_tools_no_send.py::test_empty_or_missing_target_is_an_error_not_a_pass"
+      - "tests/test_tools_no_send.py::test_tools_send_check_is_load_bearing_under_verified_mutation"
+    manifest_key: tools_no_external_send
   - id: engine_burp_isolation
     description: "엔진 Burp/Montoya import 0"
     target_layer: "아키텍처테스트"
@@ -599,7 +615,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "3주차"
+      target: "LLM 결선 시"
     verification_tests: []
     manifest_key: hallucinated_literal_isolation
   - id: anomaly_aggregation
@@ -607,7 +623,7 @@ guardrails:
     target_layer: "테스트"
     week1_status:
       state: not_implemented
-      target: "3주차"
+      target: "LLM 결선 시"
     verification_tests: []
     manifest_key: anomaly_aggregation
   - id: eval_harness
@@ -712,3 +728,11 @@ guardrails:
       - "tests/test_dataset_freeze.py::test_envelope_without_recorded_mode_is_caught"
       - "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
     manifest_key: dataset_mode_consistency
+  - id: dataset_case_independence
+    description: "S의 (엔드포인트, 결함 패턴) 조합마다 트랜잭션 1건(독립 단위 — 생성기 SSOT가 조합 중복 검사)"
+    target_layer: "테스트"
+    week1_status:
+      state: not_implemented
+      target: "S v2 동결 시"
+    verification_tests: []
+    manifest_key: dataset_case_independence
