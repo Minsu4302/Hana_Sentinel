@@ -16,7 +16,7 @@ import sentinel.egress_policy as policy
 from sentinel.egress_policy import Destination, classify_destination, is_external_egress_permitted
 from tools.dep_egress import (
     EGRESS_DISTRIBUTIONS, DependencyScanError, declared_dependencies, find_egress_dependencies)
-from tools.egress_guard import EgressBlocked, EgressGuard
+from tests.support.egress_guard import EgressBlocked, EgressGuard
 from tools.guardrails import REPO_ROOT
 
 TEST_NET = "192.0.2.1"  # RFC 5737 — 문서용, 라우팅되지 않음

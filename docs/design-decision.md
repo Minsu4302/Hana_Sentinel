@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.17 — Sentinel Harness
+# (A) 설계확정서 v1.18 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.17 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.16(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.18 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.17(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -41,7 +41,10 @@
 >   - 첫 소비자 발생: Envelope 1.0·LabelFile 1.0의 동결 형태가 이 시점에 확정된다(버전 숫자를 올리는 것이 아니다 — 이후 변경은 '소비자 있음' 규칙). RawTransaction 1.0의 첫 소비자는 이미 마스커-A(v1.14)에서 생겼다 — 동결 파일은 없고(원본 커밋 0) 버전만 frozen_against에 기록한다.
 > **v1.17 (매핑표 v1.16):** 평가 하네스 — §6.1 동점 처리 규칙을 정본 값으로(사전순 최소 최대 매칭, 정렬 키, CNA 전순서, finding_id 한계) + §3.5 `eval_harness`·`label_isolation` 승격(not_implemented → enforced, 범위는 상태 칸 노트, 증명은 같은 PR).
 >   - `eval_harness` enforced = 채점기 검증(층 A)까지다. 실제 모델 채점(층 B)은 모델 결선 이후 — 하네스 완성 ≠ 실제 측정 가능.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29)
+> **v1.18 (매핑표 v1.17):** 4번 0번 결정 응고 — egress 0 유지. §1.3 ⓑ 해석(목적지 기준, src·tools·tests 강제 매핑, 현 단계 LLM = 루프백 로컬, 품질 수치는 재론 근거 아님 — 금지선 문구·재론 조건 불변) + §3.1 신규 `tools_no_external_send`(enforced) + §3 목표 칸 정리(`hallucinated_literal_isolation`·`anomaly_aggregation` → LLM 결선 시, `claude_md_sync_check` → CLAUDE.md 금지선 색인 다음 개정 시) + §6.2 독립 단위 규칙 (i) + §3.5 신규 `dataset_case_independence`(not_implemented) + 부록 LLM 전략 줄 교체. `schema_version` 값 변화 없음.
+>   - 테스트 egress 가드를 tools/에서 tests/support로 옮겼다(로직 변경 0) — 소켓을 바꿔 끼워 '막는' 코드라 tools/ 송신 검사에 걸렸고, ⓑ 강제 매핑상 tests 쪽(`egress_runtime_block`)이 제자리다.
+>   - 같은 매핑표 버전(v1.17) 안의 보강: `tools_no_external_send`에 tools → tests 패키지 import 금지를 더했다 — 옮긴 가드를 tools/가 다시 import해 송신 검사를 세탁하는 경로를 막는다(가드 이동과 인과).
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02)
 
 ---
 
@@ -104,6 +107,11 @@
 | ⓕ | 원본(마스킹 전) 트래픽의 저장·커밋 | A-7 | 없음 |
 | ⓖ | 멀티에이전트 / 사내 사례 RAG | 1인 MVP 범위 초과, 디버깅·거버넌스 비용 | MVP 검증 + 데이터 승인 후(P2) |
 
+> **ⓑ 해석:** ⓑ는 코드의 위치가 아니라 목적지를 막는다. src·tools·tests 어디서든 외부 목적지로 송신하지 않는다.
+> - 품질 수치(평가 결과 포함)는 ⓑ의 재론 근거가 아니다.
+> - 강제 매핑: src → `no_autonomous_send`·`egress_static_check` / tools → `tools_no_external_send` / tests → `egress_runtime_block`(테스트 안의 외부 연결 시도는 가드가 차단하는 의도된 적대 탐침).
+> - 현 단계의 LLM 대상은 루프백 로컬 모델만이다(`local_llm_vs_egress`의 LOCAL 분류). 루프백이 아닌 사내 승인 엔드포인트의 분류는 그것이 생길 때 (A) 개정으로 정하고, 그 전까지는 EXTERNAL이다. 이 분류는 사내망의 승인 대상에만 해당하며, 외부 인터넷 목적지에는 적용되지 않는다(ⓑ).
+>
 > **ⓕ 해석:** 사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고, 시스템(엔진·tools)은 이를 영속화하지 않는다.
 > - RawTransaction(§2.7)은 원본을 담는 유일한 타입이며, 마스킹 경계(마스커) 안에서만 존재한다. 엔진·저장소·커밋 어디에도 RawTransaction 인스턴스나 실제 트래픽에서 나온 평문이 남지 않는다.
 > - '평문 내용'의 범위: ⓕ가 막는 것은 RawTransaction 인스턴스와 실제 트래픽에서 나온 평문이다. N5 더미 규칙을 따르는 가짜 리터럴(faketoken_…·example.test 등)은 실제 트래픽에서 나온 것이 아니므로 '평문 내용'에 해당하지 않는다 — ⓕ의 예외가 아니라 애초에 대상이 아니다. 이에 따라 마스커 테스트는 원본 픽스처를 파일로 커밋하지 않고 실행 중에만 만든다.
@@ -339,7 +347,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.16 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.17 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -379,8 +387,9 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | manifest 정직성 | 테스트 | enforced | `manifest_honesty` |
 | manifest 자기검증 | 테스트 | enforced | `manifest_selfcheck` |
 | manifest 정본 파생(SSOT=이 표) + make verify 일치검증 | 테스트 | enforced | `manifest_derivation` |
-| CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사 | 테스트 | not_implemented → 2주차 | `claude_md_sync_check` |
+| CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사 | 테스트 | not_implemented → CLAUDE.md 금지선 색인 다음 개정 시 | `claude_md_sync_check` |
 | fixture 마스커에 송신·소켓·egress 의존 0 | 아키텍처 테스트 | enforced | `masker_no_send` |
+| tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지) | 아키텍처 테스트 | enforced(정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖) | `tools_no_external_send` |
 
 ### 3.2 A. 입력경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
@@ -431,14 +440,15 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
-| 환각 리터럴 격리 | 테스트 | not_implemented → 3주차 | `hallucinated_literal_isolation` |
-| 반복 이상 → 세션 신호 | 테스트 | not_implemented → 3주차 | `anomaly_aggregation` |
+| 환각 리터럴 격리 | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |
+| 반복 이상 → 세션 신호 | 테스트 | not_implemented → LLM 결선 시 | `anomaly_aggregation` |
 | 평가 하네스 | 테스트 | enforced(채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 실제 채점(층 B)은 모델 결선 이후, 하네스 완성 ≠ 실제 측정 가능) | `eval_harness` |
 | 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | enforced(모드 무관 — 항상 적용) | `canonical_address` |
 | 엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리) | 아키텍처 테스트 | enforced(정적 범위 — 라벨 경로 문자열·라벨 타입 import·이름 0까지. 런타임 조립 경로는 범위 밖) | `label_isolation` |
 | 동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12) | 테스트 | enforced | `dataset_version_freeze` |
 | 동결 데이터셋의 Envelope가 엔진의 실제 ②③을 계속 통과(동결 자산 회귀 보호, 모드 무관) | 테스트 | enforced | `dataset_engine_regression` |
 | 동결 자산이 기록된 마스킹 모드의 라벨 규칙을 따름(strict → label 전부 null / relation → 전부 ref_NN) | 테스트 | enforced | `dataset_mode_consistency` |
+| S의 (엔드포인트, 결함 패턴) 조합마다 트랜잭션 1건(독립 단위 — 생성기 SSOT가 조합 중복 검사) | 테스트 | not_implemented → S v2 동결 시 | `dataset_case_independence` |
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
@@ -531,6 +541,12 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - anchors는 Locator로 적는다(예측 Evidence와 같은 형식). 평가기는 읽을 때 `canonical_address`로 CNA로 바꾼다(§6.1 매칭).
   - masking_modes는 정답이 아니라 생산 조건이다. 동결 자산이 그 모드의 라벨 규칙(§2.3)을 따르는지 회귀 검사한다(`dataset_mode_consistency`). 엔진 ③은 모드를 모른다 — 모드별 ③ 경로는 없다.
   - **라벨 무결성(동결 전에 막는다):** anchor는 Locator 타입으로만 읽히고(스키마), transaction_ref가 가리키는 마스킹된 Envelope에서 실제로 해석돼야 한다 — 예측 evidence와 같은 판정(출력 게이트의 `resolves`, §2.6 서버 검증)을 쓴다. 없는 위치를 가리키는 라벨은 동결하지 않는다. 라벨링 지침(§6.1, 거친 노드 회피)은 라벨러가 지키는 지침이며 기계 강제가 아니다.
+- **독립 단위 — 구성 규칙 (i):** S에는 (엔드포인트, 결함 패턴) 조합마다 트랜잭션을 1건만 둔다. J8의 n = 트랜잭션 수 = 독립 단위 수.
+  - 엔드포인트 = 더미 API 정의(SSOT)의 (method, 경로 템플릿). Python 내부 파생 path_template이 아니다.
+  - 결함 패턴 = SSOT가 사례에 부여한 패턴 ID. verified_clean·hard negative도 패턴 ID를 갖는다.
+  - 근거: 같은 조합의 변형으로 n을 채우면 Wilson의 독립 가정이 깨져 구간이 거짓으로 좁아진다.
+  - S v1 = 규칙 이전 데이터셋(S v2부터 적용). 사람이 읽은 조합은 겹치지 않으나 기계 판정 근거 없음(생성기에 패턴 ID·엔드포인트 템플릿 없음). 동결본은 건드리지 않는다.
+  - 강제: `dataset_case_independence`(S v2 동결 시 — 생성기 SSOT가 엔드포인트 템플릿·패턴 ID를 기계 판독 가능하게 갖고 조합 중복을 검사한다. LabelFile 스키마 변경 없음).
 - **첫 동결(S v1):** 마스킹된 Envelope 6건 + 라벨 파일 — category 4종 각 labeled_positive 1건(그중 IDOR 1건은 relation_preserving, anchor가 헤더·본문에 걸침), verified_clean 1건, hard negative 1건. 원본은 커밋하지 않는다(§1.3 ⓕ). 표본 충족(J8)과 'category마다 hard negative'는 첫 동결의 목표가 아니다 — 구조 검증이 목적이고 사례는 평가 하네스 이후 새 데이터셋 버전으로 늘린다.
 
 ### 6.3 지표
@@ -560,4 +576,4 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - 저장소: SQLite
 - 평가: pytest 하네스 + 라벨 데이터셋 (선택적 promptfoo)
 - 테스트 환경: Docker + OWASP Juice Shop (+ 정답 아는 자체 더미 API)
-- LLM 전략: 개념 검증은 강한 모델(큰 로컬 또는 비민감 한정 승인 API) → 사내 승인 모델로 포팅. 교체 가능 인터페이스 필수. **(4번 주제에서 확정 예정)**
+- LLM 전략: 개념 검증 = 개발 PC에서 돌릴 수 있는 로컬 모델(현재 CPU 추론 전제). 결과는 그 모델 계열에 대한 측정이다. 더 큰 모델은 하드웨어 확보 시로 미루고, 외부 API로 대체하지 않는다. 교체 가능 인터페이스 필수. **(인터페이스·송신 경로는 어댑터 개정에서)**

@@ -5,7 +5,7 @@ import secrets
 
 import pytest
 
-from tools.egress_guard import GUARD
+from tests.support.egress_guard import GUARD
 from tools.guardrails import REGISTRY_PATH, SPEC_PATH
 from tools.guardrails.registry import load_registry
 from tools.guardrails.spec import Spec, load_spec

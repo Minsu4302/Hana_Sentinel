@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.16",
+  "spec": "docs/design-decision.md §3 매핑표 v1.17",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -181,7 +181,7 @@
     "claude_md_sync_check": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2주차",
+      "target": "CLAUDE.md 금지선 색인 다음 개정 시",
       "verification_tests": []
     },
     "masker_no_send": {
@@ -191,6 +191,22 @@
         "tests/test_fixture_masker.py::test_masker_has_no_send_socket_or_dynamic_import",
         "tests/test_fixture_masker.py::test_rejects_send_import_planted_in_masker",
         "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
+      ]
+    },
+    "tools_no_external_send": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖",
+      "verification_tests": [
+        "tests/test_tools_no_send.py::test_real_tools_tree_has_no_send_or_dynamic_import",
+        "tests/test_tools_no_send.py::test_send_import_in_a_brand_new_subpackage_is_caught",
+        "tests/test_tools_no_send.py::test_send_import_in_a_deeply_nested_subpackage_is_caught",
+        "tests/test_tools_no_send.py::test_dynamic_import_in_tools_is_caught",
+        "tests/test_tools_no_send.py::test_tests_package_import_in_tools_is_caught",
+        "tests/test_tools_no_send.py::test_allowed_imports_in_a_new_subpackage_pass_as_control",
+        "tests/test_tools_no_send.py::test_egress_guard_lives_in_tests_not_tools",
+        "tests/test_tools_no_send.py::test_empty_or_missing_target_is_an_error_not_a_pass",
+        "tests/test_tools_no_send.py::test_tools_send_check_is_load_bearing_under_verified_mutation"
       ]
     },
     "engine_burp_isolation": {
@@ -546,13 +562,13 @@
     "hallucinated_literal_isolation": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "3주차",
+      "target": "LLM 결선 시",
       "verification_tests": []
     },
     "anomaly_aggregation": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "3주차",
+      "target": "LLM 결선 시",
       "verification_tests": []
     },
     "eval_harness": {
@@ -650,6 +666,12 @@
         "tests/test_dataset_freeze.py::test_envelope_without_recorded_mode_is_caught",
         "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
       ]
+    },
+    "dataset_case_independence": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "S v2 동결 시",
+      "verification_tests": []
     }
   }
 }
