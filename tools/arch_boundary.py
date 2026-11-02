@@ -27,6 +27,7 @@ TOOLS = "tools_import"            # 엔진 → tools/ (engine_tools_isolation)
 RAW = "raw_transaction"           # 엔진 → 마스킹 전 원본 타입, 위치 무관 (engine_no_rawtransaction)
 PIPELINE = "engine_pipeline"      # 마스커 → 엔진 검증 파이프라인 (masker_independence)
 LABELS = "eval_label_path"        # 엔진 → 평가 라벨 데이터 (label_isolation) — 정적 범위만
+TESTS = "tests_import"            # tools → tests 패키지 (tools_no_external_send — 테스트 가드 경유 세탁 금지)
 
 # (a) Burp/Montoya — 이름 경로의 어느 구성요소든 해당하면 위반
 BURP_COMPONENTS = ("burp", "montoya", "portswigger")
@@ -50,6 +51,8 @@ DYNAMIC_IMPORTERS = {"__import__", "import_module"}
 
 # (c) tools/ 최상위 패키지
 TOOLS_PACKAGE = "tools"
+# tests 최상위 패키지 — 소켓을 다루는 테스트 egress 가드(tests/support)를 tools/가 import해 송신 검사를 세탁하지 못하게
+TESTS_PACKAGE = "tests"
 # (d) 마스킹 전 원본 타입((A) §2.7) — 이름으로 잡는다. 타입이 tools/ 밖(예: 엔진 공용 모듈)으로 옮겨져도 import·속성 접근·
 #     정의가 걸린다(위치 이동 경로까지 방어). 엔진은 이 이름들을 쓸 이유가 없다.
 RAW_NAMES = {"RawEnvelope", "RawTransaction", "RawMeta", "RawRequest", "RawResponse", "RawParam", "RawHeader", "RawBody"}
@@ -93,6 +96,8 @@ def _classify(module: str) -> str | None:
         return PIPELINE
     if _under(module, TOOLS_PACKAGE):
         return TOOLS
+    if _under(module, TESTS_PACKAGE):
+        return TESTS
     return None
 
 
@@ -159,7 +164,7 @@ class _Visitor(ast.NodeVisitor):
         dotted = _dotted(node)  # `import sentinel` 후 `sentinel.pipeline.sanitization_check` 같은 속성 경로
         if dotted and dotted[0] in self.module_aliases:
             full = ".".join([self.module_aliases[dotted[0]], *dotted[1:]])
-            if (kind := _classify(full)) in (PIPELINE, TOOLS):
+            if (kind := _classify(full)) in (PIPELINE, TOOLS, TESTS):
                 self._add(node, kind, full)
         self.generic_visit(node)
 
@@ -218,10 +223,10 @@ def scan_package(root: Path) -> list[Violation]:
 
 
 # `tools_no_external_send`((A) §3.1, §1.3 ⓑ 해석 — 목적지 기준이라 tools/도 외부로 송신하지 않는다): tools/ 전체의 송신·소켓
-# import와 정적으로 검증할 수 없는 동적 import. 대상은 tools/ 아래를 재귀로 열거한다 — 디렉터리 목록을 고정하지 않으므로 새
+# import, 정적으로 검증할 수 없는 동적 import, tests 패키지 import(소켓을 다루는 테스트 가드를 경유한 세탁 금지). 대상은 tools/ 아래를 재귀로 열거한다 — 디렉터리 목록을 고정하지 않으므로 새
 # 하위 패키지도 자동으로 들어온다. 한계(정직 표기): tools/ 소스의 직접 import만 본다 — 개발 의존성 내부 동작·하위 프로세스는
 # 범위 밖이다. 테스트 egress 가드(소켓을 바꿔 끼워 '막는' 코드)는 tests/support에 있다(tests → egress_runtime_block).
-TOOLS_SEND_KINDS = (SEND, DYNAMIC)
+TOOLS_SEND_KINDS = (SEND, DYNAMIC, TESTS)
 
 
 def tools_send_violations(tools_root: Path) -> list[Violation]:

@@ -764,7 +764,7 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 ## (A) v1.18 — 4번 0번 결정 응고: egress 0 유지 + tools/ 송신 기준선 (Issue #60)
 
 ### 4번 0번 결정
-- **(A)를 택했다 — 엔진 경계는 닫은 채로, egress 0을 유지한다.** ⓑ는 코드 위치가 아니라 목적지를 막는다(src·tools·tests 어디서든 외부 목적지로 송신하지 않는다). 품질 수치(평가 결과 포함)는 ⓑ의 재론 근거가 아니다. 송신 경로(어댑터)는 별도 (A) 개정에서 설계한다.
+- **(C)를 택했다 — egress 0 유지: 엔진 경계도 tools/도 열지 않는다.** 중간 결산의 (B)(엔진 egress 경계를 연다)도, (A)(엔진 경계는 닫고 인터페이스 뒤 tools/만 외부로)도 아니다. ⓑ는 코드 위치가 아니라 목적지를 막는다(src·tools·tests 어디서든 외부 목적지로 송신하지 않는다). 품질 수치(평가 결과 포함)는 ⓑ의 재론 근거가 아니다. 송신 경로(어댑터)는 별도 (A) 개정에서 설계한다.
 - 현 단계 LLM 대상 = 루프백 로컬 모델만. 비루프백 사내 승인 엔드포인트는 생길 때 (A) 개정 — 그 전까지 EXTERNAL. 외부 인터넷 목적지에는 적용되지 않는다.
 - 개발 PC 사양: i5-10400 / RAM 16GB / UHD 630(전용 128MB) → CPU 추론, 소형 양자화 모델 한정. 평가 1회는 몇 시간 단위로 추정(실측으로 대체 예정).
 - **S v2 게이트 (a)**: test 분할 labeled_positive ≥ 39 · verified_clean ≥ 39. category별·hard negative 부분집합은 표본 부족 허용. (A) §6.2에는 S v2 동결 시 기록한다.
@@ -776,7 +776,7 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - CLAUDE.md 금지선 색인: 변경 없음(ⓑ '현 단계' 한정 문안으로 N1 "LLM은 로컬·사내 승인만"과 정합).
 
 ### 결과
-- `tools_no_external_send` → enforced(정적 범위). `masker_no_send`는 그대로(겹침 의도). `dataset_case_independence` 신설(not_implemented → S v2 동결 시). 낡은 목표 칸 3개 정리(중간 결산 리뷰 결정).
+- `tools_no_external_send` → enforced(정적 범위 — 송신·소켓·동적 import + tests 패키지 import. tests 경유 세탁 금지는 리뷰 ①로 이 PR 안에서 추가). `masker_no_send`는 그대로(겹침 의도). `dataset_case_independence` 신설(not_implemented → S v2 동결 시). 낡은 목표 칸 3개 정리(중간 결산 리뷰 결정).
 
 ### 미해결
 - N1 색인이 `masker_no_send`만 나열 — tools/ 강제 키는 (A) §1.3 ⓑ 해석의 강제 매핑으로 도달. 다음 PR(`claude_md_sync_check` 구현 + 색인 갱신)에서 해소.

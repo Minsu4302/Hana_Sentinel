@@ -215,7 +215,7 @@ guardrails:
       - "tests/test_fixture_masker.py::test_each_masker_check_is_load_bearing_under_verified_mutation"
     manifest_key: masker_no_send
   - id: tools_no_external_send
-    description: "tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import와 동적 import 0"
+    description: "tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지)"
     target_layer: "아키텍처테스트"
     week1_status:
       state: enforced
@@ -225,6 +225,7 @@ guardrails:
       - "tests/test_tools_no_send.py::test_send_import_in_a_brand_new_subpackage_is_caught"
       - "tests/test_tools_no_send.py::test_send_import_in_a_deeply_nested_subpackage_is_caught"
       - "tests/test_tools_no_send.py::test_dynamic_import_in_tools_is_caught"
+      - "tests/test_tools_no_send.py::test_tests_package_import_in_tools_is_caught"
       - "tests/test_tools_no_send.py::test_allowed_imports_in_a_new_subpackage_pass_as_control"
       - "tests/test_tools_no_send.py::test_egress_guard_lives_in_tests_not_tools"
       - "tests/test_tools_no_send.py::test_empty_or_missing_target_is_an_error_not_a_pass"

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.arch_boundary import DYNAMIC, SEND, BoundaryScanError, tools_send_violations
+from tools.arch_boundary import DYNAMIC, SEND, TESTS, BoundaryScanError, tools_send_violations
 from tools.mutation_guard import assert_loaded_from, copy_with_mutation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -65,10 +65,22 @@ def test_dynamic_import_in_tools_is_caught(tmp_path, src):
     assert DYNAMIC in {v.kind for v in tools_send_violations(root)}
 
 
+@pytest.mark.parametrize("src", ["from tests.support.egress_guard import EgressGuard", "import tests.support",
+                                 "import tests.support.egress_guard as g", "from tests import conftest",
+                                 "import tests\nx = tests.support.egress_guard.GUARD",
+                                 "import importlib\nimportlib.import_module('tests.support.egress_guard')"])
+def test_tests_package_import_in_tools_is_caught(tmp_path, src):
+    """테스트 가드(소켓을 다룸)는 tests/support로 옮겼다 — tools/가 그것을 import해 송신 검사를 세탁하지 못한다."""
+    root = _tools_copy(tmp_path)
+    _plant(root, "llm_adapter_sibling/laundering.py", src)
+    assert TESTS in {v.kind for v in tools_send_violations(root)}
+
+
 def test_allowed_imports_in_a_new_subpackage_pass_as_control(tmp_path):
     root = _tools_copy(tmp_path)
     _plant(root, "new_report/render.py",
-           "import json\nfrom http import HTTPStatus\nfrom urllib.parse import urlsplit\nfrom sentinel import strict_json\n")
+           "import json\nfrom http import HTTPStatus\nfrom urllib.parse import urlsplit\nfrom sentinel import strict_json\n"
+           "import tests_helpers_not_the_tests_package\n")  # 이름이 tests로 시작할 뿐인 다른 패키지는 대상 아님
     assert tools_send_violations(root) == []
 
 
@@ -106,8 +118,10 @@ MUTATIONS = {
                                     "            if v.kind in TOOLS_SEND_KINDS]\n",
                              [_T + "test_send_import_in_a_brand_new_subpackage_is_caught",
                               _T + "test_send_import_in_a_deeply_nested_subpackage_is_caught"]),
-    "dynamic_not_forbidden": ("TOOLS_SEND_KINDS = (SEND, DYNAMIC)\n", "TOOLS_SEND_KINDS = (SEND,)\n",
+    "dynamic_not_forbidden": ("TOOLS_SEND_KINDS = (SEND, DYNAMIC, TESTS)\n", "TOOLS_SEND_KINDS = (SEND, TESTS)\n",
                               [_T + "test_dynamic_import_in_tools_is_caught"]),
+    "tests_not_forbidden": ("TOOLS_SEND_KINDS = (SEND, DYNAMIC, TESTS)\n", "TOOLS_SEND_KINDS = (SEND, DYNAMIC)\n",
+                            [_T + "test_tests_package_import_in_tools_is_caught"]),
 }
 
 

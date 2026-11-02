@@ -43,6 +43,7 @@
 >   - `eval_harness` enforced = 채점기 검증(층 A)까지다. 실제 모델 채점(층 B)은 모델 결선 이후 — 하네스 완성 ≠ 실제 측정 가능.
 > **v1.18 (매핑표 v1.17):** 4번 0번 결정 응고 — egress 0 유지. §1.3 ⓑ 해석(목적지 기준, src·tools·tests 강제 매핑, 현 단계 LLM = 루프백 로컬, 품질 수치는 재론 근거 아님 — 금지선 문구·재론 조건 불변) + §3.1 신규 `tools_no_external_send`(enforced) + §3 목표 칸 정리(`hallucinated_literal_isolation`·`anomaly_aggregation` → LLM 결선 시, `claude_md_sync_check` → CLAUDE.md 금지선 색인 다음 개정 시) + §6.2 독립 단위 규칙 (i) + §3.5 신규 `dataset_case_independence`(not_implemented) + 부록 LLM 전략 줄 교체. `schema_version` 값 변화 없음.
 >   - 테스트 egress 가드를 tools/에서 tests/support로 옮겼다(로직 변경 0) — 소켓을 바꿔 끼워 '막는' 코드라 tools/ 송신 검사에 걸렸고, ⓑ 강제 매핑상 tests 쪽(`egress_runtime_block`)이 제자리다.
+>   - 같은 매핑표 버전(v1.17) 안의 보강: `tools_no_external_send`에 tools → tests 패키지 import 금지를 더했다 — 옮긴 가드를 tools/가 다시 import해 송신 검사를 세탁하는 경로를 막는다(가드 이동과 인과).
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02)
 
 ---
@@ -388,7 +389,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | manifest 정본 파생(SSOT=이 표) + make verify 일치검증 | 테스트 | enforced | `manifest_derivation` |
 | CLAUDE.md 금지선 색인 ↔ (A) §1.3/§3 일치를 기계 검사 | 테스트 | not_implemented → CLAUDE.md 금지선 색인 다음 개정 시 | `claude_md_sync_check` |
 | fixture 마스커에 송신·소켓·egress 의존 0 | 아키텍처 테스트 | enforced | `masker_no_send` |
-| tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import와 동적 import 0 | 아키텍처 테스트 | enforced(정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖) | `tools_no_external_send` |
+| tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지) | 아키텍처 테스트 | enforced(정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖) | `tools_no_external_send` |
 
 ### 3.2 A. 입력경계
 | 규칙 | 목표층위 | 1주차 상태 | manifest 키 |
