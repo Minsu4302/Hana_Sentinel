@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.18 — Sentinel Harness
+# (A) 설계확정서 v1.19 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.18 = {범위 + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.17(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.19 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.17(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -44,7 +44,8 @@
 > **v1.18 (매핑표 v1.17):** 4번 0번 결정 응고 — egress 0 유지. §1.3 ⓑ 해석(목적지 기준, src·tools·tests 강제 매핑, 현 단계 LLM = 루프백 로컬, 품질 수치는 재론 근거 아님 — 금지선 문구·재론 조건 불변) + §3.1 신규 `tools_no_external_send`(enforced) + §3 목표 칸 정리(`hallucinated_literal_isolation`·`anomaly_aggregation` → LLM 결선 시, `claude_md_sync_check` → CLAUDE.md 금지선 색인 다음 개정 시) + §6.2 독립 단위 규칙 (i) + §3.5 신규 `dataset_case_independence`(not_implemented) + 부록 LLM 전략 줄 교체. `schema_version` 값 변화 없음.
 >   - 테스트 egress 가드를 tools/에서 tests/support로 옮겼다(로직 변경 0) — 소켓을 바꿔 끼워 '막는' 코드라 tools/ 송신 검사에 걸렸고, ⓑ 강제 매핑상 tests 쪽(`egress_runtime_block`)이 제자리다.
 >   - 같은 매핑표 버전(v1.17) 안의 보강: `tools_no_external_send`에 tools → tests 패키지 import 금지를 더했다 — 옮긴 가드를 tools/가 다시 import해 송신 검사를 세탁하는 경로를 막는다(가드 이동과 인과).
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02)
+> **v1.19 (매핑표 v1.17 유지):** §1.4 금지선 강제 매핑 신설(CLAUDE.md 금지선 색인의 정본 — N1~N10 × 정의처 × 강제 키, N5는 키 없음 명시). §3·CLAUDE.md·`schema_version` 변화 없음. CLAUDE.md 색인 갱신과 `claude_md_sync_check` 구현은 v1.20(같은 PR)에서.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02)
 
 ---
 
@@ -115,6 +116,26 @@
 > **ⓕ 해석:** 사람이 Burp에서 내보낸 원본 파일은 Burp 프로젝트 파일과 같은 시스템 밖 자산이고, 시스템(엔진·tools)은 이를 영속화하지 않는다.
 > - RawTransaction(§2.7)은 원본을 담는 유일한 타입이며, 마스킹 경계(마스커) 안에서만 존재한다. 엔진·저장소·커밋 어디에도 RawTransaction 인스턴스나 실제 트래픽에서 나온 평문이 남지 않는다.
 > - '평문 내용'의 범위: ⓕ가 막는 것은 RawTransaction 인스턴스와 실제 트래픽에서 나온 평문이다. N5 더미 규칙을 따르는 가짜 리터럴(faketoken_…·example.test 등)은 실제 트래픽에서 나온 것이 아니므로 '평문 내용'에 해당하지 않는다 — ⓕ의 예외가 아니라 애초에 대상이 아니다. 이에 따라 마스커 테스트는 원본 픽스처를 파일로 커밋하지 않고 실행 중에만 만든다.
+
+### 1.4 금지선 강제 매핑 (CLAUDE.md 금지선 색인의 정본)
+- CLAUDE.md 금지선 색인(N1~N10)은 이 표에서 파생된다. 색인과 이 표의 집합 일치는 `claude_md_sync_check`가 검사한다(구현 전 — not_implemented).
+- 이 표의 완전성(빠진 강제 키가 없는가)은 사람의 리뷰 몫이다. 기계는 교차 검사만 덮는다(ⓑ행 ⊇ ⓑ 해석 강제 매핑 / §3 규칙 칸에 금지선 코드가 적힌 행의 키 ∈ 그 코드의 행).
+
+| N | 금지선 | (A) 정의처 | 강제 키 | 비고 |
+|---|---|---|---|---|
+| N1 | 외부 egress | §1.3 ⓑ | `egress_static_check`, `egress_runtime_block`, `egress_enforcement_owner`, `local_llm_vs_egress`, `no_autonomous_send`, `tools_no_external_send`, `masker_no_send` | ⓑ 해석 강제 매핑 포함. `egress_enforcement_owner`는 unverifiable |
+| N2 | 자율 전송 | §1.3 ⓐ | `no_autonomous_send`, `tools_no_external_send`, `masker_no_send` | |
+| N3 | Java 로직 금지 | §3.2 | `java_logic_isolation` | not_implemented |
+| N4 | 엔진은 Burp를 모른다 / 입력은 정규화 JSON만 | §3.2 | `engine_burp_isolation`, `engine_tools_isolation`, `engine_no_rawtransaction`, `input_schema_gate` | 앞 셋 = 엔진이 무엇을 보지 않는가, `input_schema_gate` = 입력이 정규화 통과분만인가 |
+| N5 | 실데이터 금지 | §1.3 ⓒ | (없음) | 기계 강제 불가 — 정책·리뷰로 지킨다. N5 더미 표지 검사(`dataset_version_freeze` 내부)는 실데이터 부재를 증명하지 않으므로 넣지 않는다 |
+| N6 | main 직접 병합 금지 | §3.4 | `branch_protection` | unverifiable(레포 설정) |
+| N7 | 민감정보·원본 커밋·저장 금지 | §1.3 ⓕ, §3.3 | `secret_scan_hook`, `no_raw_persistence`, `sanitization_trust`, `maskedref_typing` | `masked_span_integrity`는 마스킹 표기 정합성(보조)이라 제외 |
+| N8 | AI 수정코드 자동 반영 금지 | §1.3 ⓓ | `no_autopatch_apply` | |
+| N9 | 실데이터 파인튜닝 금지 | §1.3 ⓔ | `no_finetune_path` | |
+| N10 | 멀티에이전트/사내 사례 RAG | §1.3 ⓖ | `no_multiagent_rag` | not_implemented → P2 |
+
+- 송신 수단 금지 키(`no_autonomous_send`·`tools_no_external_send`·`masker_no_send`)는 목적지를 가리지 않고 송신 자체를 막으므로 ⓐ·ⓑ를 함께 강제한다. 송신 어댑터의 예외는 이 키들의 범위 문구 변경과 별도로, ⓐ(대상 재전송 불가)·ⓑ(루프백 목적지만) 각각에 대한 어댑터 전용 키로 정한다(어댑터 개정).
+- 키 상태(enforced 등)는 이 표에 적지 않는다 — 상태의 정본은 §3이다(비고의 상태 언급은 이해용 메모).
 
 ---
 
