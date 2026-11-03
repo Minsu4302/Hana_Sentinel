@@ -22,8 +22,8 @@ FIELDS = ("id", "description", "target_layer", "status", "verification_tests", "
 STATES = ("enforced", "not_implemented", "disabled", "unverifiable", "derived")
 STATUS_KEYS = {"state", "target", "note", "derived_from"}
 LAYERS = tuple(dict.fromkeys(LAYER_MAP.values()))
-# (A)가 enforced를 1주차 목표로 둔 키가 아직 증명되지 않았을 때의 목표 시점
-WEEK1_TARGET = "1주차"
+# (A)가 enforced로 둔 키의 검증 테스트가 guardrails.yaml에 아직 등록·승격되지 않았을 때의 목표 사건
+PENDING_PROOF_TARGET = "검증 테스트 등록 시"
 SCHEMA_VERSION = "1"
 
 Entry = dict[str, Any]
@@ -50,7 +50,7 @@ def expected_status(row: SpecRow, current: Any) -> dict[str, Any]:
     if row.state == "enforced":
         promoted = isinstance(current, dict) and current.get("state") == "enforced"
         status: dict[str, Any] = {"state": "enforced"} if promoted else {
-            "state": "not_implemented", "target": WEEK1_TARGET}
+            "state": "not_implemented", "target": PENDING_PROOF_TARGET}
     elif row.state == "derived":
         status = {"state": "derived", "derived_from": list(row.derived_from)}
         if row.target:
@@ -205,7 +205,7 @@ def render_yaml(entries: list[Entry], spec: Spec) -> str:
         "# guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).",
         f"# 원천: (A) docs/design-decision.md §3 강제 매핑표 {spec.version}. 값이 다르면 (A)가 정본이다.",
         "# 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.",
-        "# enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.",
+        "# enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.",
         f"schema_version: {_q(SCHEMA_VERSION)}",
         f"derived_from: {_q(f'docs/design-decision.md §3 매핑표 {spec.version}')}",
         "guardrails:",

@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.21 — Sentinel Harness
+# (A) 설계확정서 v1.22 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.21 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.19(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.22 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.20(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -47,7 +47,8 @@
 > **v1.19 (매핑표 v1.17 유지):** §1.4 금지선 강제 매핑 신설(CLAUDE.md 금지선 색인의 정본 — N1~N10 × 정의처 × 강제 키, N5는 키 없음 명시). §3·CLAUDE.md·`schema_version` 변화 없음. CLAUDE.md 색인 갱신과 `claude_md_sync_check` 구현은 v1.20(같은 PR)에서.
 > **v1.20 (매핑표 v1.18):** CLAUDE.md 금지선 색인을 §1.4에 맞춰 갱신(꼬리 형식 `→ 정의처: … · 키: …(§3.x)`, N5 '키: 없음') + §3.1 `claude_md_sync_check` 승격(not_implemented → enforced, 증명은 같은 PR — 이 PR이 그 키의 목표 사건) + §1.4 머리 문장의 구현 상태 갱신. §1.4 표 내용·`schema_version` 변화 없음.
 > **v1.21 (매핑표 v1.19):** §3.1~§3.5 표 머리 '1주차 상태' → '상태'(열 머리만 — 다른 열·행 변화 없음, 파서는 옛 머리를 오류로 처리). `guardrails.yaml` 필드 `week1_status` → `status` — 필드명 변경 = 비가산, 레포 밖 소비자 0이라 `schema_version` 유지(§2 규칙 준용). §1.4 머리 문장의 꼬리 형식 예시를 겹백틱으로(렌더 수정, 문구 불변). 그 밖의 낡은 주차 표현(§3.0 '④ [1주차]', §3.5 '2주차 enforced 범위', §3.6 제목 등)은 이번에 바꾸지 않는다.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03)
+> **v1.22 (매핑표 v1.20):** 낡은 '주차' 표현 정리(뜻 변경 없음 — §2.5, §3 머리말 상태 4종, §3.0 '④ [현재]', §3.1 `local_llm_vs_egress` 노트, §3.5 각주 제목 '출력 게이트 enforced 범위'(본문 불변), §3.6 제목 '기반 적대적 테스트') + §3.1 `claude_md_sync_check` 범위 확장(설명 문구 속 키 표기 0) + §1.4 머리 문장 한 구절. `schema_version` 값 변화 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03)
 
 ---
 
@@ -120,7 +121,7 @@
 > - '평문 내용'의 범위: ⓕ가 막는 것은 RawTransaction 인스턴스와 실제 트래픽에서 나온 평문이다. N5 더미 규칙을 따르는 가짜 리터럴(faketoken_…·example.test 등)은 실제 트래픽에서 나온 것이 아니므로 '평문 내용'에 해당하지 않는다 — ⓕ의 예외가 아니라 애초에 대상이 아니다. 이에 따라 마스커 테스트는 원본 픽스처를 파일로 커밋하지 않고 실행 중에만 만든다.
 
 ### 1.4 금지선 강제 매핑 (CLAUDE.md 금지선 색인의 정본)
-- CLAUDE.md 금지선 색인(N1~N10)은 이 표에서 파생된다. 색인과 이 표의 집합 일치(정의처·키·키 옆 소절)는 `claude_md_sync_check`가 `make verify`에서 검사한다. 색인 꼬리 형식은 `` → 정의처: <, 목록> · 키: <없음… | `키`(§3.x), 목록> ``이고, 읽을 수 없는 형식은 통과가 아니라 오류다.
+- CLAUDE.md 금지선 색인(N1~N10)은 이 표에서 파생된다. 색인과 이 표의 집합 일치(정의처·키·키 옆 소절)는 `claude_md_sync_check`가 `make verify`에서 검사한다. 색인 꼬리 형식은 `` → 정의처: <, 목록> · 키: <없음… | `키`(§3.x), 목록> ``이고, 읽을 수 없는 형식은 통과가 아니라 오류다. 색인 줄의 설명 문구(→ 앞)에 manifest 키를 적는 것도 형식 오류다(상태 주장이 설명으로 다시 들어오는 경로 차단).
 - 이 표의 완전성(빠진 강제 키가 없는가)은 사람의 리뷰 몫이다. 기계는 교차 검사만 덮는다(ⓑ행 ⊇ ⓑ 해석 강제 매핑 / §3 규칙 칸에 금지선 코드가 적힌 행의 키 ∈ 그 코드의 행).
 
 | N | 금지선 | (A) 정의처 | 강제 키 | 비고 |
@@ -287,7 +288,7 @@ AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], sugges
 ```
 ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot }
 ```
-> **왜 분리?** `findings:[]`가 "분석 완료·깨끗함"인지 "아직 분석 안 함"인지 혼동 금지. **분석 안 함 ≠ 분석 후 취약점 없음.** 평가의 '정상 사례 정확도'가 이 구분에 의존한다. 1주차 골격은 이 타입만 반환한다.
+> **왜 분리?** `findings:[]`가 "분석 완료·깨끗함"인지 "아직 분석 안 함"인지 혼동 금지. **분석 안 함 ≠ 분석 후 취약점 없음.** 평가의 '정상 사례 정확도'가 이 구분에 의존한다. 현재 골격은 이 타입만 반환한다.
 
 - **`analysis_status` = 닫힌 enum:** `not_implemented | completed | output_rejected`.
   - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 동작).
@@ -370,10 +371,10 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.19 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.20 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
-> **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 주차 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
+> **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
 > **파생 상태(derived):** 자체 강제테스트 없이 하위 키들의 AND로 상태가 정해지는 롤업 항목(예: `output_schema_gate`). 독립 강제를 참칭하지 않으며, 하위 키가 모두 enforced일 때만 enforced.
 > **목표 층위:** 주된 강제 지점. 실제 보장엔 보조 층위가 추가될 수 있고, enforced는 선언된 필수검증이 실제 실행·통과한 경우에만 부여.
 > **강제 4층위:** 타입(최강·공짜) > 스키마/validator > 테스트 > CI게이트.
@@ -388,7 +389,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 ③ Sanitization 독립 재검증 ──생문자열 패턴 잔존──▶ applied 무관 거부 + 감사
    │  (+ fail-closed: applied==false ‖ failed==true ‖ 필드누락 ‖ 타입오류 → 거부)
    │통과
-④ [1주차] 분석 없음 → ExecutionResponse(analysis_status="not_implemented") 반환
+④ [현재] 분석 없음 → ExecutionResponse(analysis_status="not_implemented") 반환
    [이후]  규칙엔진 → LLM → 출력 스키마 검증 → 저장
 ```
 **감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부) — 수용 요청 감사(B-6) 범위 확정 시.
@@ -399,7 +400,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔) | 테스트 | enforced | `egress_static_check` |
 | egress 런타임 차단 실증 | 테스트 | enforced(테스트환경 한정) | `egress_runtime_block` |
 | egress 차단 실주체(OS/네트워크) | — | unverifiable | `egress_enforcement_owner` |
-| 로컬 LLM ≠ 외부 egress 분리 | 테스트 | enforced(1주차=허용목록 빔 검사) | `local_llm_vs_egress` |
+| 로컬 LLM ≠ 외부 egress 분리 | 테스트 | enforced(허용목록 빔 검사) | `local_llm_vs_egress` |
 | 자율 전송 0(송신·소켓 심볼 import 0) | 아키텍처 테스트 | enforced | `no_autonomous_send` |
 | 127.0.0.1 바인딩 | 테스트+설정 | enforced | `loopback_binding` |
 | 요청자 토큰 검증(공유시크릿) | validator+테스트 | enforced | `request_token_validation` |
@@ -410,7 +411,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | manifest 정직성 | 테스트 | enforced | `manifest_honesty` |
 | manifest 자기검증 | 테스트 | enforced | `manifest_selfcheck` |
 | manifest 정본 파생(SSOT=이 표) + make verify 일치검증 | 테스트 | enforced | `manifest_derivation` |
-| CLAUDE.md 금지선 색인 ↔ (A) §1.4 일치를 기계 검사 | 테스트 | enforced(색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차. §1.4 자체의 완전성은 범위 밖 — 리뷰) | `claude_md_sync_check` |
+| CLAUDE.md 금지선 색인 ↔ (A) §1.4 일치를 기계 검사 | 테스트 | enforced(색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차 + 설명 문구 속 키 표기 0. §1.4 자체의 완전성은 범위 밖 — 리뷰) | `claude_md_sync_check` |
 | fixture 마스커에 송신·소켓·egress 의존 0 | 아키텍처 테스트 | enforced | `masker_no_send` |
 | tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지) | 아키텍처 테스트 | enforced(정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖) | `tools_no_external_send` |
 
@@ -475,9 +476,9 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
-> **2주차 enforced 범위:** 2주차 enforced 범위 = 검증 함수 단위(주입 테스트). 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
+> **출력 게이트 enforced 범위:** 2주차 enforced 범위 = 검증 함수 단위(주입 테스트). 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
 
-### 3.6 1주차 적대적 테스트 (Java 없이 직접 주입 — '위조 거부'로 증명)
+### 3.6 기반 적대적 테스트 (Java 없이 직접 주입 — '위조 거부'로 증명)
 | 공격 케이스 | 기대 동작 |
 |---|---|
 | `applied:true`인데 본문에 토큰 생문자열 잔존 | ③ 재검증이 거부 |

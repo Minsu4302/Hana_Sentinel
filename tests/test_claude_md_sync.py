@@ -157,9 +157,19 @@ def test_unreadable_format_is_an_error_not_a_pass(name):
 
 
 def test_description_text_before_the_anchor_is_not_checked():
-    """설명 문구(→ 앞)는 대상이 아니다 — 백틱이 있어도(N4의 burp/montoya) 키로 읽지 않는다."""
+    """설명 문구(→ 앞)는 일치 검사 대상이 아니다 — 키가 아닌 백틱(N4의 burp/montoya처럼)은 통과."""
     forged = _edit_line(CLAUDE, "N4", "Python 엔진에", "Python 엔진(`whatever_not_a_key`)에")
     assert check(DESIGN, forged) == []
+
+
+@pytest.mark.parametrize("n,old,new", [
+    ("N2", "도구가 대상 서버로", "도구(`tools_no_external_send`)가 대상 서버로"),                       # 실제 키 심기
+    ("N10", "P2 범위. 단", "P2 범위. 1주차 능동 강제 아님(`no_multiagent_rag`=not_implemented→P2). 단"),  # 옛 상태 주장 복원
+])
+def test_manifest_key_written_in_description_is_a_format_error(n, old, new):
+    """설명 문구에 실제 manifest 키를 적으면 형식 오류 — 상태 주장이 설명으로 다시 들어오는 경로를 막는다."""
+    with pytest.raises(BanIndexError, match="index_key_in_description"):
+        check(DESIGN, _edit_line(CLAUDE, n, old, new))
 
 
 # ── 변이 확인 ──────────────────────────────────────────────────────
@@ -186,6 +196,8 @@ MUTATIONS = {
                     "    if missing := frozenset():\n", [_T + "test_b_row_dropping_a_b_interpretation_key_is_caught"]),
     "rule3_codes_off": ("            if not any(key in row.keys for row in owners):\n", "            if False:\n",
                         [_T + "test_n8_dropping_the_coded_section3_key_is_caught"]),
+    "description_key_check_off": ('        if set(re.findall(r"`([^`]+)`", description)) & known_keys:  # 설명 문구 속 manifest 키 표기\n',
+                                  "        if False:\n", [_T + "test_manifest_key_written_in_description_is_a_format_error"]),
     "format_lenient": ("def _fail(code: str) -> None:\n    raise BanIndexError(code)\n",
                        "def _fail(code: str) -> None:\n    return None  # 변이: 형식 검사 해제(관대 파싱)\n",
                        [_T + "test_unreadable_format_is_an_error_not_a_pass", _T + "test_duplicated_index_line_is_an_error",
