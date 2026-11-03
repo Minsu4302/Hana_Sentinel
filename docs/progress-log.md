@@ -819,3 +819,22 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 ### 미해결
 - **참칭 거부 테스트가 실제 키 이름을 하드코딩한다(2회째 재발)**: `tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced`의 예시 키가 승격될 때마다 첫 실행이 깨진다(하네스 PR의 `eval_harness`, 이번 `claude_md_sync_check`). 새 예시 `assertive_token_guard`도 승격되면 세 번째가 된다 — 위조가 아니라 정상 진척을 실패로 만들어 진짜 실패를 가린다. 해법: 실제 레지스트리와 무관한 합성 키·합성 레지스트리. 이월: 다음 PR(§3 열 머리 + 파서 — 어차피 `test_guardrails.py`를 건드림).
 - **설명 문구(→ 앞)에 적힌 manifest 키는 검사하지 않는다**: N10에서 지운 것 같은 상태 주장이 다른 줄 설명으로 다시 들어와도 잡히지 않는다. 지금 상태 칸은 '색인 ↔ §1.4 집합 일치'만 주장하므로 거짓 보장은 아니다(알려진 범위 밖). 값싼 방어: 설명 문구 안의 백틱 문자열이 실제 manifest 키와 같으면 형식 오류(N4의 `burp`·`montoya`는 키가 아니라 영향 없음). 이월: `claude_md_sync_check` 범위 확장(작은 PR, (A) 상태 칸 노트 동반) — 규칙 엔진 전후 어디든.
+
+---
+
+## (A) v1.21 — §3 열 머리 '상태' + 파서 + 합성 레지스트리 (Issue #66)
+
+### 0단계 결과
+- (A) v1.20 / 매핑표 v1.18 → 문서 v1.21, 매핑표 v1.19.
+- '1주차 상태' 의존: (A) §3.1~§3.5 표 머리 5곳, `spec.py`(TABLE_HEADER·오류 문구), `registry.py`(주석), `tests/test_guardrails.py`(오류 문구 match 2곳), (B) W1-00 6필드 설명(69행). CLAUDE.md·PR 템플릿에는 없음.
+- `week1_status` 의존: `guardrails.yaml`, `registry.py`·`manifest.py`·`selfcheck.py`, `tests/test_guardrails.py`·`test_execution.py`·`test_selfcheck.py`. manifest 생성물에는 이 필드명이 없다(`status`·`effective_status`) — 레포 밖 소비자 0 → 필드명 변경.
+- `test_rejects_target_week_drift`는 '주차' 문구가 아니라 실제 키(`token_hardening`)의 목표 칸에 의존했다.
+- 낡은 주차 표현(변경 안 함, 목록만): (A) §3.0 '④ [1주차]', §3.1 `local_llm_vs_egress` 상태 칸 '1주차=허용목록 빔 검사', §3.5 '2주차 enforced 범위' 각주, §3.6 제목 '1주차 적대적 테스트', `registry.py` `WEEK1_TARGET = "1주차"`(동기화가 아직 증명 안 된 enforced 목표 키에 쓰는 값), (B) 제목 '· 1주차'·범위 문단, (B) 12행 "정본 색인: (A) §1.3 / §3"(v1.19 이후 정본 색인은 §1.4).
+- 실제 키를 상태 예시로 쓰던 테스트: `test_guardrails.py`(참칭 거부 6키·unverifiable 2키·derived 1키, ENFORCED_KEY, 목표 드리프트, 미지 status, 비enforced에 테스트, (A)에 없는 키 복제 원본, 롤업 미지 자식, 파서의 상태·층위 표기 문자열, CLI 손 편집·생성 거부) / `test_execution.py`(`audit_write_failure` 상태 단언, `receipt_hmac` 위조 2곳).
+
+### 결과
+- 표 머리 '1주차 상태' → '상태'. 파서는 절의 첫 표 행이 정확히 새 머리가 아니면 오류(옛 머리·열 이름 변형·순서·열 수 — 호환 경로 없음).
+- `week1_status` → `status`(필드명 변경 = 비가산, 레포 밖 소비자 0이라 `schema_version` 유지).
+- **v1.20 미해결 ① → 해소.** 상태 예시 위조 거부는 `tests/test_guardrails_synthetic.py`의 합성 (A) §3 텍스트·합성 레지스트리로 옮겼다. 근거 노드: `test_this_file_names_no_real_guardrail_key`(실제 키 이름 0 — 첫 실행에서 독스트링의 실제 키 이름을 실제로 잡았다), `test_rejects_not_implemented_key_claimed_as_enforced`(합성 키로 참칭 거부 유지). `test_execution.py`의 실제 키 예시는 정렬 첫 키 선택·원래 값 비교로 바꿨다.
+- v1.20 미해결 ②(설명 문구 속 키)는 그대로 이월.
+- §1.4 머리 문장 꼬리 형식 예시를 겹백틱으로(렌더 수정).

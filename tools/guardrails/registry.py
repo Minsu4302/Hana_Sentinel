@@ -16,8 +16,8 @@ import yaml
 
 from tools.guardrails.spec import LAYER_MAP, Spec, SpecRow
 
-# (B) W1-00 6필드: 가드레일 ID / 설명 / 목표층위 / 1주차 상태 / 검증 테스트 식별자 / manifest 키
-FIELDS = ("id", "description", "target_layer", "week1_status", "verification_tests", "manifest_key")
+# (B) W1-00 6필드: 가드레일 ID / 설명 / 목표층위 / 상태 / 검증 테스트 식별자 / manifest 키
+FIELDS = ("id", "description", "target_layer", "status", "verification_tests", "manifest_key")
 # (A) §3 머리말: manifest 상태 4종 + 파생 상태(derived)
 STATES = ("enforced", "not_implemented", "disabled", "unverifiable", "derived")
 STATUS_KEYS = {"state", "target", "note", "derived_from"}
@@ -70,13 +70,13 @@ def sync(spec: Spec, current: list[Entry]) -> list[Entry]:
     out: list[Entry] = []
     for row in spec.rows:
         old = by_id.get(row.key, {})
-        status = expected_status(row, old.get("week1_status"))
+        status = expected_status(row, old.get("status"))
         tests = list(old.get("verification_tests") or []) if status["state"] == "enforced" else []
         out.append({
             "id": row.key,
             "description": row.rule,
             "target_layer": row.layer,
-            "week1_status": status,
+            "status": status,
             "verification_tests": tests,
             "manifest_key": row.key,
         })
@@ -133,12 +133,12 @@ def validate(entries: list[Entry], spec: Spec, root: Path) -> None:
             errors.append(f"{where}: description이 비어 있음")
         if e["target_layer"] not in LAYERS:
             errors.append(f"{where}: 미지 target_layer {e['target_layer']!r}")
-        status, tests = e["week1_status"], e["verification_tests"]
+        status, tests = e["status"], e["verification_tests"]
         if not isinstance(tests, list) or not all(isinstance(t, str) for t in tests):
             errors.append(f"{where}: verification_tests는 문자열 목록이어야 함")
             tests = []
         if not isinstance(status, dict) or set(status) - STATUS_KEYS:
-            errors.append(f"{where}: week1_status 형식 오류 {status!r}")
+            errors.append(f"{where}: status 형식 오류 {status!r}")
             continue
         state = status.get("state")
         if state not in STATES:
@@ -174,7 +174,7 @@ def validate(entries: list[Entry], spec: Spec, root: Path) -> None:
             errors.append(f"{key}: description이 (A) §{row.section}와 다름")
         if e["target_layer"] != row.layer:
             errors.append(f"{key}: target_layer {e['target_layer']!r} ≠ (A) 파생값 {row.layer!r}")
-        status = e["week1_status"]
+        status = e["status"]
         if not isinstance(status, dict) or status.get("state") not in STATES:
             continue
         if status["state"] == "derived":
@@ -182,7 +182,7 @@ def validate(entries: list[Entry], spec: Spec, root: Path) -> None:
                 c = known.get(child)
                 if c is None or child == key:
                     errors.append(f"{key}: derived 하위 키 {child!r}가 레지스트리에 없음")
-                elif isinstance(c.get("week1_status"), dict) and c["week1_status"].get("state") == "derived":
+                elif isinstance(c.get("status"), dict) and c["status"].get("state") == "derived":
                     errors.append(f"{key}: derived 하위 키 {child!r}가 다시 derived(중첩 롤업 금지)")
             if not status.get("derived_from"):
                 errors.append(f"{key}: derived인데 하위 키 목록 없음")
@@ -190,7 +190,7 @@ def validate(entries: list[Entry], spec: Spec, root: Path) -> None:
             shown = row.state + (f"(→{row.target})" if row.target else "")
             errors.append(f"{key}: (A)가 {shown}인 키를 enforced로 주장 — 참칭")
         elif status != expected_status(row, status):
-            errors.append(f"{key}: week1_status {status!r} ≠ (A) 파생값 {expected_status(row, status)!r}")
+            errors.append(f"{key}: status {status!r} ≠ (A) 파생값 {expected_status(row, status)!r}")
 
     if errors:
         raise RegistryError(errors)
@@ -211,12 +211,12 @@ def render_yaml(entries: list[Entry], spec: Spec) -> str:
         "guardrails:",
     ]
     for e in entries:
-        s = e["week1_status"]
+        s = e["status"]
         lines += [
             f"  - id: {e['id']}",
             f"    description: {_q(e['description'])}",
             f"    target_layer: {_q(e['target_layer'])}",
-            "    week1_status:",
+            "    status:",
             f"      state: {s['state']}",
         ]
         if "target" in s:
