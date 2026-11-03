@@ -838,3 +838,4 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - **v1.20 미해결 ① → 해소.** 상태 예시 위조 거부는 `tests/test_guardrails_synthetic.py`의 합성 (A) §3 텍스트·합성 레지스트리로 옮겼다. 근거 노드: `test_this_file_names_no_real_guardrail_key`(실제 키 이름 0 — 첫 실행에서 독스트링의 실제 키 이름을 실제로 잡았다), `test_rejects_not_implemented_key_claimed_as_enforced`(합성 키로 참칭 거부 유지). `test_execution.py`의 실제 키 예시는 정렬 첫 키 선택·원래 값 비교로 바꿨다.
 - v1.20 미해결 ②(설명 문구 속 키)는 그대로 이월.
 - §1.4 머리 문장 꼬리 형식 예시를 겹백틱으로(렌더 수정).
+- **발행 규율 변경(PR #67 리뷰)**: claude.ai 발행본은 마일스톤(단계 종료·새 설계 세션 직전)에만 갱신한다 — 매 merge 재발행 폐지(발행본은 스냅샷이라 지연 허용, 발행본 ≤ 정본). 발행 시에만 (A) 전문 + 바이트 수 + SHA-256 전체 값을 전달한다.
