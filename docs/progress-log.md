@@ -875,7 +875,7 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - 하네스 `RunMeta`·J9 보고 머리: `model_id`·`prompt_version`을 rule_only에서 null 허용(보고 머리 표기 방식은 코드 PR 0단계에서 제안).
 - `validate_draft`의 `produced_by` 인자: 파이프라인 경로가 정한다(규칙 결과 메타데이터에서 가져오지 않는다).
 
-### 미해결 (문구 드리프트 — 이번 범위 밖, 고치지 않음)
-- §2.4 트리 `analyzed_refs` 주석 "서버 부여: **LLM에** 실제로 넘긴 transaction_id 목록"과 그 아래 서술 — rule_only 경로에서는 생산자가 규칙이다.
-- §2.5 `output_rejected` "**LLM 출력**이 검증에 실패해" — 규칙 출력도 같은 게이트를 지나게 되면 범위가 넓어진다.
-- 둘 다 규칙 엔진 코드 PR(결선)에서 경로가 실제로 생길 때 함께 정리하는 것이 자연스럽다.
+### 출력 계약 서술의 생산자 일반화 (리뷰 반영 — 이 PR에서 해소)
+- 처음 팩은 §2.4 `analyzed_refs`·§2.5 `output_rejected`의 'LLM 한정' 문구를 코드 PR로 넘기려 했으나, rule_only 경로에서의 계약 의미이므로 계약 PR에서 정한다(코드 PR에 (A) 계약을 섞지 않는다) → 이 PR에서 처리.
+- 바꾼 문장(게이트·출력 검증의 대상): §2.4 트리 `analyzed_refs`·`category`·`severity_if_true`·`status`·`produced_by`·`corroboration`·`anomaly_flags` 주석, `analyzed_refs`·`severity_if_true`·`corroboration·review_required`·출력 검증 규칙·status 승격 서술, §2.5 `output_rejected` → '초안(규칙·LLM)' / '분석 단계(규칙·LLM)' / '초안 아님'. §3.5 각주 첫 문장 '2주차 enforced 범위' → '게이트 자체의 enforced 범위'(뜻 변경 0).
+- 그대로 둔 문장(LLM에만 해당): §2.4 제목 'LLM 환각을 계약으로 차단', `analyzed_refs` 근거의 자기참조 문장, `severity_if_true` 근거의 'LLM에 다시 위임하는 뒷문', `analysis_meta`의 'LLM이 없는 경로', 출력 검증 규칙 근거의 '환각을 부분적으로 신뢰'.
