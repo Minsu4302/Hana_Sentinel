@@ -855,3 +855,27 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - **고치지 않고 보고(뜻이 바뀜)**: (B) 본문의 1주차 서술 — (B)는 그 자체로 1주차(골격 단계) 실행 지시서라, 제목·범위 문단 외의 '1주차'는 문서의 대상 범위를 정확히 말한다. CLAUDE.md 40행 "1주차 작업 순서·완료 기준 → (B)"(사실), 50행 "'1주차 완료 판정'"((B) §4 참조, 사실), 54행 "각 주차(또는 마일스톤) 완료 시"(갱신 주기 규칙 — '주차'를 빼면 규칙이 바뀜).
 - **v1.20 미해결 ② → 해소.** `claude_md_sync_check`가 설명 문구 속 manifest 키를 형식 오류로 잡는다. 근거 노드: `tests/test_claude_md_sync.py::test_manifest_key_written_in_description_is_a_format_error`(N2에 실제 키 심기 / N10에 옛 상태 주장 복원), 변이 `description_key_check_off`.
 - **v1.21 0단계 4번 목록 → 해소**(§3.5 각주 본문만 발주대로 불변).
+
+---
+
+## (A) v1.23 — rule-only 결선의 계약·원칙 선행 개정 (Issue #70)
+
+### 0단계 결과
+- (A) v1.22 / 매핑표 v1.20 → 문서 v1.23, 매핑표 v1.21. (발주 시점에 v1.22 PR #69가 승인 전이라 한 번 멈춤 → 승인·merge 후 진행.)
+- `produced_by`는 이미 서버 부여: `SERVER_ASSIGNED_FIELDS`에 있고 초안 타입 `FindingDraft`에 없으며, 게이트에는 `validate_draft(…, produced_by=…)` 인자로만 들어간다. 단 (A) §2.4 문구에는 '서버 부여'가 없었다 → 사실 서술 한 줄 보강(규칙 변경 아님).
+- AnalysisResult·ExecutionResponse의 레포 밖 소비자·보존 데이터 0(동결 데이터셋은 Envelope·라벨뿐). 레포 안 소비자: 평가 하네스 `PredictionRun`.
+
+### 결과
+- §2.4 `produced_by` 서버 부여 서술 + `analysis_meta`(pipeline_mode 닫힌 enum `rule_only | rule_llm`, rule_only에서 model_id·prompt_version = null) / §2.5 `ExecutionResponse.result` + 불변식(completed ⇔ result ≠ null) / §3.5 각주 본문 → `completed_via_gate` 추적 / §3.5 신규 `completed_via_gate`(not_implemented → 규칙 엔진 결선 시) / §6.2 블라인드 원칙 확장((a) 라벨 동결 (b) 생산자 버전 동결 후 test 작성, 1인 단계 한계, S v1 = 규칙에 대해 오염된 스모크 집합).
+- 비가산 3건, 소비자 0이라 `schema_version` 유지. 코드·테스트 변경 0.
+
+### 계약이 코드보다 앞선 구간 (이월: 규칙 엔진 코드 PR)
+- `ExecutionResponse` 타입: `analysis_status` Literal에 `completed`·`output_rejected` 추가 + `result` 필드(지금은 `not_implemented`만, `result` 없음).
+- `AnalysisMeta`: `pipeline_mode` 닫힌 enum, rule_only에서 `model_id`·`prompt_version` null 허용(지금은 둘 다 필수 str, pipeline_mode는 열린 str).
+- 하네스 `RunMeta`·J9 보고 머리: `model_id`·`prompt_version`을 rule_only에서 null 허용(보고 머리 표기 방식은 코드 PR 0단계에서 제안).
+- `validate_draft`의 `produced_by` 인자: 파이프라인 경로가 정한다(규칙 결과 메타데이터에서 가져오지 않는다).
+
+### 출력 계약 서술의 생산자 일반화 (리뷰 반영 — 이 PR에서 해소)
+- 처음 팩은 §2.4 `analyzed_refs`·§2.5 `output_rejected`의 'LLM 한정' 문구를 코드 PR로 넘기려 했으나, rule_only 경로에서의 계약 의미이므로 계약 PR에서 정한다(코드 PR에 (A) 계약을 섞지 않는다) → 이 PR에서 처리.
+- 바꾼 문장(게이트·출력 검증의 대상): §2.4 트리 `analyzed_refs`·`category`·`severity_if_true`·`status`·`produced_by`·`corroboration`·`anomaly_flags` 주석, `analyzed_refs`·`severity_if_true`·`corroboration·review_required`·출력 검증 규칙·status 승격 서술, §2.5 `output_rejected` → '초안(규칙·LLM)' / '분석 단계(규칙·LLM)' / '초안 아님'. §3.5 각주 첫 문장 '2주차 enforced 범위' → '게이트 자체의 enforced 범위'(뜻 변경 0).
+- 그대로 둔 문장(LLM에만 해당): §2.4 제목 'LLM 환각을 계약으로 차단', `analyzed_refs` 근거의 자기참조 문장, `severity_if_true` 근거의 'LLM에 다시 위임하는 뒷문', `analysis_meta`의 'LLM이 없는 경로', 출력 검증 규칙 근거의 '환각을 부분적으로 신뢰'.

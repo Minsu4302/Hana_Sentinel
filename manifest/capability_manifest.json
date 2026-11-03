@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.20",
+  "spec": "docs/design-decision.md §3 매핑표 v1.21",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -562,6 +562,12 @@
         "server_assigned_status",
         "category_closed_enum"
       ],
+      "verification_tests": []
+    },
+    "completed_via_gate": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "규칙 엔진 결선 시",
       "verification_tests": []
     },
     "assertive_token_guard": {

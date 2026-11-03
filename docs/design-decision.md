@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.22 — Sentinel Harness
+# (A) 설계확정서 v1.23 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.22 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.20(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.23 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -48,7 +48,9 @@
 > **v1.20 (매핑표 v1.18):** CLAUDE.md 금지선 색인을 §1.4에 맞춰 갱신(꼬리 형식 `→ 정의처: … · 키: …(§3.x)`, N5 '키: 없음') + §3.1 `claude_md_sync_check` 승격(not_implemented → enforced, 증명은 같은 PR — 이 PR이 그 키의 목표 사건) + §1.4 머리 문장의 구현 상태 갱신. §1.4 표 내용·`schema_version` 변화 없음.
 > **v1.21 (매핑표 v1.19):** §3.1~§3.5 표 머리 '1주차 상태' → '상태'(열 머리만 — 다른 열·행 변화 없음, 파서는 옛 머리를 오류로 처리). `guardrails.yaml` 필드 `week1_status` → `status` — 필드명 변경 = 비가산, 레포 밖 소비자 0이라 `schema_version` 유지(§2 규칙 준용). §1.4 머리 문장의 꼬리 형식 예시를 겹백틱으로(렌더 수정, 문구 불변). 그 밖의 낡은 주차 표현(§3.0 '④ [1주차]', §3.5 '2주차 enforced 범위', §3.6 제목 등)은 이번에 바꾸지 않는다.
 > **v1.22 (매핑표 v1.20):** 낡은 '주차' 표현 정리(뜻 변경 없음 — §2.5, §3 머리말 상태 4종, §3.0 '④ [현재]', §3.1 `local_llm_vs_egress` 노트, §3.5 각주 제목 '출력 게이트 enforced 범위'(본문 불변), §3.6 제목 '기반 적대적 테스트') + §3.1 `claude_md_sync_check` 범위 확장(설명 문구 속 키 표기 0) + §1.4 머리 문장 한 구절. `schema_version` 값 변화 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03)
+> **v1.23 (매핑표 v1.21):** rule-only 결선의 계약·원칙 선행 개정(코드는 다음 PR). §2.4 `produced_by` 서버 부여 사실 서술(규칙 변경 아님) + `analysis_meta.pipeline_mode` 닫힌 enum `rule_only | rule_llm`, rule_only에서 `model_id`·`prompt_version` = null + §2.5 `ExecutionResponse.result`와 불변식(completed ⇔ result ≠ null) + §3.5 각주 본문(유일 통로 → `completed_via_gate`) + §3.5 신규 `completed_via_gate`(not_implemented) + §6.2 블라인드 원칙 확장(생산자 버전 동결 후 test 작성, 1인 단계 한계, S v1 = 규칙에 대해 오염된 스모크 집합) + 출력 계약 서술의 생산자 일반화(규칙·LLM — §2.4·§2.5, §3.5 각주 첫 문장 '게이트 자체의 enforced 범위'). 서술 변경이라 `schema_version` 변화 없음.
+>   - `pipeline_mode` 닫힌 enum = 비가산, rule_only의 null 허용 = 비가산, `ExecutionResponse.result` = 비가산(필수 필드). 소비자 0이라 AnalysisResult `schema_version` 유지(ExecutionResponse는 자체 버전 필드가 없다).
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03)
 
 ---
 
@@ -241,22 +243,22 @@ SanitizationReceipt   # 각 Transaction.meta에 필수
 ```
 AnalysisResult
 ├─ schema_version : "1.0"
-├─ analyzed_refs  : [UUID]            # 서버 부여: LLM에 실제로 넘긴 transaction_id 목록. LLM 초안에는 없음
+├─ analyzed_refs  : [UUID]            # 서버 부여: 분석 단계(규칙·LLM)에 실제로 넘긴 transaction_id 목록. 초안에는 없음
 ├─ findings       : [Finding]         # 탐지 4종만. 빈 배열 = 정상(단, ExecutionResponse와 구분 ↓)
 ├─ advisory_signals: [AdvisorySignal] # 카테고리 밖 조언. ★탐지 아님
-└─ analysis_meta  : { model_id, policy_version, prompt_version, ruleset_version,
-                      elapsed_ms, token_usage?, pipeline_mode, manifest_snapshot }
+└─ analysis_meta  : { model_id | null, policy_version, prompt_version | null, ruleset_version,
+                      elapsed_ms, token_usage?, pipeline_mode: rule_only | rule_llm, manifest_snapshot }
 
 Finding
 ├─ finding_id(UUID)
-├─ category   : enum(4종 폐쇄형)       # LLM이 임의 카테고리 생성 불가
+├─ category   : enum(4종 폐쇄형)       # 생산자(규칙·LLM)가 임의 카테고리 생성 불가
 ├─ hypothesis : str                   # 조건·추정형만("~가능성/~로 보임"). 단정 토큰 금지
 ├─ evidence   : [Evidence]            # 최소 1개 필수(0개면 거부=환각 차단)
 ├─ claim_basis: enum(observed|inferred|speculative)   # 근거의 성격(자유숫자 금지)
-├─ severity_if_true: enum | null      # 항상 존재. null = 등급 매핑 미정의. 서버가 부여한다(LLM 초안에 없음). 사실이라면의 위험도(사실성과 무관), 확신도 아님 ↓
+├─ severity_if_true: enum | null      # 항상 존재. null = 등급 매핑 미정의. 서버가 부여한다(초안에 없음). 사실이라면의 위험도(사실성과 무관), 확신도 아님 ↓
 ├─ status     : enum(unverified|verifying|confirmed|false_positive|needs_review)
-│               # ★LLM은 생성 불가. 서버가 unverified 부여. 승격은 ReviewEvent로만
-├─ produced_by: enum(rule|llm|hybrid) # AI 기여도 분리 측정(평가 테제)
+│               # ★초안(규칙·LLM)은 생성 불가. 서버가 unverified 부여. 승격은 ReviewEvent로만
+├─ produced_by: enum(rule|llm|hybrid) # 서버 부여(생산 경로). 초안에 없음. AI 기여도 분리 측정(평가 테제)
 ├─ limitations: [str]
 └─ next_steps : [{type: "verification", action, rationale}]   # 도구는 실행 안 함
 
@@ -264,21 +266,23 @@ Evidence
 ├─ transaction_ref(UUID)   # transaction_id로만 참조(host 문자열 금지). analyzed_refs에 포함돼야 함
 ├─ pointer: Locator        # §2.6. locus는 Locator 안의 판별자다(별도 locus 필드 없음)
 ├─ observation(str)        # 관측 사실(해석 아님). 가명 라벨 그대로 인용 가능
-├─ corroboration: matched|unmatched|not_checkable|not_run   # 서버 생성(LLM 아님). not_run=대조 미실행 / not_checkable=대조 불가
-├─ anomaly_flags: [...]    # 서버 재대조 로직이 생성(LLM 아님). 예: hallucinated_literal_suspected
+├─ corroboration: matched|unmatched|not_checkable|not_run   # 서버 생성(초안 아님). not_run=대조 미실행 / not_checkable=대조 불가
+├─ anomaly_flags: [...]    # 서버 재대조 로직이 생성(초안 아님). 예: hallucinated_literal_suspected
 └─ review_required(bool)   # 서버 기본값 true(미대조 상태의 fail-safe)
 
 AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], suggestion }
 ```
-- **analyzed_refs 서버 부여:** 서버가 LLM에 실제로 넘긴 transaction_id 목록을 채운다. LLM 초안에는 없다. 근거: LLM이 analyzed_refs와 evidence.transaction_ref 양쪽을 다 쓰면 `evidence_ref_integrity`가 자기참조가 된다.
-- **severity_if_true 서버 부여:** LLM은 채우지 않는다(초안에 없다).
+- **analyzed_refs 서버 부여:** 서버가 분석 단계(규칙·LLM)에 실제로 넘긴 transaction_id 목록을 채운다. 초안에는 없다. 근거: LLM이 analyzed_refs와 evidence.transaction_ref 양쪽을 다 쓰면 `evidence_ref_integrity`가 자기참조가 된다.
+- **severity_if_true 서버 부여:** 초안(규칙·LLM)은 채우지 않는다(초안에 없다).
   - 기본값: category별 기본값 표에서 부여한다. 이 표는 미정의다(5번 이후 확정).
   - 보정(adjust): 서버가 관측·판정한 신호 유형으로 기본값을 조정할 수 있다. 보정 규칙(어떤 신호가 severity를 어떻게 바꾸는지)은 미정의다(5번 이후 확정).
   - 기본값 표가 정의되기 전에는 비워 둔다(null). 기본값 표가 정의된 뒤에도, 보정 규칙이 정의되기 전에는 기본값만 부여하고 보정하지 않는다.
   - 근거: 건건이 자유롭게 매기면 같은 취약점이 다른 값을 받아 평가가 오염된다(R-9와 같은 문제). 규칙이 미정의인 상태에서 판정을 허용하면 추측하거나 LLM에 다시 위임하는 뒷문이 된다.
-- **corroboration·review_required:** 서버가 생성한다(LLM 아님). `not_run` = 대조 미실행, `not_checkable` = 대조 불가. `review_required`의 서버 기본값은 true — 미대조 상태의 fail-safe.
-- **출력 검증 규칙(전체 폐기):** LLM 초안의 어느 한 부분이라도 검증에 실패하면 결과 전체를 폐기한다(부분 수용 금지). 폐기는 조용히 하지 않는다 — 사유 코드를 감사에 남기고, `ExecutionResponse.analysis_status = output_rejected`로 명시한다(§2.5). 근거: 깨끗한 부분만 골라내는 것은 환각을 부분적으로 신뢰하는 것이다. 빈 결과로 위장하면 '분석 실패'와 '분석 후 깨끗함'이 다시 섞인다.
-- **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. LLM 응답에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
+- **produced_by 서버 부여:** 서버가 생산 경로로 부여한다(초안에 없고, 게이트에는 호출자 인자로만 들어간다). 근거: 초안이 자기 생산자를 쓰면 J6(produced_by별 P/R)가 자기신고가 된다.
+- **analysis_meta:** `pipeline_mode`는 닫힌 enum `rule_only | rule_llm`이다. `model_id`·`prompt_version`은 rule_only에서 null이고, 그 외에는 필수다(LLM이 없는 경로에 모델·프롬프트 값을 지어내지 않는다).
+- **corroboration·review_required:** 서버가 생성한다(초안 아님). `not_run` = 대조 미실행, `not_checkable` = 대조 불가. `review_required`의 서버 기본값은 true — 미대조 상태의 fail-safe.
+- **출력 검증 규칙(전체 폐기):** 초안(규칙·LLM)의 어느 한 부분이라도 검증에 실패하면 결과 전체를 폐기한다(부분 수용 금지). 폐기는 조용히 하지 않는다 — 사유 코드를 감사에 남기고, `ExecutionResponse.analysis_status = output_rejected`로 명시한다(§2.5). 근거: 깨끗한 부분만 골라내는 것은 환각을 부분적으로 신뢰하는 것이다. 빈 결과로 위장하면 '분석 실패'와 '분석 후 깨끗함'이 다시 섞인다.
+- **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. 초안에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
 - **evidence 무결성:** transaction_ref ∈ analyzed_refs + pointer가 마스킹 후 데이터에서 해석됨 + pointer/observation이 **마스킹 후 데이터로 검증 가능** + observation 핵심 주장이 실제 발견되는지 재대조.
 - **환각 리터럴 격리:** 재대조 실패 + 민감패턴 의심 → `hallucinated_literal_suspected`(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 의심 문자열 미저장·미로그·집계 원문 제외. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
 - **중복 처리:** Finding끼리는 (category, Evidence CNA 집합)이 정확히 같을 때만 병합한다(CNA → §2.6). CNA가 일부 겹치는 것만으로는 병합하지 않는다. advisory의 CNA 집합이 어떤 finding과 정확히 같으면 advisory를 버린다(finding 우선). 평가 채점은 이 중복 처리를 거친 출력을 대상으로 한다.
@@ -286,15 +290,16 @@ AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], sugges
 
 ### 2.5 ExecutionResponse (분석 실행 상태 — AnalysisResult와 구분)
 ```
-ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot }
+ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot, result: AnalysisResult | null }
 ```
 > **왜 분리?** `findings:[]`가 "분석 완료·깨끗함"인지 "아직 분석 안 함"인지 혼동 금지. **분석 안 함 ≠ 분석 후 취약점 없음.** 평가의 '정상 사례 정확도'가 이 구분에 의존한다. 현재 골격은 이 타입만 반환한다.
 
 - **`analysis_status` = 닫힌 enum:** `not_implemented | completed | output_rejected`.
   - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 동작).
-  - `completed`: 분석이 끝나고 결과(AnalysisResult)가 동봉됨. 동봉 형태(필드 위치)는 LLM 결선 시 정의한다. 분석 후 깨끗함 = `completed` + `findings: []`.
-  - `output_rejected`: LLM 출력이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
+  - `completed`: 분석이 끝나고 결과(AnalysisResult)가 `result`에 동봉됨. 분석 후 깨끗함 = `completed` + `findings: []`.
+  - `output_rejected`: 초안(규칙·LLM)이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
 - 세 값은 "분석 안 함 / 분석 후 결과 있음(깨끗함 포함) / 분석 결과 폐기"를 구분하기 위한 것이다.
+- **불변식:** `completed` ⇔ `result` ≠ null / `not_implemented`·`output_rejected` ⇒ `result` = null.
 
 ### 2.6 공용 타입 (§2.2·§2.3·§2.4가 참조 — 의존 방향은 §2.6 → 나머지, 한쪽뿐)
 ```
@@ -371,7 +376,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.20 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.21 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -462,6 +467,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
+| ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | not_implemented → 규칙 엔진 결선 시 | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |
@@ -476,7 +482,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 > **† `output_schema_gate` (파생 롤업):** `evidence_min_one ∧ evidence_ref_integrity ∧ server_assigned_status ∧ category_closed_enum`. 자체 강제테스트 없음 — 하위 4키가 강제한다. 하위 전부 enforced일 때만 enforced다. 하위 4키가 enforced(검증 함수 단위)이므로 파생값도 enforced이며, 범위도 같다(§3.5 각주). `guardrails.yaml` 파생 시 `status=derived` + 하위 키 목록으로 표현한다(상태 칸은 문장이 아니라 기계 파싱 가능한 상태값).
 
-> **출력 게이트 enforced 범위:** 2주차 enforced 범위 = 검증 함수 단위(주입 테스트). 유일 통로 결선은 LLM 연동 PR에서 별도 증명.
+> **출력 게이트 enforced 범위:** 게이트 자체의 enforced 범위 = 검증 함수 단위(주입 테스트). ④가 completed를 반환하는 현존 경로가 게이트를 지나는지는 `completed_via_gate`가 추적한다. 이후에 생기는 경로(LLM 등)는 그 결선 PR에서 같은 키로 다시 증명한다.
 
 ### 3.6 기반 적대적 테스트 (Java 없이 직접 주입 — '위조 거부'로 증명)
 | 공격 케이스 | 기대 동작 |
@@ -544,7 +550,11 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - unlabeled 위의 예측은 FP가 아니라 '미판정'으로 따로 집계한다. 정상 FP율은 verified_clean에서만 잰다.
 - **S 라벨의 출처:** 더미 API 정의에서 파생한다(SSOT). 라벨마다 source: construction | catalog | adjudication.
 - **hard negative:** S는 category마다 hard negative를 둔다.
-- **블라인드·버전 동결:** 모델 첫 실행 전에 라벨을 동결한다. 재심은 새 데이터셋 버전으로만 한다(실행 중 수정 금지, 흔적은 source=adjudication). 지표는 데이터셋 버전과 함께 보고한다.
+- **블라인드·버전 동결 — 원칙: 측정 대상 생산자와 평가 데이터는 서로를 보고 조정되지 않는다.**
+  - (a) 라벨은 생산자 첫 실행 전에 동결한다. 재심은 새 데이터셋 버전으로만 한다(실행 중 수정 금지, 흔적은 source=adjudication). 지표는 데이터셋 버전과 함께 보고한다.
+  - (b) test 분할은 그 위에서 주장하는 생산자 버전(ruleset_version·prompt_version·model_id)이 동결된 뒤에 작성한다. 동결 전에 test가 있으면 생산자는 test를 보지 않고 dev로만 조정한다(dev/test 분리와 정합).
+  - 1인 단계 한계: 데이터 작성자와 생산자 작성자가 같다. 이 편향은 J6의 두 경로(규칙 단독·규칙+LLM)에 함께 걸린다.
+  - S v1: 규칙(반사 판정 기준)을 S v1 사례를 읽고 도출하므로 S v1은 규칙에 대해 오염된 스모크 집합이다. S v1 위의 규칙 결과는 측정이 아니라 동작 확인이다.
 - **dev/test 분리:** 엔드포인트 단위로 분리한다. 튜닝은 dev에서만, test는 회귀 판정에만 쓴다.
 - **라벨 격리:** 라벨 파일은 픽스처와 분리하고 평가기만 읽는다. 엔진은 라벨 경로를 읽지 않는다(`label_isolation`).
 - **표본 부족 표기:** §6.3 J8을 따른다.
