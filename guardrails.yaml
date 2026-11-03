@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.20. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.21. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.20"
+derived_from: "docs/design-decision.md §3 매핑표 v1.21"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -611,6 +611,14 @@ guardrails:
       derived_from: [evidence_min_one, evidence_ref_integrity, server_assigned_status, category_closed_enum]
     verification_tests: []
     manifest_key: output_schema_gate
+  - id: completed_via_gate
+    description: "④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정)"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "규칙 엔진 결선 시"
+    verification_tests: []
+    manifest_key: completed_via_gate
   - id: assertive_token_guard
     description: "hypothesis 단정 토큰 차단"
     target_layer: "테스트"
