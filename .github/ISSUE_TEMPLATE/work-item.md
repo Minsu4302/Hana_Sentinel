@@ -1,20 +1,20 @@
 ---
 name: 작업 항목 (Work Item)
 about: 한 수직 작업 = 한 Issue = 한 PR
-title: "[W1-XX] "
-labels: ["week-1"]
+title: "[<작업명>] "
 ---
 
 > 규율: 한 Issue = 한 수직 작업 = 한 PR. 값·절차의 정본은 (A) 설계확정서 / (B) 인계문서.
 
 ## 작업 (무엇을)
-<!-- (B) 인계문서의 W1-XX 한 항목만. 쪼갤 수 있으면 쪼갠다. -->
-- 항목(B 기준):
+<!-- 발주문 한 건 = 한 항목. 쪼갤 수 있으면 쪼갠다. 제목 예: `[(A) vX.Y] …` 또는 `[<작업명>] …` -->
+- 항목(발주 기준):
 - 내용:
 
 ## 건드리는 경계 (해당 라벨도 부착)
 - [ ] `guard:A` 입력경계  
 - [ ] `guard:B` 민감정보경계  
+- [ ] `guard:C` 출력·검증  
 - [ ] `guard:D` 실행경계  
 - [ ] `guard:meta` 자기검증(manifest)  
 - [ ] `guard:common` 전 층위 공통
@@ -22,7 +22,7 @@ labels: ["week-1"]
 ## 관련 정본·manifest (정본 = (A) §3 매핑표)
 - (A) 절: <!-- 예: §3.1 D.실행경계 / §1.3 ⓐ -->
 - manifest 키: <!-- 예: request_token_validation -->
-- 이 작업 후 목표 상태: <!-- enforced / not_implemented(→N주차) / unverifiable / disabled -->
+- 이 작업 후 목표 상태: <!-- enforced / not_implemented(→ <사건>) / unverifiable / disabled -->
 
 ## 완료 기준 (테스트로 증명 가능해야 함)
 > "구현했다"가 아니라 "이 테스트가 통과한다". 안전 불변식은 **위조 거부**로 증명한다.

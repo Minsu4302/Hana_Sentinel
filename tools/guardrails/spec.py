@@ -49,7 +49,7 @@ class SpecRow:
     rule: str
     layer: str
     state: str  # enforced | not_implemented | unverifiable | disabled | derived
-    target: str | None  # not_implemented·derived의 목표 시점(→N주차)
+    target: str | None  # not_implemented·derived의 목표 시점(→ <사건>)
     note: str | None  # enforced(...)·unverifiable(...)의 범위 한정
     derived_from: tuple[str, ...]
 

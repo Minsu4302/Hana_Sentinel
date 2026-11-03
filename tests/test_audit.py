@@ -141,7 +141,7 @@ def test_serve_attaches_audit_store_and_egress_hook(monkeypatch, tmp_path, token
 
 def test_audit_write_failure_does_not_block_requests_yet_documented(tmp_path, token, monkeypatch):
     """`audit_write_failure`(not_implemented→수용 요청 감사(B-6) 범위 확정 시)의 현재 동작을 고정: 저장 실패해도 요청 처리는 계속된다.
-    '못 남기면 거부'는 1주차에 미정의 — 이 테스트는 그 사실을 드러내 두는 것이다(보장이 아님)."""
+    '못 남기면 거부'는 아직 미정의 — 이 테스트는 그 사실을 드러내 두는 것이다(보장이 아님)."""
     monkeypatch.setattr(logging, "raiseExceptions", False)  # handleError 출력 억제(테스트 소음)
     handler = attach_audit_store(tmp_path / "broken.sqlite3")
     handler._conn.close()  # 저장소 고장 모의

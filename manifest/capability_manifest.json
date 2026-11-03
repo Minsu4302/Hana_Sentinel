@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.19",
+  "spec": "docs/design-decision.md §3 매핑표 v1.20",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -42,7 +42,7 @@
     "local_llm_vs_egress": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "1주차=허용목록 빔 검사",
+      "note": "허용목록 빔 검사",
       "verification_tests": [
         "tests/test_egress.py::test_egress_allowlist_is_empty_and_immutable",
         "tests/test_egress.py::test_local_llm_endpoint_needs_no_allowlist_entry",
@@ -185,7 +185,7 @@
     "claude_md_sync_check": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차. §1.4 자체의 완전성은 범위 밖 — 리뷰",
+      "note": "색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차 + 설명 문구 속 키 표기 0. §1.4 자체의 완전성은 범위 밖 — 리뷰",
       "verification_tests": [
         "tests/test_claude_md_sync.py::test_repository_index_matches_section_1_4",
         "tests/test_claude_md_sync.py::test_repo_entry_point_reads_the_real_documents",
@@ -197,6 +197,7 @@
         "tests/test_claude_md_sync.py::test_n8_dropping_the_coded_section3_key_is_caught",
         "tests/test_claude_md_sync.py::test_unreadable_format_is_an_error_not_a_pass",
         "tests/test_claude_md_sync.py::test_description_text_before_the_anchor_is_not_checked",
+        "tests/test_claude_md_sync.py::test_manifest_key_written_in_description_is_a_format_error",
         "tests/test_claude_md_sync.py::test_each_sync_rule_is_load_bearing_under_verified_mutation"
       ]
     },

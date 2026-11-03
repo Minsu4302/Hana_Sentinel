@@ -76,7 +76,7 @@ def test_evaluate_rejects_empty_check_and_enforced_without_nodes():
 def test_enforced_nodes_reads_only_enforced_declarations():
     entries = [
         {"id": "a", "status": {"state": "enforced"}, "verification_tests": ["t.py::test_a"]},
-        {"id": "b", "status": {"state": "not_implemented", "target": "2주차"}, "verification_tests": []},
+        {"id": "b", "status": {"state": "not_implemented", "target": "합성 시점"}, "verification_tests": []},
         {"id": "c", "status": {"state": "derived"}, "verification_tests": []},
     ]
     assert enforced_nodes(entries) == {"a": ["t.py::test_a"]}

@@ -6,8 +6,9 @@
      키 옆 소절 = 그 키의 실제 §3.x. 키 없는 행(N5)은 색인에도 '키: 없음' 명시가 있어야 한다.
   3) (A) 내부 교차: §1.4 ⓑ행 ⊇ ⓑ 해석의 강제 매핑 키 / §3 규칙 칸에 금지선 코드가 적힌 행의 키 ∈ 그 코드를 정의처로
      갖는 §1.4 행.
-범위(정직 표기): §1.4 자체의 완전성(빠진 강제 키가 없는가)은 검사하지 않는다 — 리뷰 몫. 줄의 설명 문구(`→` 앞)는 대상이
-아니다.
+범위(정직 표기): §1.4 자체의 완전성(빠진 강제 키가 없는가)은 검사하지 않는다 — 리뷰 몫. 줄의 설명 문구(`→` 앞)는 일치 검사
+대상이 아니지만, 거기 실제 manifest 키를 백틱으로 적으면 형식 오류다(상태 주장이 설명으로 다시 들어오는 경로 차단 — 키가 아닌
+백틱, 예: `burp`·`montoya`는 대상 아님).
 
 형식(fail-closed — 읽을 수 없으면 통과가 아니라 BanIndexError):
   CLAUDE.md §1의 `- **N<번호>` 줄 꼬리 = ` → 정의처: <, 목록> · 키: <없음… | `키`(§3.x), …>`. 앵커는 정확히 1개,
@@ -118,7 +119,7 @@ def b_interpretation_keys(design_text: str) -> frozenset[str]:
     return frozenset(re.findall(r"`([a-z0-9_]+)`", lines[0]))
 
 
-def parse_index(claude_text: str) -> dict[str, IndexLine]:
+def parse_index(claude_text: str, known_keys: frozenset[str] = frozenset()) -> dict[str, IndexLine]:
     lines = claude_text.splitlines()
     start = next((i for i, line in enumerate(lines) if line.startswith("## 1. ")), None)
     if start is None:
@@ -134,7 +135,9 @@ def parse_index(claude_text: str) -> dict[str, IndexLine]:
         n = m.group(1)
         if line.count(_ANCHOR) != 1:
             _fail("index_anchor")
-        tail = line.split(_ANCHOR, 1)[1]
+        description, tail = line.split(_ANCHOR, 1)
+        if set(re.findall(r"`([^`]+)`", description)) & known_keys:  # 설명 문구 속 manifest 키 표기
+            _fail("index_key_in_description")
         if tail.count(_KEYS_SEP) != 1:
             _fail("index_keys_separator")
         defs_raw, keys_raw = tail.split(_KEYS_SEP)
@@ -177,8 +180,8 @@ def parse_index(claude_text: str) -> dict[str, IndexLine]:
 def check(design_text: str, claude_text: str) -> list[str]:
     """위반(사유 코드@위치). 형식 오류는 BanIndexError."""
     table = parse_ban_table(design_text)
-    index = parse_index(claude_text)
     section3 = parse_spec(design_text).by_key()
+    index = parse_index(claude_text, frozenset(section3))
     problems: list[str] = []
 
     for n, row in table.items():  # 규칙 1
