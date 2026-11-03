@@ -56,12 +56,11 @@ def test_snapshot_does_not_claim_unproven_protection(token, entries):
     """스냅샷의 enforced = 레지스트리에서 검증 테스트가 붙은 enforced뿐(없는 보호를 있는 척 안 함)."""
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
     caps = _json(sent)["manifest_snapshot"]["capabilities"]
-    proven = {e["id"] for e in entries if e["week1_status"]["state"] == "enforced" and e["verification_tests"]}
+    proven = {e["id"] for e in entries if e["status"]["state"] == "enforced" and e["verification_tests"]}
     assert {k for k, v in caps.items() if v["status"] == "enforced"} == proven
-    assert caps["audit_write_failure"]["status"] == "not_implemented"
     gate = next(e for e in entries if e["id"] == "output_schema_gate")
-    children_enforced = all(e["week1_status"]["state"] == "enforced"
-                            for e in entries if e["id"] in gate["week1_status"]["derived_from"])
+    children_enforced = all(e["status"]["state"] == "enforced"
+                            for e in entries if e["id"] in gate["status"]["derived_from"])
     assert caps["output_schema_gate"] == {"status": "derived",
                                           "effective_status": "enforced" if children_enforced else "not_implemented"}
 
@@ -69,7 +68,8 @@ def test_snapshot_does_not_claim_unproven_protection(token, entries):
 def test_tampered_manifest_file_would_diverge_from_ssot(tmp_path, spec, entries):
     """손 편집된 manifest는 SSOT 재파생과 불일치 → 위 일치 테스트·guardrails check가 실패하는 경로."""
     data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    data["capabilities"]["receipt_hmac"].update(status="enforced", effective_status="enforced")
+    key = sorted(data["capabilities"])[0]  # 실제 키 이름을 고정하지 않는다 — 상태는 정상 진척으로 바뀐다
+    data["capabilities"][key].update(status="disabled", effective_status="disabled")
     forged = tmp_path / "forged.json"
     forged.write_text(json.dumps(data), encoding="utf-8")
     assert load_manifest_snapshot(forged) != _compact(derive_manifest(entries, spec, REPO_ROOT))
@@ -117,6 +117,8 @@ def test_response_snapshot_is_a_copy_not_shared_state(token):
     snapshot = load_manifest_snapshot()
     app = create_app(token, snapshot)
     body = _json(_drive(app, _scope([(HEADER, token)]), _raw(_env()))[0])
-    body["manifest_snapshot"]["capabilities"]["receipt_hmac"]["status"] = "enforced"
+    key = sorted(body["manifest_snapshot"]["capabilities"])[0]  # 실제 키 이름·상태를 고정하지 않는다
+    original = snapshot["capabilities"][key]["status"]
+    body["manifest_snapshot"]["capabilities"][key]["status"] = "tampered"
     again = _json(_drive(app, _scope([(HEADER, token)]), _raw(_env()))[0])
-    assert again["manifest_snapshot"]["capabilities"]["receipt_hmac"]["status"] == "not_implemented"
+    assert again["manifest_snapshot"]["capabilities"][key]["status"] == original

@@ -28,7 +28,7 @@ LAYER_MAP: dict[str, str] = {
 }
 
 TABLE_SECTIONS = ("3.1", "3.2", "3.3", "3.4", "3.5")
-TABLE_HEADER = ["규칙", "목표층위", "1주차 상태", "manifest 키"]
+TABLE_HEADER = ["규칙", "목표층위", "상태", "manifest 키"]
 
 _SECTION3_RE = re.compile(r"^## 3\. .*매핑표 (v[\d.]+)")
 _SUBSECTION_RE = re.compile(r"^### (3\.\d+)\b")
@@ -77,7 +77,7 @@ def _parse_state(raw: str, key: str) -> tuple[str, str | None, str | None]:
         return "derived", m.group(1).strip(), None
     if raw == "derived":  # 목표 없는 derived — 자기 목표가 없는 롤업. not_implemented는 여전히 목표 필수
         return "derived", None, None
-    raise SpecError(f"{key}: 해석할 수 없는 1주차 상태 표기 {raw!r}")
+    raise SpecError(f"{key}: 해석할 수 없는 상태 표기 {raw!r}")
 
 
 def _derived_children(text: str, key: str) -> tuple[str, ...]:
@@ -109,7 +109,9 @@ def parse_spec(text: str) -> Spec:
         if section is None or not line.startswith("|"):
             continue
         cells = _cells(line)
-        if cells == TABLE_HEADER:
+        if section not in seen_sections:  # 절의 첫 표 행은 반드시 머리 — 옛 머리·변형 머리를 받아 주는 호환 경로 없음
+            if cells != TABLE_HEADER:
+                raise SpecError(f"§{section}: 표 머리가 {TABLE_HEADER}가 아님")
             seen_sections.add(section)
             continue
         if all(set(c) <= set("-: ") for c in cells):

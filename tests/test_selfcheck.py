@@ -75,9 +75,9 @@ def test_evaluate_rejects_empty_check_and_enforced_without_nodes():
 
 def test_enforced_nodes_reads_only_enforced_declarations():
     entries = [
-        {"id": "a", "week1_status": {"state": "enforced"}, "verification_tests": ["t.py::test_a"]},
-        {"id": "b", "week1_status": {"state": "not_implemented", "target": "2주차"}, "verification_tests": []},
-        {"id": "c", "week1_status": {"state": "derived"}, "verification_tests": []},
+        {"id": "a", "status": {"state": "enforced"}, "verification_tests": ["t.py::test_a"]},
+        {"id": "b", "status": {"state": "not_implemented", "target": "2주차"}, "verification_tests": []},
+        {"id": "c", "status": {"state": "derived"}, "verification_tests": []},
     ]
     assert enforced_nodes(entries) == {"a": ["t.py::test_a"]}
 
@@ -85,7 +85,7 @@ def test_enforced_nodes_reads_only_enforced_declarations():
 # ── 샌드박스: 실제 pytest 실행 ─────────────────────────────────────
 
 def _registry(enforced: dict[str, list[str]]) -> str:
-    entries = [{"id": k, "week1_status": {"state": "enforced"}, "verification_tests": v} for k, v in enforced.items()]
+    entries = [{"id": k, "status": {"state": "enforced"}, "verification_tests": v} for k, v in enforced.items()]
     return json.dumps({"schema_version": "1", "guardrails": entries}, ensure_ascii=False)  # JSON ⊂ YAML
 
 

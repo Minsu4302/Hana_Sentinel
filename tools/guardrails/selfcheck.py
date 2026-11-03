@@ -31,7 +31,7 @@ def enforced_nodes(entries: list) -> dict[str, list[str]]:
     """enforced로 선언된 키 → 검증 테스트 노드 ID. 형식 검증은 registry.validate 몫이라 여기선 읽기만 한다."""
     out: dict[str, list[str]] = {}
     for e in entries:
-        status = e.get("week1_status") if isinstance(e, dict) else None
+        status = e.get("status") if isinstance(e, dict) else None
         if isinstance(status, dict) and status.get("state") == "enforced":
             out[e.get("id")] = list(e.get("verification_tests") or [])
     return out

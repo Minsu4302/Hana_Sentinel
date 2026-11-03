@@ -1,14 +1,14 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.18. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.19. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 주차 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.18"
+derived_from: "docs/design-decision.md §3 매핑표 v1.19"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_egress.py::test_product_runtime_dependencies_have_no_egress_library"
@@ -24,7 +24,7 @@ guardrails:
   - id: egress_runtime_block
     description: "egress 런타임 차단 실증"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "테스트환경 한정"
     verification_tests:
@@ -40,14 +40,14 @@ guardrails:
   - id: egress_enforcement_owner
     description: "egress 차단 실주체(OS/네트워크)"
     target_layer: "외부"
-    week1_status:
+    status:
       state: unverifiable
     verification_tests: []
     manifest_key: egress_enforcement_owner
   - id: local_llm_vs_egress
     description: "로컬 LLM ≠ 외부 egress 분리"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "1주차=허용목록 빔 검사"
     verification_tests:
@@ -59,7 +59,7 @@ guardrails:
   - id: no_autonomous_send
     description: "자율 전송 0(송신·소켓 심볼 import 0)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_architecture.py::test_engine_package_has_no_send_or_socket_imports"
@@ -72,7 +72,7 @@ guardrails:
   - id: loopback_binding
     description: "127.0.0.1 바인딩"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_server.py::test_started_server_is_bound_to_loopback_only"
@@ -86,7 +86,7 @@ guardrails:
   - id: request_token_validation
     description: "요청자 토큰 검증(공유시크릿)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_auth.py::test_valid_token_reaches_downstream"
@@ -100,7 +100,7 @@ guardrails:
   - id: token_hardening
     description: "토큰 강화(회전·수명)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: not_implemented
       target: "Java 연결 시"
     verification_tests: []
@@ -108,7 +108,7 @@ guardrails:
   - id: no_autopatch_apply
     description: "자동 수정반영 부재(ⓓ)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_absence.py::test_engine_has_no_autopatch_path"
@@ -119,7 +119,7 @@ guardrails:
   - id: no_finetune_path
     description: "파인튜닝 경로 부재(ⓔ)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_absence.py::test_engine_has_no_finetune_path"
@@ -130,7 +130,7 @@ guardrails:
   - id: no_multiagent_rag
     description: "멀티에이전트/RAG 부재(ⓖ)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "P2"
     verification_tests: []
@@ -138,25 +138,26 @@ guardrails:
   - id: manifest_honesty
     description: "manifest 정직성"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_guardrails.py::test_enforced_keys_point_only_to_real_tests"
-      - "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests"
-      - "tests/test_guardrails.py::test_rejects_enforced_pointing_to_nonexistent_test"
-      - "tests/test_guardrails.py::test_rejects_enforced_pointing_to_non_test_function"
-      - "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced"
-      - "tests/test_guardrails.py::test_rejects_unverifiable_key_claimed_as_enforced"
-      - "tests/test_guardrails.py::test_rejects_derived_rollup_claimed_as_enforced"
-      - "tests/test_guardrails.py::test_rejects_target_week_drift"
+      - "tests/test_guardrails_synthetic.py::test_rejects_enforced_without_verification_tests"
+      - "tests/test_guardrails_synthetic.py::test_rejects_enforced_pointing_to_nonexistent_test"
+      - "tests/test_guardrails_synthetic.py::test_rejects_enforced_pointing_to_non_test_function"
+      - "tests/test_guardrails_synthetic.py::test_rejects_not_implemented_key_claimed_as_enforced"
+      - "tests/test_guardrails_synthetic.py::test_rejects_unverifiable_key_claimed_as_enforced"
+      - "tests/test_guardrails_synthetic.py::test_rejects_derived_rollup_claimed_as_enforced"
+      - "tests/test_guardrails_synthetic.py::test_rejects_target_drift"
       - "tests/test_guardrails.py::test_rejects_duplicate_id"
-      - "tests/test_guardrails.py::test_rejects_unknown_status"
-      - "tests/test_guardrails.py::test_rejects_tests_attached_to_non_enforced_key"
+      - "tests/test_guardrails_synthetic.py::test_rejects_unknown_status"
+      - "tests/test_guardrails_synthetic.py::test_rejects_tests_attached_to_non_enforced_key"
+      - "tests/test_guardrails_synthetic.py::test_this_file_names_no_real_guardrail_key"
     manifest_key: manifest_honesty
   - id: manifest_selfcheck
     description: "manifest 자기검증"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_selfcheck.py::test_evaluate_accepts_when_every_enforced_node_collected_and_passed"
@@ -182,24 +183,27 @@ guardrails:
   - id: manifest_derivation
     description: "manifest 정본 파생(SSOT=이 표) + make verify 일치검증"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_guardrails.py::test_registry_is_rederived_from_design_decision_section3"
       - "tests/test_guardrails.py::test_committed_manifest_matches_rederivation"
-      - "tests/test_guardrails.py::test_rejects_enforced_without_verification_tests"
-      - "tests/test_guardrails.py::test_rejects_not_implemented_key_claimed_as_enforced"
-      - "tests/test_guardrails.py::test_manifest_generation_is_refused_for_false_enforced_claim"
-      - "tests/test_guardrails.py::test_check_rejects_hand_edited_manifest"
+      - "tests/test_guardrails_synthetic.py::test_rejects_enforced_without_verification_tests"
+      - "tests/test_guardrails_synthetic.py::test_rejects_not_implemented_key_claimed_as_enforced"
+      - "tests/test_guardrails_synthetic.py::test_manifest_generation_is_refused_for_false_enforced_claim"
+      - "tests/test_guardrails_synthetic.py::test_check_rejects_hand_edited_manifest"
       - "tests/test_guardrails.py::test_real_output_schema_gate_is_not_enforced_when_any_child_is_forged_down"
       - "tests/test_guardrails.py::test_targetless_derived_is_accepted_with_no_target"
-      - "tests/test_guardrails.py::test_spec_parser_still_requires_target_for_not_implemented"
-      - "tests/test_guardrails.py::test_targetless_derived_without_child_list_is_rejected"
+      - "tests/test_guardrails_synthetic.py::test_spec_parser_requires_target_for_not_implemented"
+      - "tests/test_guardrails_synthetic.py::test_targetless_derived_without_child_list_is_rejected"
+      - "tests/test_guardrails_synthetic.py::test_new_table_header_is_accepted"
+      - "tests/test_guardrails_synthetic.py::test_old_or_altered_table_header_is_a_parse_error"
+      - "tests/test_guardrails_synthetic.py::test_header_check_is_load_bearing_under_verified_mutation"
     manifest_key: manifest_derivation
   - id: claude_md_sync_check
     description: "CLAUDE.md 금지선 색인 ↔ (A) §1.4 일치를 기계 검사"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차. §1.4 자체의 완전성은 범위 밖 — 리뷰"
     verification_tests:
@@ -218,7 +222,7 @@ guardrails:
   - id: masker_no_send
     description: "fixture 마스커에 송신·소켓·egress 의존 0"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_fixture_masker.py::test_masker_has_no_send_socket_or_dynamic_import"
@@ -228,7 +232,7 @@ guardrails:
   - id: tools_no_external_send
     description: "tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
       note: "정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖"
     verification_tests:
@@ -245,7 +249,7 @@ guardrails:
   - id: engine_burp_isolation
     description: "엔진 Burp/Montoya import 0"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_architecture.py::test_engine_package_has_no_burp_or_montoya_imports"
@@ -257,7 +261,7 @@ guardrails:
   - id: java_logic_isolation
     description: "Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "Java 연결 시"
     verification_tests: []
@@ -265,7 +269,7 @@ guardrails:
   - id: input_schema_gate
     description: "입력은 스키마 통과분만"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_schema.py::test_valid_envelope_passes"
@@ -280,7 +284,7 @@ guardrails:
   - id: envelope_arity
     description: "봉투 len==1(single)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_schema.py::test_rejects_single_envelope_without_exactly_one_transaction"
@@ -290,7 +294,7 @@ guardrails:
   - id: path_no_query_string
     description: "raw path에 리터럴 '?' 없음(쿼리는 query_params로만)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위 — 입력 스키마"
     verification_tests:
@@ -305,7 +309,7 @@ guardrails:
   - id: auth_precedence_noinvoke
     description: "인증 선행 — 함수 미호출 + 코드 물리분리"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_auth.py::test_forged_or_missing_token_is_rejected_before_downstream_and_body"
@@ -321,7 +325,7 @@ guardrails:
   - id: engine_tools_isolation
     description: "엔진(src/sentinel)이 tools/를 import하지 않음"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_fixture_masker.py::test_engine_imports_nothing_from_tools"
@@ -332,7 +336,7 @@ guardrails:
   - id: masker_independence
     description: "마스커가 sentinel.pipeline.sanitization_check를 import하지 않음"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_fixture_masker.py::test_masker_does_not_import_engine_pipeline_but_uses_shared_strict_json"
@@ -345,7 +349,7 @@ guardrails:
   - id: engine_no_rawtransaction
     description: "엔진(src/sentinel)이 RawTransaction을 import하지 않음(엔진은 마스킹 후 Transaction만 다룬다)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_fixture_masker.py::test_engine_has_no_raw_transaction_names"
@@ -356,7 +360,7 @@ guardrails:
   - id: maskedref_typing
     description: "원본 생문자열 유입 불가(MaskedRef 타입)"
     target_layer: "타입"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_schema.py::test_rejects_raw_string_smuggled_into_masked_ref"
@@ -366,7 +370,7 @@ guardrails:
   - id: sanitization_trust
     description: "Sanitization 독립 재검증"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "값 재검증"
     verification_tests:
@@ -389,7 +393,7 @@ guardrails:
   - id: receipt_hmac
     description: "영수증 HMAC 서명"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: not_implemented
       target: "Java 연결 시"
     verification_tests: []
@@ -397,7 +401,7 @@ guardrails:
   - id: secret_scan_hook
     description: "비밀값 커밋 금지"
     target_layer: "CI게이트"
-    week1_status:
+    status:
       state: enforced
       note: "클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현"
     verification_tests:
@@ -409,7 +413,7 @@ guardrails:
   - id: no_raw_persistence
     description: "원본 트래픽 미기록(기능 부재)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_absence.py::test_engine_has_no_raw_persistence_path_except_allowlisted_audit_store"
@@ -424,7 +428,7 @@ guardrails:
   - id: audit_log_present
     description: "감사 로그 존재"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_audit.py::test_auth_failure_is_persisted"
@@ -440,7 +444,7 @@ guardrails:
   - id: authfail_log_hygiene
     description: "인증실패 로그 위생"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_auth.py::test_auth_failure_audit_contains_no_body_or_token_values"
@@ -451,7 +455,7 @@ guardrails:
   - id: audit_write_failure
     description: "감사 기록 실패 시 fail-closed"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "수용 요청 감사(B-6) 범위 확정 시"
     verification_tests: []
@@ -459,7 +463,7 @@ guardrails:
   - id: masked_span_integrity
     description: "Body 불변식 1~6을 ③에서 검증"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위 — ③, 불변식 5는 같은 kind 안"
     verification_tests:
@@ -484,7 +488,7 @@ guardrails:
   - id: label_consistency
     description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "relation_preserving 출력에만 — strict는 label=null이라 대상 아님"
     verification_tests:
@@ -500,7 +504,7 @@ guardrails:
   - id: branch_protection
     description: "main 직접 병합 금지"
     target_layer: "CI게이트"
-    week1_status:
+    status:
       state: unverifiable
       note: "레포 설정"
     verification_tests: []
@@ -508,7 +512,7 @@ guardrails:
   - id: evidence_min_one
     description: "evidence≥1(0개 거부=환각차단)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위"
     verification_tests:
@@ -522,7 +526,7 @@ guardrails:
   - id: evidence_ref_integrity
     description: "evidence.transaction_ref ∈ analyzed_refs"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위"
     verification_tests:
@@ -538,7 +542,7 @@ guardrails:
   - id: evidence_pointer_resolves
     description: "Evidence.pointer(Locator)가 마스킹 후 데이터에서 해석됨(해석 실패 시 전체 폐기)"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위"
     verification_tests:
@@ -562,7 +566,7 @@ guardrails:
   - id: server_assigned_status
     description: "status 서버부여·LLM 생성불가"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위"
     verification_tests:
@@ -587,7 +591,7 @@ guardrails:
   - id: category_closed_enum
     description: "category 폐쇄형 enum"
     target_layer: "스키마·validator"
-    week1_status:
+    status:
       state: enforced
       note: "검증 함수 단위"
     verification_tests:
@@ -601,7 +605,7 @@ guardrails:
   - id: output_schema_gate
     description: "출력 스키마 전체(파생 롤업)"
     target_layer: "파생"
-    week1_status:
+    status:
       state: derived
       derived_from: [evidence_min_one, evidence_ref_integrity, server_assigned_status, category_closed_enum]
     verification_tests: []
@@ -609,7 +613,7 @@ guardrails:
   - id: assertive_token_guard
     description: "hypothesis 단정 토큰 차단"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "5번 평가 데이터로 기준 확정 시"
     verification_tests: []
@@ -617,7 +621,7 @@ guardrails:
   - id: corroboration_check
     description: "observation 재대조"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "5번 평가 데이터로 기준 확정 시"
     verification_tests: []
@@ -625,7 +629,7 @@ guardrails:
   - id: hallucinated_literal_isolation
     description: "환각 리터럴 격리"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "LLM 결선 시"
     verification_tests: []
@@ -633,7 +637,7 @@ guardrails:
   - id: anomaly_aggregation
     description: "반복 이상 → 세션 신호"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "LLM 결선 시"
     verification_tests: []
@@ -641,7 +645,7 @@ guardrails:
   - id: eval_harness
     description: "평가 하네스"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 실제 채점(층 B)은 모델 결선 이후, 하네스 완성 ≠ 실제 측정 가능"
     verification_tests:
@@ -670,7 +674,7 @@ guardrails:
   - id: canonical_address
     description: "정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
       note: "모드 무관 — 항상 적용"
     verification_tests:
@@ -688,7 +692,7 @@ guardrails:
   - id: label_isolation
     description: "엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리)"
     target_layer: "아키텍처테스트"
-    week1_status:
+    status:
       state: enforced
       note: "정적 범위 — 라벨 경로 문자열·라벨 타입 import·이름 0까지. 런타임 조립 경로는 범위 밖"
     verification_tests:
@@ -700,7 +704,7 @@ guardrails:
   - id: dataset_version_freeze
     description: "동결 픽스처가 현재 스키마로 검증되지 않으면 버전 증가 없이 실패(큐 12)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_dataset_freeze.py::test_frozen_dataset_reads_under_current_schemas_and_records_them"
@@ -720,7 +724,7 @@ guardrails:
   - id: dataset_engine_regression
     description: "동결 데이터셋의 Envelope가 엔진의 실제 ②③을 계속 통과(동결 자산 회귀 보호, 모드 무관)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_dataset_freeze.py::test_frozen_envelopes_pass_the_real_engine"
@@ -731,7 +735,7 @@ guardrails:
   - id: dataset_mode_consistency
     description: "동결 자산이 기록된 마스킹 모드의 라벨 규칙을 따름(strict → label 전부 null / relation → 전부 ref_NN)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: enforced
     verification_tests:
       - "tests/test_dataset_freeze.py::test_frozen_envelopes_match_their_recorded_masking_modes"
@@ -743,7 +747,7 @@ guardrails:
   - id: dataset_case_independence
     description: "S의 (엔드포인트, 결함 패턴) 조합마다 트랜잭션 1건(독립 단위 — 생성기 SSOT가 조합 중복 검사)"
     target_layer: "테스트"
-    week1_status:
+    status:
       state: not_implemented
       target: "S v2 동결 시"
     verification_tests: []

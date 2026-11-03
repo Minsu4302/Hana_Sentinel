@@ -18,10 +18,10 @@ MANIFEST_SCHEMA_VERSION = "1"
 
 def effective_state(entry: Entry, by_id: dict[str, Entry]) -> str:
     """derived는 자체 강제가 없다 — 하위 키가 전부 enforced일 때만 enforced, 아니면 not_implemented."""
-    status = entry["week1_status"]
+    status = entry["status"]
     if status["state"] != "derived":
         return status["state"]
-    children = [by_id[c]["week1_status"]["state"] for c in status["derived_from"]]
+    children = [by_id[c]["status"]["state"] for c in status["derived_from"]]
     return "enforced" if all(s == "enforced" for s in children) else "not_implemented"
 
 
@@ -30,7 +30,7 @@ def derive_manifest(entries: list[Entry], spec: Spec, root: Path) -> dict[str, A
     by_id = {e["id"]: e for e in entries}
     capabilities: dict[str, Any] = {}
     for e in entries:
-        s = e["week1_status"]
+        s = e["status"]
         cap: dict[str, Any] = {"status": s["state"], "effective_status": effective_state(e, by_id)}
         for k in ("target", "note", "derived_from"):
             if k in s:
