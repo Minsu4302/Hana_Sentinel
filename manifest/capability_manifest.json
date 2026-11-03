@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.17",
+  "spec": "docs/design-decision.md §3 매핑표 v1.18",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -179,10 +179,22 @@
       ]
     },
     "claude_md_sync_check": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "CLAUDE.md 금지선 색인 다음 개정 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "색인 ↔ §1.4 집합 일치(정의처·키·소절) + 키 실재 + (A) 내부 교차. §1.4 자체의 완전성은 범위 밖 — 리뷰",
+      "verification_tests": [
+        "tests/test_claude_md_sync.py::test_repository_index_matches_section_1_4",
+        "tests/test_claude_md_sync.py::test_repo_entry_point_reads_the_real_documents",
+        "tests/test_claude_md_sync.py::test_forged_index_is_caught",
+        "tests/test_claude_md_sync.py::test_n5_without_the_none_marker_is_a_format_error",
+        "tests/test_claude_md_sync.py::test_duplicated_index_line_is_an_error",
+        "tests/test_claude_md_sync.py::test_ban_table_key_missing_from_section3_is_caught",
+        "tests/test_claude_md_sync.py::test_b_row_dropping_a_b_interpretation_key_is_caught",
+        "tests/test_claude_md_sync.py::test_n8_dropping_the_coded_section3_key_is_caught",
+        "tests/test_claude_md_sync.py::test_unreadable_format_is_an_error_not_a_pass",
+        "tests/test_claude_md_sync.py::test_description_text_before_the_anchor_is_not_checked",
+        "tests/test_claude_md_sync.py::test_each_sync_rule_is_load_bearing_under_verified_mutation"
+      ]
     },
     "masker_no_send": {
       "status": "enforced",
