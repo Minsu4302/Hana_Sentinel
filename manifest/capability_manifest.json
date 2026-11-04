@@ -640,6 +640,8 @@
         "tests/test_eval_runner.py::test_split_argument_is_refused_when_the_dataset_records_none",
         "tests/test_eval_runner.py::test_same_input_gives_the_same_report",
         "tests/test_eval_runner.py::test_each_runner_guard_is_load_bearing_under_verified_mutation",
+        "tests/test_eval_runner.py::test_make_eval_runs_the_real_target_without_the_pytest_path",
+        "tests/test_eval_runner.py::test_make_eval_fails_when_the_target_loses_its_python_path",
         "tests/test_eval_harness.py::test_planted_tp_fp_fn_counts_are_exact",
         "tests/test_eval_harness.py::test_finding_on_hard_negative_is_fp_and_counted_in_j3",
         "tests/test_eval_harness.py::test_output_rejected_transaction_turns_all_its_labels_into_fn",

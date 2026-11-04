@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -18,7 +19,7 @@ from sentinel.pipeline import entry, rule_engine, sanitization_check, schema_gat
 from tools.eval import runner
 from tools.eval.harness import PredictionRun, RunMeta, wilson
 from tools.eval.runner import RunRejected
-from tools.mutation_guard import copy_with_mutation
+from tools.mutation_guard import apply_mutation, copy_with_mutation
 from tests.test_rule_wiring import _RawDraft, _finding, _run_mutant
 from tests.test_sanitization import FAKES, _plant
 from tests.test_schema import _env, _raw
@@ -230,6 +231,35 @@ def test_main_writes_the_report_and_two_runs_are_byte_identical(tmp_path, capsys
 def test_default_output_path_is_ignored_by_git():
     path = runner.DEFAULT_OUT_DIR.relative_to(REPO_ROOT) / "S-v1.json"
     assert subprocess.run(["git", "check-ignore", "-q", path.as_posix()], cwd=REPO_ROOT).returncode == 0
+
+
+# ── make eval: 실제 타깃 ───────────────────────────────────────────
+# pytest의 `pythonpath` 설정은 이 프로세스 안에서만 듣는다 — 타깃의 실패를 가렸던 경로라 하위 프로세스로 돌린다.
+
+def _make_eval(makefile: Path, out_dir: Path) -> subprocess.CompletedProcess:
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("PYTHONPATH", "PYTEST_ADDOPTS", "MAKEFLAGS", "MFLAGS", "MAKELEVEL")}
+    return subprocess.run(["make", "-f", makefile.as_posix(), "eval", f"EVAL_ARGS=--out-dir={out_dir.as_posix()}"],
+                          cwd=REPO_ROOT, env=env, capture_output=True, text=True, encoding="utf-8", timeout=120)
+
+
+def test_make_eval_runs_the_real_target_without_the_pytest_path(tmp_path):
+    r = _make_eval(REPO_ROOT / "Makefile", tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    header = json.loads((tmp_path / "S-v1.json").read_text(encoding="utf-8"))["header"]
+    assert (header["dataset_id"], header["split"], header["split_note"]) == ("S-v1", None, "분할 없음")
+    assert (header["pipeline_mode"], header["model_id"], header["prompt_version"]) == ("rule_only", None, None)
+    assert header["ruleset_version"] == rule_engine.RULESET_VERSION
+
+
+def test_make_eval_fails_when_the_target_loses_its_python_path(tmp_path):
+    """변이: 타깃의 PYTHONPATH를 지운 사본은 실패한다. 이 줄이 하중을 진다는 증명 — 사본이 실제로 쓰였는지는 오류 내용이 말한다."""
+    source = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    mutant = tmp_path / "Makefile"
+    mutant.write_text(apply_mutation(source, "eval: export PYTHONPATH := src\n", ""), encoding="utf-8")
+    r = _make_eval(mutant, tmp_path / "out")
+    assert r.returncode != 0 and "No module named 'sentinel'" in r.stdout + r.stderr
+    assert not (tmp_path / "out").exists()
 
 
 # ── 변이 확인 ──────────────────────────────────────────────────────

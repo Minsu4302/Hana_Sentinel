@@ -937,7 +937,7 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - 보고서는 두 번 실행해 바이트가 같았다(`reports/eval/S-v1.json`, 커밋 안 함).
 
 ### 구현 중 깨진 가정
-- **pytest의 `pythonpath` 설정이 `make eval`의 실패를 가렸다.** 테스트는 통과했는데 실제 `make eval`은 `sentinel` import에 실패했다. 타깃에 `PYTHONPATH=src`를 지정했다. `make eval` 자체는 자동 테스트가 없고 손으로 확인했다.
+- **pytest의 `pythonpath` 설정이 `make eval`의 실패를 가렸다.** 테스트는 통과했는데 실제 `make eval`은 `sentinel` import에 실패했다. 타깃에 `PYTHONPATH=src`를 지정했다. 실제 타깃을 pytest 경로 없는 하위 프로세스로 돌리는 테스트와 그 줄을 지우는 변이를 추가했다(리뷰 조건).
 
 ### 해소
 - **v1.25 미해결 '`object.__setattr__`·`__dict__` 정적 검사 없음' → 해소.** `__delattr__`·`vars(...)`·문자열 표기도 함께 막고, 읽기도 막는다(쓸 일이 없고 읽기와 쓰기를 정적으로 가르면 구멍이 남는다).
@@ -945,6 +945,6 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 
 ### 미해결
 - **전부 거부 실행의 보고**: 지금은 사유 코드로 실패하고 보고서가 없다. output_rejected에 생산자 메타를 동봉할지는 → 이월처: LLM 결선 (A) 개정.
-- **S v2는 트랜잭션별 split을 기계 판독 가능하게 기록한다(생성기 SSOT)** → 이월처: S v2. 지금 `dataset_split`은 라벨 파일에 없는 필드를 읽어 null을 돌려준다.
+- **S v2는 트랜잭션별 split을 기계 판독 가능하게 기록한다(생성기 SSOT)** → 이월처: S v2. 지금 `dataset_split`은 라벨 파일에 없는 필드를 읽어 null을 돌려준다. S v2 요건: split을 선언한 데이터셋에서 split 필드가 없으면 null이 아니라 오류다.
 - **(A) J9 문구는 '분할(dev/test)'이라 null을 말하지 않는다**: 이 PR은 계약 문구를 고치지 않는다 → 이월처: S v2의 (A) 개정.
 - **③' 출처 반사 규칙**: rules-1로 진행했다 → 결정 기한: S v2 test 작성 전.

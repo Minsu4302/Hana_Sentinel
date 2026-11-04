@@ -46,7 +46,7 @@ serve:
 ## eval: 동결 데이터셋을 실제 ②③④로 통과시켜 채점(프로세스 안, 보고서는 gitignore 경로 reports/eval)
 eval: export PYTHONPATH := src
 eval:
-	$(PYTHON) -m tools.eval.runner
+	$(PYTHON) -m tools.eval.runner $(EVAL_ARGS)
 
 install-hooks:
 	$(PYTHON) -m pre_commit install
