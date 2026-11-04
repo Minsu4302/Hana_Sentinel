@@ -18,7 +18,7 @@ from sentinel.pipeline import output_gate, rule_engine
 from sentinel.pipeline.rule_engine import (
     STACK_TRACE_PATTERNS, cors_reflection_rule, cors_rule, evaluate, reflection_rule, stack_trace_rule)
 from sentinel.schema import Transaction
-from tools.eval.frozen_rulesets import FROZEN_RULESETS, frozen_file_hash
+from tools.eval.frozen_rulesets import FROZEN_RULESETS, RULESET_SCOPE_HISTORY, current_ruleset_hash, frozen_file_hash
 
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000d4")
 MASKED = {"masked": True, "label": None, "kind": "token"}
@@ -85,9 +85,14 @@ def test_ruleset_frozen_before_s_v2_test_is_rules_2():
     assert rule_engine.RULESET_VERSION == "rules-2"
 
 
-def test_rule_file_matches_the_frozen_hash_of_its_ruleset():
+def test_ruleset_files_match_the_frozen_hash_of_their_ruleset():
     assert rule_engine.RULESET_VERSION in FROZEN_RULESETS
-    assert frozen_file_hash(Path(rule_engine.__file__)) == FROZEN_RULESETS[rule_engine.RULESET_VERSION]
+    assert current_ruleset_hash() == FROZEN_RULESETS[rule_engine.RULESET_VERSION]
+
+
+def test_scope_extension_of_rules_2_kept_the_rule_file_as_it_was():
+    """범위만 넓혔다 — rule_engine.py는 확장 전 기록과 같다."""
+    assert frozen_file_hash(Path(rule_engine.__file__)) == RULESET_SCOPE_HISTORY["rules-2"]
 
 
 def test_frozen_hash_does_not_depend_on_the_checkout_line_endings(tmp_path):

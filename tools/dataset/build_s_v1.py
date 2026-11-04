@@ -103,7 +103,7 @@ def build(out_dir: Path = DEFAULT_OUT) -> list[str]:
         group = [s for s in specs if s["mode"] == mode]
         raw = RawEnvelope.model_validate_json(json.dumps({"schema_version": "1.0", "transactions": [s["tx"] for s in group]}))
         files.update(masker.mask(raw, mode))
-    versions = current_versions()
+    versions = {**current_versions(), "labelfile_schema": "1.0"}  # S v1은 1.0으로 동결됐다
     labels = {"schema_version": "1.0", "dataset_id": DATASET_ID,
               "frozen_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
               "frozen_against": {**versions, "masking_modes": {s["tx"]["meta"]["transaction_id"]: s["mode"] for s in specs}},

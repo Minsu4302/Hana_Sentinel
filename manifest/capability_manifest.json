@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.25",
+  "spec": "docs/design-decision.md §3 매핑표 v1.26",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -629,6 +629,10 @@
       "note": "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 층 B 실측 가능(rule_only — 러너 `make eval`). LLM 경로의 층 B는 LLM 결선 이후",
       "verification_tests": [
         "tests/test_eval_harness.py::test_all_correct_predictions_score_perfectly",
+        "tests/test_s_v2_generator.py::test_both_labels_right_gives_two_true_positives",
+        "tests/test_s_v2_generator.py::test_only_the_chosen_split_is_scored",
+        "tests/test_s_v2_generator.py::test_split_dataset_needs_the_split_argument",
+        "tests/test_s_v2_generator.py::test_multi_label_transactions_are_reported",
         "tests/test_eval_runner.py::test_s_v1_report_has_the_expected_counts",
         "tests/test_eval_runner.py::test_every_s_v1_point_estimate_is_withheld",
         "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage",
@@ -733,24 +737,47 @@
       ]
     },
     "dataset_case_independence": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "S v2 동결 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "생성기 장치 — 합성 카탈로그로 증명",
+      "verification_tests": [
+        "tests/test_s_v2_generator.py::test_duplicate_endpoint_and_pattern_is_refused",
+        "tests/test_s_v2_generator.py::test_same_endpoint_with_another_pattern_is_allowed",
+        "tests/test_s_v2_generator.py::test_each_generator_guard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "ruleset_freeze": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "범위 — 현재 rule_engine.py 한 파일. 3파일 확장은 생성기 PR",
+      "note": "범위 — rule_engine.py·strict_json.py·canonical_address.py 3파일. 타입 파일은 제외",
       "verification_tests": [
-        "tests/test_rule_engine.py::test_rule_file_matches_the_frozen_hash_of_its_ruleset"
+        "tests/test_rule_engine.py::test_ruleset_files_match_the_frozen_hash_of_their_ruleset",
+        "tests/test_rule_engine.py::test_scope_extension_of_rules_2_kept_the_rule_file_as_it_was"
+      ]
+    },
+    "guideline_freeze": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_labeling_guideline.py::test_guideline_matches_its_frozen_hash",
+        "tests/test_labeling_guideline.py::test_one_changed_line_breaks_the_freeze",
+        "tests/test_labeling_guideline.py::test_freeze_check_is_load_bearing_under_verified_mutation",
+        "tests/test_s_v2_generator.py::test_wrong_guideline_hash_in_the_catalog_is_refused",
+        "tests/test_s_v2_generator.py::test_changed_guideline_file_is_refused"
       ]
     },
     "producer_freeze_order": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "S v2 동결 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "생성기 장치 — 합성 카탈로그로 증명",
+      "verification_tests": [
+        "tests/test_s_v2_generator.py::test_unfrozen_ruleset_version_is_refused",
+        "tests/test_s_v2_generator.py::test_changed_rule_files_are_refused",
+        "tests/test_s_v2_generator.py::test_run_on_the_recorded_ruleset_is_a_measurement",
+        "tests/test_s_v2_generator.py::test_test_split_on_another_ruleset_is_marked_out_of_freeze_order",
+        "tests/test_s_v2_generator.py::test_recorded_hash_that_differs_from_the_frozen_table_is_marked",
+        "tests/test_s_v2_generator.py::test_each_generator_guard_is_load_bearing_under_verified_mutation"
+      ]
     }
   }
 }

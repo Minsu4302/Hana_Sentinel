@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.25. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.26. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.25"
+derived_from: "docs/design-decision.md §3 매핑표 v1.26"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -687,6 +687,10 @@ guardrails:
       note: "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 층 B 실측 가능(rule_only — 러너 `make eval`). LLM 경로의 층 B는 LLM 결선 이후"
     verification_tests:
       - "tests/test_eval_harness.py::test_all_correct_predictions_score_perfectly"
+      - "tests/test_s_v2_generator.py::test_both_labels_right_gives_two_true_positives"
+      - "tests/test_s_v2_generator.py::test_only_the_chosen_split_is_scored"
+      - "tests/test_s_v2_generator.py::test_split_dataset_needs_the_split_argument"
+      - "tests/test_s_v2_generator.py::test_multi_label_transactions_are_reported"
       - "tests/test_eval_runner.py::test_s_v1_report_has_the_expected_counts"
       - "tests/test_eval_runner.py::test_every_s_v1_point_estimate_is_withheld"
       - "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage"
@@ -798,24 +802,46 @@ guardrails:
     description: "S의 (엔드포인트, 결함 패턴) 조합마다 트랜잭션 1건(독립 단위 — 생성기 SSOT가 조합 중복 검사)"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "S v2 동결 시"
-    verification_tests: []
+      state: enforced
+      note: "생성기 장치 — 합성 카탈로그로 증명"
+    verification_tests:
+      - "tests/test_s_v2_generator.py::test_duplicate_endpoint_and_pattern_is_refused"
+      - "tests/test_s_v2_generator.py::test_same_endpoint_with_another_pattern_is_allowed"
+      - "tests/test_s_v2_generator.py::test_each_generator_guard_is_load_bearing_under_verified_mutation"
     manifest_key: dataset_case_independence
   - id: ruleset_freeze
     description: "동결 표의 ruleset 해시가 규칙 파일과 일치(규칙 내용만 바꾸고 버전을 두면 실패)"
     target_layer: "테스트"
     status:
       state: enforced
-      note: "범위 — 현재 rule_engine.py 한 파일. 3파일 확장은 생성기 PR"
+      note: "범위 — rule_engine.py·strict_json.py·canonical_address.py 3파일. 타입 파일은 제외"
     verification_tests:
-      - "tests/test_rule_engine.py::test_rule_file_matches_the_frozen_hash_of_its_ruleset"
+      - "tests/test_rule_engine.py::test_ruleset_files_match_the_frozen_hash_of_their_ruleset"
+      - "tests/test_rule_engine.py::test_scope_extension_of_rules_2_kept_the_rule_file_as_it_was"
     manifest_key: ruleset_freeze
+  - id: guideline_freeze
+    description: "라벨링 지침 파일이 동결 표의 해시와 일치(바뀌면 실패하고 생성기가 거부)"
+    target_layer: "테스트"
+    status:
+      state: enforced
+    verification_tests:
+      - "tests/test_labeling_guideline.py::test_guideline_matches_its_frozen_hash"
+      - "tests/test_labeling_guideline.py::test_one_changed_line_breaks_the_freeze"
+      - "tests/test_labeling_guideline.py::test_freeze_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_s_v2_generator.py::test_wrong_guideline_hash_in_the_catalog_is_refused"
+      - "tests/test_s_v2_generator.py::test_changed_guideline_file_is_refused"
+    manifest_key: guideline_freeze
   - id: producer_freeze_order
     description: "현재 규칙 해시가 동결 표에 없으면 생성 거부 + test 보고에서 데이터셋 기록과 다른 ruleset은 '동결 순서 밖 — 측정 아님' 표기"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "S v2 동결 시"
-    verification_tests: []
+      state: enforced
+      note: "생성기 장치 — 합성 카탈로그로 증명"
+    verification_tests:
+      - "tests/test_s_v2_generator.py::test_unfrozen_ruleset_version_is_refused"
+      - "tests/test_s_v2_generator.py::test_changed_rule_files_are_refused"
+      - "tests/test_s_v2_generator.py::test_run_on_the_recorded_ruleset_is_a_measurement"
+      - "tests/test_s_v2_generator.py::test_test_split_on_another_ruleset_is_marked_out_of_freeze_order"
+      - "tests/test_s_v2_generator.py::test_recorded_hash_that_differs_from_the_frozen_table_is_marked"
+      - "tests/test_s_v2_generator.py::test_each_generator_guard_is_load_bearing_under_verified_mutation"
     manifest_key: producer_freeze_order

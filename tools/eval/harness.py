@@ -36,10 +36,12 @@ from sentinel.pipeline import schema_gate
 from sentinel.schema import Transaction
 from tools.dataset.freeze import engine_regression_problems, mode_problems, version_freeze_problems
 from tools.dataset.labelfile import Label, LabelFile, anchor_problems
+from tools.eval.frozen_rulesets import FROZEN_RULESETS
 
 CATEGORIES = ("access_control", "info_exposure", "reflected_injection_indicator", "security_misconfig")
 WILSON_Z = 1.959963984540054  # 95%
 MAX_HALF_WIDTH = 0.15         # J8 초기 임계값(설정값 — 정본이되 불변식 아님)
+OUT_OF_FREEZE_ORDER = "동결 순서 밖 — 측정 아님"
 
 
 class RunMeta(BaseModel):
@@ -186,9 +188,32 @@ def _pr(tp: int, fp: int, fn: int) -> dict[str, Any]:
     return {"tp": tp, "fp": fp, "fn": fn, "precision": wilson(tp, tp + fp), "recall": wilson(tp, tp + fn)}
 
 
+def _scored_labels(label_file: LabelFile, run: PredictionRun) -> list[Label]:
+    """split_scheme이 있으면 split 인자가 필수이고 그 split만 채점한다. 결과도 그 split의 트랜잭션과 같아야 한다."""
+    if label_file.split_scheme is None:
+        return label_file.labels
+    if run.run_meta.split is None:
+        raise DatasetRejected("split_required")
+    labels = [label for label in label_file.labels if label.split == run.run_meta.split]
+    if {label.transaction_ref for label in labels} != set(run.results):
+        raise DatasetRejected("results_differ_from_split")
+    return labels
+
+
+def freeze_order(label_file: LabelFile, run_meta: RunMeta) -> str | None:
+    """test split이 데이터셋 기록과 다른 ruleset으로 돌았으면 측정이 아니다((A) §6.2 (b))."""
+    recorded = label_file.frozen_against
+    if run_meta.split != "test":
+        return None
+    same = (run_meta.ruleset_version == recorded.ruleset_version
+            and FROZEN_RULESETS.get(run_meta.ruleset_version) == recorded.ruleset_hash)
+    return None if same else OUT_OF_FREEZE_ORDER
+
+
 def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
     label_file, txs = load_dataset(dataset)
-    by_ref = {label.transaction_ref: label for label in label_file.labels}
+    labels = _scored_labels(label_file, run)
+    by_ref = {label.transaction_ref: label for label in labels}  # 한 트랜잭션의 복수 라벨은 모두 labeled_positive — 상태만 읽는다
     rejected = sorted((ref for ref, r in run.results.items() if r == "output_rejected"), key=str)
     raw_preds = [_Pred(f.finding_id, f.category, frozenset(canonical_address(txs[e.transaction_ref], e.pointer)
                                                           for e in f.evidence), f.produced_by)
@@ -198,7 +223,7 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
         groups.setdefault((p.category, p.cnas), []).append(p)
     preds = sorted((min(g, key=lambda q: q.key) for g in groups.values()), key=lambda q: q.key)
     truths = sorted((_Truth(label, frozenset(canonical_address(txs[label.transaction_ref], a) for a in label.anchors))
-                     for label in label_file.labels if label.label_status == "labeled_positive"), key=lambda v: v.key)
+                     for label in labels if label.label_status == "labeled_positive"), key=lambda v: v.key)
 
     strict = lexicographic_maximum_matching(preds, truths, _strict)
     location = lexicographic_maximum_matching(preds, truths, _location_only)
@@ -219,7 +244,8 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
                               sum(1 for v in fns if c in v.label.categories))
     confusion = Counter(("+".join(sorted(v.label.categories)), p.category) for p, v in location.items())
 
-    clean = [label for label in label_file.labels if label.label_status == "verified_clean"]
+    clean = [label for label in labels if label.label_status == "verified_clean"]
+    label_counts = Counter(v.label.transaction_ref for v in truths)
     flagged = {c.transaction_ref for p in preds for c in p.cnas}
     hard = [label for label in clean if label.hard_negative]
     produced = sorted({p.produced_by for p in preds})
@@ -232,11 +258,13 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
                    "dataset_versions": label_file.frozen_against.model_dump(mode="json", exclude={"masking_modes"}),
                    "pipeline_mode": run.run_meta.pipeline_mode, "model_id": run.run_meta.model_id,
                    "prompt_version": run.run_meta.prompt_version,
-                   "ruleset_version": run.run_meta.ruleset_version},
+                   "ruleset_version": run.run_meta.ruleset_version,
+                   "freeze_order": freeze_order(label_file, run.run_meta)},
         "J1": {"strict": _pr(len(strict), len(fps), len(fns)), "per_category": per_category,
                "location_only": _pr(len(location), len(preds) - len(location) - len(undetermined),
                                     len(truths) - len(set(location.values()))),
-               "confusion": sorted([*k, n] for k, n in confusion.items())},
+               "confusion": sorted([*k, n] for k, n in confusion.items()),
+               "multi_label_transactions": sum(1 for n in label_counts.values() if n > 1)},
         "duplicates": {"merged_exact": len(raw_preds) - len(preds), "left_over_fp": len(duplicates),
                        "rate": wilson(len(duplicates), len(preds))},
         "undetermined": len(undetermined),
