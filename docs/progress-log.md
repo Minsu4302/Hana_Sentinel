@@ -985,7 +985,7 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - LabelFile 1.1(`Label.split`, `split_scheme`, `frozen_against.ruleset_version·ruleset_hash`), 러너 split 필수·split별 채점, 생성기 거부, '동결 순서 밖' 표기, 해시 범위 3파일 확장.
 
 ### 미해결
-- **④ positive의 'SQL 에러 문자열'과 S v1**: S v1 `d603e430`의 응답에는 SQL 에러 문자열이 있는데 라벨은 info_exposure뿐이다. 지침대로면 S v1과 일관되지 않는 지점이 하나 있다 → 이월처: 지침 PR(S v1은 동결본이라 건드리지 않음).
+- **④ SQL 에러 기준 정정(v1.27 리뷰)**: 처음 회신의 'SQL 에러 문자열도 ④ positive'는 너무 넓었다. ④는 요청 값에 SQL 의미 문자가 있고 응답에 SQL 에러 문자열이 있을 때(입력과의 연관이 관측 가능)이고, ②는 입력과의 연관과 관계없이 DB/ORM 오류가 내부 정보를 드러낼 때이며, 둘 다 성립하면 categories는 {②, ④}다. S v1 `d603e430`은 `GET /rest/products/0`이라 SQL 의미 문자가 없어 ②만 해당하고 S v1 라벨과 맞는다.
 - **동결 해시의 타입 파일 제외**: common_types·output_schema·schema 변경은 잡지 못한다(회신 결정, (A) §6.2 기록).
 
 ---
@@ -1008,3 +1008,24 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 
 ### 미해결
 - **표본 단위 → 해소(리뷰 반영).** 독립 단위 = 트랜잭션, 규모 게이트는 트랜잭션 수로 센다. 재현율의 n은 라벨 수이고 같은 트랜잭션의 복수 라벨은 독립이 아니다(근사). RI-N4는 hard negative가 아니라 지침의 '대조 사례'로 쓴다.
+
+---
+
+## 라벨링 지침 v1 (Issue #82)
+
+### 0단계 결과
+- S v1 6건에 적용: label_status·categories는 6건 모두 일치, anchor는 2건이 다르다.
+  - `d603e430`: 지침은 `/error/message`·`/error/stack`, S v1은 `/error/stack`만.
+  - `fab71ff6`: 지침은 소유자 라벨이 있는 `/data/owner_token`, S v1은 `/data/UserId`.
+  - S v1은 고치지 않는다('S v1 = 지침 이전 데이터셋' 한계).
+- 초안의 복수 category가 1:1 매칭에서 1 TP + 1 FP가 되는 문제가 드러나 동결을 보류하고 (A) v1.28을 먼저 처리했다.
+
+### 결과
+- `docs/labeling-guideline.md`: 제0장, 제1조 O-1~O-4, 카테고리별 조항, 라벨 수, anchor, 제외 목록, 같은 관측 목록, 한계. 코드 변경 0, (A) 변경 0.
+- **v1.28 이월 '지침 PR은 판정을 반영해 동결' → 해소.**
+- **동결: 라벨링 지침 v1 = 커밋 `b6fc7f1`, 파일 SHA-256(LF 정규화 = Git 저장 내용) `abd4c6896a179f209466b35fd1b55406dec91bd8788d7948bffa00093846aae7`.** `tools/eval/frozen_rulesets.py`의 `FROZEN_GUIDELINES`와 테스트가 강제한다.
+
+### 이월
+- **카탈로그 머리에 지침 버전·해시를 적고, 생성기가 현재 지침 파일 해시와 대조한다**(LabelFile 변경 없음) → 이월처: 생성기 + S v2 동결 PR.
+- **지침 동결의 manifest 키 등재** → 이월처: 생성기 PR.
+- **규칙과 내용이 겹치는 조항(SM-P1·SM-P2, RI-D1, RI-D4)**: 발주·§1.1에서 온 내용이지만 규칙을 아는 작성자의 편향은 지울 수 없다 → 한계(G-2).

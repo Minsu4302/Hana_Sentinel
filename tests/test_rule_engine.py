@@ -18,7 +18,7 @@ from sentinel.pipeline import output_gate, rule_engine
 from sentinel.pipeline.rule_engine import (
     STACK_TRACE_PATTERNS, cors_reflection_rule, cors_rule, evaluate, reflection_rule, stack_trace_rule)
 from sentinel.schema import Transaction
-from tools.eval.frozen_rulesets import FROZEN_RULESETS, ruleset_file_hash
+from tools.eval.frozen_rulesets import FROZEN_RULESETS, frozen_file_hash
 
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000d4")
 MASKED = {"masked": True, "label": None, "kind": "token"}
@@ -87,14 +87,14 @@ def test_ruleset_frozen_before_s_v2_test_is_rules_2():
 
 def test_rule_file_matches_the_frozen_hash_of_its_ruleset():
     assert rule_engine.RULESET_VERSION in FROZEN_RULESETS
-    assert ruleset_file_hash(Path(rule_engine.__file__)) == FROZEN_RULESETS[rule_engine.RULESET_VERSION]
+    assert frozen_file_hash(Path(rule_engine.__file__)) == FROZEN_RULESETS[rule_engine.RULESET_VERSION]
 
 
 def test_frozen_hash_does_not_depend_on_the_checkout_line_endings(tmp_path):
     lf, crlf = tmp_path / "lf.py", tmp_path / "crlf.py"
     lf.write_bytes(b"a = 1\nb = 2\n")
     crlf.write_bytes(b"a = 1\r\nb = 2\r\n")
-    assert ruleset_file_hash(lf) == ruleset_file_hash(crlf)
+    assert frozen_file_hash(lf) == frozen_file_hash(crlf)
 
 
 # ── ④ 반사 ───────────────────────────────────────────────────────
