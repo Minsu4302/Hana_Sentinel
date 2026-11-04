@@ -6,7 +6,7 @@
 보고 머리(J9):
 - pipeline_mode·model_id·prompt_version·ruleset_version은 결과의 analysis_meta에서만 읽는다. 러너 상수로 채우지 않는다.
   일부 거부면 남은 메타로 읽고, 메타끼리 다르면 거부한다. 전부 거부되면 메타가 없으므로 보고서를 내지 않는다.
-- split은 데이터셋 기록을 쓴다. 기록이 없으면 null이다(S v1). 인자는 선택 사항이고 기본값이 없으며, 기록과 다르면 거부한다.
+- split: split_scheme이 있는 데이터셋은 인자가 필수이고 그 split만 채점한다. 없으면 null이고(S v1) 인자를 주면 거부한다.
 
 결정론: 보고서에는 finding_id를 남기지 않는다(서버가 uuid4로 부여) — 같은 입력이면 같은 보고다.
 범위: S v1 위의 결과는 측정이 아니라 동작 확인이다((A) §6.2 — S v1은 규칙에 대해 오염된 스모크 집합).
@@ -40,9 +40,16 @@ class RunRejected(Exception):
     """보고서를 내지 않는다(사유 코드만)."""
 
 
-def dataset_split(label_file: LabelFile) -> str | None:
-    """데이터셋이 기록한 분할. 지금 라벨 파일 형식에는 분할 기록이 없다 → null."""
-    return getattr(label_file, "split", None)
+def selected_split(label_file: LabelFile, split: str | None) -> str | None:
+    if label_file.split_scheme is None:
+        if split is not None:
+            raise RunRejected("split_differs_from_dataset")
+        return None
+    if split is None:
+        raise RunRejected("split_required")
+    if not any(label.split == split for label in label_file.labels):
+        raise RunRejected("split_differs_from_dataset")
+    return split
 
 
 def predictions(raws: Iterable[bytes], manifest_snapshot: dict[str, Any]) -> dict[UUID, Prediction]:
@@ -73,11 +80,11 @@ def _run_meta(results: dict[UUID, Prediction], split: str | None) -> RunMeta:
 def run(dataset: Path, manifest_snapshot: dict[str, Any], split: str | None = None) -> dict[str, Any]:
     dataset = Path(dataset)
     label_file, _txs = load_dataset(dataset)
-    recorded = dataset_split(label_file)
-    if split is not None and split != recorded:
-        raise RunRejected("split_differs_from_dataset")
-    results = predictions((p.read_bytes() for p in sorted((dataset / "envelopes").glob("*.json"))), manifest_snapshot)
-    run_meta = _run_meta(results, recorded)
+    chosen = selected_split(label_file, split)
+    refs = {str(label.transaction_ref) for label in label_file.labels if chosen is None or label.split == chosen}
+    paths = [p for p in sorted((dataset / "envelopes").glob("*.json")) if p.stem in refs]
+    results = predictions((p.read_bytes() for p in paths), manifest_snapshot)
+    run_meta = _run_meta(results, chosen)
     try:
         prediction_run = PredictionRun(run_meta=run_meta, results=results)
     except ValidationError:
@@ -98,7 +105,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"eval 거부: {exc}", file=sys.stderr)
         return 1
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    path = args.out_dir / f"{report['header']['dataset_id']}.json"
+    suffix = f".{report['header']['split']}" if report["header"]["split"] else ""
+    path = args.out_dir / f"{report['header']['dataset_id']}{suffix}.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"header": report["header"], "strict": {k: report["J1"]["strict"][k] for k in ("tp", "fp", "fn")},
                       "J2": report["J2"]["fn_from_rejected"], "J3": report["J3"]}, ensure_ascii=False, indent=2))

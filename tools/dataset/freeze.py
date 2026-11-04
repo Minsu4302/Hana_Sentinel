@@ -24,7 +24,7 @@ from uuid import UUID
 from sentinel.canonical_address import canonical_address
 from sentinel.pipeline import schema_gate
 from sentinel.schema import Envelope
-from tools.dataset.labelfile import LABELFILE_SCHEMA_VERSION, LabelFile
+from tools.dataset.labelfile import LABELFILE_SCHEMA_VERSION, SUPPORTED_LABELFILE_SCHEMAS, LabelFile
 from tools.fixture_masker.raw import RAW_SCHEMA_VERSION
 from tools.masker_cross_check import engine_verdict
 
@@ -64,7 +64,7 @@ def version_freeze_problems(dataset: Path) -> list[str]:
         labels_ok = True
     except Exception:  # 스키마 불일치·anchor 정규화 불가 — 무엇이든 '현재 스키마로 읽히지 않음'
         labels_ok = False
-    if not labels_ok and frozen["labelfile_schema"] == now["labelfile_schema"]:
+    if not labels_ok and frozen["labelfile_schema"] in SUPPORTED_LABELFILE_SCHEMAS:  # 지원 버전의 동결본은 계속 읽혀야 한다
         problems.append("labelfile_schema_changed_without_version_bump")
     return problems
 

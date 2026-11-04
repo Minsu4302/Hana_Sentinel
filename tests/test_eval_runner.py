@@ -197,13 +197,6 @@ def test_split_argument_is_refused_when_the_dataset_records_none(split):
         _report(split)
 
 
-def test_recorded_split_is_used_and_a_different_argument_is_refused(monkeypatch):
-    monkeypatch.setattr(runner, "dataset_split", lambda label_file: "dev")
-    assert _report()["header"]["split"] == "dev" and _report("dev")["header"]["split_note"] is None
-    with pytest.raises(RunRejected, match="split_differs_from_dataset"):
-        _report("test")
-
-
 def test_split_has_no_default_in_the_run_meta():
     with pytest.raises(ValidationError):
         RunMeta(pipeline_mode="rule_only", model_id=None, prompt_version=None, ruleset_version="r")
@@ -298,9 +291,8 @@ TOOL_MUTATIONS = {
                                [_R + "test_fully_rejected_run_gives_no_report",
                                 _R + "test_fully_rejected_run_writes_no_file_and_exits_non_zero"]),
     "split_argument_not_checked": ("tools/eval/runner.py", "tools.eval.runner",
-                                   "    if split is not None and split != recorded:\n", "    if False:\n",
-                                   [_R + "test_split_argument_is_refused_when_the_dataset_records_none[dev]",
-                                    _R + "test_recorded_split_is_used_and_a_different_argument_is_refused"]),
+                                   "        if split is not None:\n", "        if False:\n",
+                                   [_R + "test_split_argument_is_refused_when_the_dataset_records_none[dev]"]),
     "finding_id_left_in_the_report": ("tools/eval/runner.py", "tools.eval.runner",
                                       '    return {**report, "matches": sorted(ref for _finding_id, ref in report["matches"])}\n',
                                       "    return report\n",

@@ -56,7 +56,7 @@ def _relation_ref(dataset: Path = DATASET) -> str:
 def test_frozen_dataset_reads_under_current_schemas_and_records_them():
     label_file = _label_file()
     against = label_file.frozen_against.model_dump(exclude={"masking_modes"})
-    assert against == freeze.current_versions()
+    assert against == {**freeze.current_versions(), "labelfile_schema": "1.0", "ruleset_version": None, "ruleset_hash": None}
     assert freeze.version_freeze_problems(DATASET) == []
     assert set(label_file.frozen_against.masking_modes) == set(_transactions())
 
@@ -189,8 +189,7 @@ def test_labelfile_schema_change_without_version_bump_is_caught(monkeypatch):
         reviewer: str
     monkeypatch.setattr(freeze, "LabelFile", Stricter)
     assert freeze.version_freeze_problems(DATASET) == ["labelfile_schema_changed_without_version_bump"]
-    monkeypatch.setattr(freeze, "current_versions",
-                        lambda: {"envelope_schema": "1.0", "raw_schema": "1.0", "labelfile_schema": "1.1"})
+    monkeypatch.setattr(freeze, "SUPPORTED_LABELFILE_SCHEMAS", ("1.1",))  # 1.0 지원을 끝내면 이 검사의 대상이 아니다
     assert freeze.version_freeze_problems(DATASET) == []
 
 
