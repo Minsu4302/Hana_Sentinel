@@ -17,6 +17,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from sentinel.common_types import MaskedRef, MaskedSpan
+from sentinel.output_schema import AnalysisResult
 
 Port = Annotated[int, Field(ge=0, le=65535)]
 NonNegative = Annotated[int, Field(ge=0)]
@@ -118,7 +119,14 @@ class Envelope(_Strict):
 # ── 출력: (A) §2.5 ExecutionResponse — 분석 실행 상태(AnalysisResult와 구분) ──────────────
 
 class ExecutionResponse(_Strict):
-    """1주차 골격은 이 타입만 반환한다. findings 필드가 없다 — "분석 안 함 ≠ 분석 후 취약점 없음"."""
-    analysis_status: Literal["not_implemented"]
+    """④는 이 타입만 반환한다. findings는 result 안에만 있다 — "분석 안 함 ≠ 분석 후 취약점 없음"."""
+    analysis_status: Literal["not_implemented", "completed", "output_rejected"]
     skipped_reasons: Annotated[list[str], Field(min_length=1)]
     manifest_snapshot: dict[str, Any]
+    result: AnalysisResult | None
+
+    @model_validator(mode="after")
+    def _result_only_when_completed(self) -> Self:
+        if (self.analysis_status == "completed") != (self.result is not None):
+            raise ValueError("completed ⇔ result ≠ null")
+        return self

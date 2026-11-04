@@ -36,7 +36,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
 OTHER_REF = uuid.UUID("00000000-0000-4000-8000-0000000000b2")
 META = AnalysisMeta(model_id="dummy-model", policy_version="p1", prompt_version="v1", ruleset_version="r0",
-                    elapsed_ms=12, pipeline_mode="test", manifest_snapshot={})
+                    elapsed_ms=12, pipeline_mode="rule_llm", manifest_snapshot={})
 
 
 def _masked(label: str, kind: str) -> dict:
@@ -127,12 +127,12 @@ def test_valid_draft_gets_exactly_the_server_assigned_values():
     result = _run_gate(_draft(findings=[_finding(), _finding(category="access_control")]), produced_by="hybrid")
     assert isinstance(result, AnalysisResult)
     assert result.schema_version == "1.0"
-    assert result.analyzed_refs == [REF] and result.analysis_meta is META
+    assert result.analyzed_refs == (REF,) and result.analysis_meta is META
     for f in result.findings:
         assert f.status == "unverified" and f.severity_if_true is None and f.produced_by == "hybrid"
         assert isinstance(f.finding_id, uuid.UUID)
     evidence = [e for f in result.findings for e in f.evidence] + [e for a in result.advisory_signals for e in a.basis]
-    assert evidence and all(e.corroboration == "not_run" and e.anomaly_flags == [] and e.review_required is True
+    assert evidence and all(e.corroboration == "not_run" and e.anomaly_flags == () and e.review_required is True
                             for e in evidence)
     assert [f.category for f in result.findings] == ["info_exposure", "access_control"]
     assert len({f.finding_id for f in result.findings}) == 2
@@ -141,7 +141,7 @@ def test_valid_draft_gets_exactly_the_server_assigned_values():
 def test_clean_draft_is_a_result_with_empty_findings_not_a_rejection():
     """분석 후 깨끗함 = 결과 + findings: [] (폐기와 구분)."""
     result = _run_gate(_draft(findings=[], advisories=[]))
-    assert isinstance(result, AnalysisResult) and result.findings == [] and result.advisory_signals == []
+    assert isinstance(result, AnalysisResult) and result.findings == () and result.advisory_signals == ()
 
 
 def test_server_assigned_field_list_is_pinned():

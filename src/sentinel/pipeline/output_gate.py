@@ -1,4 +1,4 @@
-"""출력 스키마 게이트 — (A) §2.4 출력 검증 규칙, §2.6 Locator, §3.5 C·E. LLM 초안 → AnalysisResult | OutputRejection.
+"""출력 스키마 게이트 — (A) §2.4 출력 검증 규칙, §2.6 Locator, §3.5 C·E. 초안(규칙·LLM) → AnalysisResult | OutputRejection.
 
 검사(하나라도 실패하면 결과 전체 폐기 — 부분 수용 없음):
   ① 초안 스키마(`AnalysisDraft`: strict, 추가 필드 금지 — 서버 부여 필드 주입은 `server_field_injected`,
@@ -8,13 +8,16 @@
      않는다((A) 미정)
   ④ 모든 Evidence(finding·advisory)의 transaction_ref ∈ analyzed_refs(`evidence_ref_integrity`)
   ⑤ 모든 Evidence의 pointer(Locator)가 그 transaction(마스킹 후 데이터)에서 해석됨(`evidence_pointer_resolves`)
+모든 검사가 끝난 뒤 중복을 처리한다(§2.4): (category, Evidence CNA 집합)이 정확히 같은 Finding은 첫 초안만 남기고, CNA 집합이
+어떤 Finding과 정확히 같은 advisory는 버린다. 검증보다 뒤에 두는 이유: 먼저 병합하면 무효 초안이 병합으로 사라져 전체 폐기가
+부분 수용이 된다.
 통과하면 서버가 부여한다(`server_assigned_status` 외): status=unverified, finding_id=UUID, corroboration=not_run,
 anomaly_flags=[], review_required=true, severity_if_true=null, produced_by·analysis_meta=인자,
 analyzed_refs=transactions의 ID 목록, schema_version="1.0". 헤더 Locator의 name은 소문자로 정규화해 저장한다.
 
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
 입력이 정한 필드명·헤더 이름·경로·range 값은 남기지 않는다(Pydantic 오류의 loc·msg는 분류에만 쓰고 버린다).
-서버 인자는 초안 파싱 전에 검사한다. 잘못된 서버 인자는 LLM 출력 거부가 아니라 호출자 버그라 ValueError다
+서버 인자는 초안 파싱 전에 검사한다. 잘못된 서버 인자는 출력 거부가 아니라 호출자 버그라 ValueError다
 (transactions가 비었거나 ID 중복, produced_by가 3값 밖, analysis_meta 타입 오류 — 메시지에 값 없음).
 analyzed_refs를 따로 받지 않고 transactions에서 파생한다 — 둘이 어긋날 수 있는 경로 자체를 없앤다.
 
@@ -23,7 +26,7 @@ analyzed_refs를 따로 받지 않고 transactions에서 파생한다 — 둘이
 표준 JSON(중복 키·NaN 없음)으로 파싱될 때만 — 경로가 정확히 1개 노드를 가리켜야 하므로 중복 키는 해석 실패다.
 같은 값을 req_param과 req_body 두 방식으로 가리킬 수 있는 문제(정규 주소)는 5번 TP 판정에서 정한다(여기선 둘 다 허용).
 
-범위((A) §3.5 각주): 검증 함수 단위(주입 테스트). 파이프라인 ④ 결선(유일 통로)은 LLM 연동 PR에서 별도 증명.
+범위((A) §3.5 각주): 검증 함수 단위(주입 테스트). ④의 현존 경로가 이 게이트를 지나는지는 `completed_via_gate`가 본다.
 """
 from __future__ import annotations
 
@@ -36,6 +39,7 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 
 from sentinel import strict_json
+from sentinel.canonical_address import canonical_address
 from sentinel.common_types import BodyLocator, HeaderLocator, ParamLocator, Range, ReqLineLocator, StatusLocator
 from sentinel.output_schema import (
     SERVER_ASSIGNED_FIELDS, AdvisorySignal, AnalysisDraft, AnalysisMeta, AnalysisResult, Evidence, EvidenceDraft,
@@ -60,7 +64,7 @@ REASON_CODES: Final = (
 
 @dataclass(frozen=True)
 class OutputRejection:
-    """LLM 출력 거부 — 결과 전체 폐기((A) §2.5 output_rejected). 사유 코드만 담는다."""
+    """출력 거부 — 결과 전체 폐기((A) §2.5 output_rejected). 사유 코드만 담는다."""
     reason_codes: tuple[str, ...]
 
     def __post_init__(self) -> None:
@@ -82,7 +86,7 @@ def validate_draft(draft: str | bytes, *, transactions: Sequence[Transaction], p
     if unresolved:
         return _reject(("pointer_unresolvable",))
     try:
-        return _assign(parsed, list(by_id), produced_by, analysis_meta)
+        return _assign(_merged(parsed, by_id), tuple(by_id), produced_by, analysis_meta)
     except ValidationError:
         return _reject(("result_build_failed",))
 
@@ -138,6 +142,23 @@ def _refs_outside(parsed: AnalysisDraft, refs: frozenset[UUID]) -> frozenset[tup
 def _unresolvable(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> frozenset[tuple[str, int]]:
     return frozenset((name, i) for name, i, e in _all_evidence(parsed)
                      if not _resolves(_normalized(e.pointer), by_id[e.transaction_ref]))
+
+
+def _cna_set(evidence: Sequence[EvidenceDraft], by_id: dict[UUID, Transaction]) -> frozenset:
+    return frozenset(canonical_address(by_id[e.transaction_ref], e.pointer) for e in evidence)
+
+
+def _merged(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> AnalysisDraft:
+    seen: set[tuple[str, frozenset]] = set()
+    findings = []
+    for f in parsed.findings:
+        key = (f.category, _cna_set(f.evidence, by_id))
+        if key not in seen:
+            seen.add(key)
+            findings.append(f)
+    finding_sets = {cnas for _category, cnas in seen}
+    return AnalysisDraft(findings=findings, advisory_signals=[a for a in parsed.advisory_signals
+                                                              if _cna_set(a.basis, by_id) not in finding_sets])
 
 
 # ── 위치 해석 ─────────────────────────────────────────────────────
@@ -207,17 +228,17 @@ def _reject(codes: tuple[str, ...]) -> OutputRejection:
 
 def _evidence(d: EvidenceDraft) -> Evidence:
     return Evidence(transaction_ref=d.transaction_ref, pointer=_normalized(d.pointer), observation=d.observation,
-                    corroboration="not_run", anomaly_flags=[], review_required=True)
+                    corroboration="not_run", anomaly_flags=(), review_required=True)
 
 
-def _assign(parsed: AnalysisDraft, refs: list[UUID], produced_by: str, meta: AnalysisMeta) -> AnalysisResult:
-    findings = [Finding(finding_id=uuid4(), category=f.category, hypothesis=f.hypothesis,
-                        evidence=[_evidence(e) for e in f.evidence], claim_basis=f.claim_basis,
-                        severity_if_true=None, status="unverified", produced_by=produced_by,
-                        limitations=list(f.limitations), next_steps=list(f.next_steps))
-                for f in parsed.findings]
-    advisories = [AdvisorySignal(type=a.type, topic=a.topic, basis=[_evidence(e) for e in a.basis],
-                                 suggestion=a.suggestion)
-                  for a in parsed.advisory_signals]
+def _assign(parsed: AnalysisDraft, refs: tuple[UUID, ...], produced_by: str, meta: AnalysisMeta) -> AnalysisResult:
+    findings = tuple(Finding(finding_id=uuid4(), category=f.category, hypothesis=f.hypothesis,
+                             evidence=tuple(_evidence(e) for e in f.evidence), claim_basis=f.claim_basis,
+                             severity_if_true=None, status="unverified", produced_by=produced_by,
+                             limitations=tuple(f.limitations), next_steps=tuple(f.next_steps))
+                     for f in parsed.findings)
+    advisories = tuple(AdvisorySignal(type=a.type, topic=a.topic, basis=tuple(_evidence(e) for e in a.basis),
+                                      suggestion=a.suggestion)
+                       for a in parsed.advisory_signals)
     return AnalysisResult(schema_version="1.0", analyzed_refs=refs, findings=findings, advisory_signals=advisories,
                           analysis_meta=meta)

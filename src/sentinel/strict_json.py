@@ -29,7 +29,10 @@ def _no_constant(_: str) -> Any:
 
 def parse(content: str) -> Any:
     """엄격 파싱. 실패하면 ValueError(메시지에 값 없음)."""
-    return json.loads(content, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constant)
+    try:
+        return json.loads(content, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constant)
+    except RecursionError:  # 깊은 중첩은 값 문제다 — 호출자가 ValueError 하나만 다루면 되게 한다
+        raise ValueError("중첩이 너무 깊음") from None
 
 
 def locate(doc: Any, pointer: str) -> tuple[bool, Any, Any]:

@@ -14,7 +14,7 @@
    경로로 크기 확인). 탐욕 매칭이 아니다. CNA 순서는 `cna_sort_key`.
 5. 지표(§6.3): J1 엄격 P/R(category별 + 전체 micro) + 보조(위치만) P/R + category 혼동 행렬 / J2 output_rejected의 라벨은
    전부 FN + 거부율 / J3 verified_clean 중 finding ≥ 1 비율(hard negative 부분집합 따로) / J4 not_run / J5 보류 / J6 produced_by별
-   / J7 Wilson 95% / J8 반폭 > 0.15면 점추정 없음 / J9 보고 머리. unlabeled 트랜잭션에만 걸린 매칭 안 된 예측은 FP가 아니라
+   / J7 Wilson 95% / J8 반폭 > 0.15면 점추정 없음 / J9 보고 머리(rule_only의 model_id·prompt_version은 JSON null 그대로, pipeline_mode 병기). unlabeled 트랜잭션에만 걸린 매칭 안 된 예측은 FP가 아니라
    미판정으로 따로 센다. 매칭 후 남은 중복 예측(매칭된 라벨에 붙을 수 있었던 예측)은 FP이고 중복률로도 보고한다.
 한계: finding_id는 서버가 uuid4로 부여하므로 같은 모델 재실행 간 동점 승자가 바뀔 수 있다 — 동점에서는 TP 수가 같아 지표
 값과 J7 회귀 판정은 바뀌지 않고 '어느 예측이 TP로 표시되는가'만 달라진다.
@@ -25,13 +25,13 @@ import math
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from sentinel.canonical_address import CNA, canonical_address, cna_sort_key
-from sentinel.output_schema import AnalysisResult
+from sentinel.output_schema import AnalysisResult, PipelineMode, producer_versions_consistent
 from sentinel.pipeline import schema_gate
 from sentinel.schema import Transaction
 from tools.dataset.freeze import engine_regression_problems, mode_problems, version_freeze_problems
@@ -45,9 +45,16 @@ MAX_HALF_WIDTH = 0.15         # J8 초기 임계값(설정값 — 정본이되 �
 class RunMeta(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
     split: Literal["dev", "test"]
-    model_id: str
-    prompt_version: str
+    pipeline_mode: PipelineMode
+    model_id: str | None
+    prompt_version: str | None
     ruleset_version: str
+
+    @model_validator(mode="after")
+    def _versions_match_mode(self) -> Self:
+        if not producer_versions_consistent(self.pipeline_mode, self.model_id, self.prompt_version):
+            raise ValueError("rule_only ⇔ model_id·prompt_version null")
+        return self
 
 
 class PredictionRun(BaseModel):
@@ -207,7 +214,8 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
     return {
         "header": {"dataset_id": label_file.dataset_id, "set": "S", "split": run.run_meta.split,
                    "dataset_versions": label_file.frozen_against.model_dump(mode="json", exclude={"masking_modes"}),
-                   "model_id": run.run_meta.model_id, "prompt_version": run.run_meta.prompt_version,
+                   "pipeline_mode": run.run_meta.pipeline_mode, "model_id": run.run_meta.model_id,
+                   "prompt_version": run.run_meta.prompt_version,
                    "ruleset_version": run.run_meta.ruleset_version},
         "J1": {"strict": _pr(len(strict), len(fps), len(fns)), "per_category": per_category,
                "location_only": _pr(len(location), len(preds) - len(location) - len(undetermined),

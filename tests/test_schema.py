@@ -80,9 +80,11 @@ def test_valid_envelope_passes():
     assert isinstance(env.transactions[0].request.headers[0].value, MaskedRef)
 
 
-def test_valid_envelope_reaches_the_not_implemented_path_after_token(token):
+def test_valid_envelope_reaches_stage_four_after_token(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
     assert _status(sent) == 200
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    assert json.loads(body)["analysis_status"] == "completed"  # ④가 실제로 돌았다 — 200만으로는 도달을 증명하지 못한다
 
 
 # ── 위조 거부: arity ───────────────────────────────────────────────

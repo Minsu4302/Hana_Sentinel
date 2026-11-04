@@ -1,6 +1,6 @@
 """파이프라인 ④ ExecutionResponse — (A) §2.5. "분석 안 함 ≠ 분석 후 깨끗함."
 
-정상 입력(①②③ 통과)은 findings가 아니라 analysis_status="not_implemented" + manifest_snapshot을 받는다.
+정상 입력(①②③ 통과)은 analysis_status + result + manifest_snapshot을 받는다. findings는 최상위에 없고 result 안에만 있다.
 스냅샷은 실제 manifest(guardrails.yaml SSOT 재파생)와 일치해야 하며, manifest가 없거나 깨졌으면 기동 거부.
 """
 from __future__ import annotations
@@ -35,13 +35,13 @@ def _compact(manifest: dict) -> dict:
                              for k, v in manifest["capabilities"].items()}}
 
 
-def test_valid_request_gets_not_implemented_execution_response_not_empty_findings(token):
+def test_valid_request_gets_a_completed_execution_response_with_findings_only_inside_result(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
     body = _json(sent)
     assert _status(sent) == 200
-    assert set(body) == {"analysis_status", "skipped_reasons", "manifest_snapshot"}
-    assert body["analysis_status"] == "not_implemented"
-    assert "findings" not in body  # 빈 findings가 아니라 '분석 안 함'
+    assert set(body) == {"analysis_status", "skipped_reasons", "manifest_snapshot", "result"}
+    assert body["analysis_status"] == "completed"
+    assert "findings" not in body and body["result"]["findings"] == []  # 분석 후 깨끗함 = completed + 빈 findings
     assert body["skipped_reasons"] == list(SKIPPED_REASONS)
 
 
@@ -104,9 +104,10 @@ def test_alternate_manifest_path_is_honored(tmp_path, monkeypatch, token):
 
 
 @pytest.mark.parametrize("bad", [
-    {"analysis_status": "done", "skipped_reasons": ["x"], "manifest_snapshot": {}},
-    {"analysis_status": "not_implemented", "skipped_reasons": [], "manifest_snapshot": {}},
-    {"analysis_status": "not_implemented", "skipped_reasons": ["x"], "manifest_snapshot": {}, "findings": []},
+    {"analysis_status": "done", "skipped_reasons": ["x"], "manifest_snapshot": {}, "result": None},
+    {"analysis_status": "not_implemented", "skipped_reasons": [], "manifest_snapshot": {}, "result": None},
+    {"analysis_status": "not_implemented", "skipped_reasons": ["x"], "manifest_snapshot": {}, "result": None,
+     "findings": []},
 ])
 def test_execution_response_type_cannot_claim_analysis_or_carry_findings(bad):
     with pytest.raises(ValidationError):

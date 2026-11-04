@@ -3,7 +3,7 @@
 (A) §3.0 파이프라인
 ① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ② 스키마 검증(W1-05, `pipeline.schema_gate`)
 → ③ Sanitization 독립 재검증(W1-06, `pipeline.sanitization_check`) → ④ ExecutionResponse(W1-07,
-`pipeline.execution`). 1주차 ④는 분석 없이 analysis_status="not_implemented" + manifest 스냅샷을 돌려준다.
+`pipeline.execution`). ④는 규칙 엔진 → 출력 게이트를 지나 completed | output_rejected + manifest 스냅샷을 돌려준다.
 
 원시 요청 본문은 MAX_REQUEST_BYTES까지만 읽는다(재검증은 본문 전체를 스캔하므로 무한 본문 차단, 413).
 파이프라인 함수는 `모듈.함수`로 호출한다(스파이 우회 금지 — sentinel.pipeline 머리말 참조).

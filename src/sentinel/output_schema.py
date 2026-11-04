@@ -11,10 +11,10 @@
 """
 from __future__ import annotations
 
-from typing import Annotated, Any, Final, Literal
+from typing import Annotated, Any, Final, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sentinel.common_types import Locator
 
@@ -24,7 +24,9 @@ ClaimBasis = Literal["observed", "inferred", "speculative"]
 FindingStatus = Literal["unverified", "verifying", "confirmed", "false_positive", "needs_review"]
 ProducedBy = Literal["rule", "llm", "hybrid"]
 Corroboration = Literal["matched", "unmatched", "not_checkable", "not_run"]
+PipelineMode = Literal["rule_only", "rule_llm"]
 NonNegative = Annotated[int, Field(ge=0)]
+ProducerVersion = Annotated[str, Field(min_length=1)]
 
 # 서버가 부여하는 필드 — LLM 초안에 있으면 거부(`server_assigned_status` 외). 이름만 비교하고 기록하지 않는다.
 SERVER_ASSIGNED_FIELDS: Final = frozenset({
@@ -73,6 +75,7 @@ class AnalysisDraft(_Draft):
 
 
 # ── 저장용 타입 (서버만 구성) ─────────────────────────────────────────
+# 불변이다 — frozen + 목록 필드는 tuple(JSON 형태는 배열 그대로). 게이트 통과 뒤 내용을 바꾸는 경로를 두지 않는다.
 
 class _Stored(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
@@ -83,7 +86,7 @@ class Evidence(_Stored):
     pointer: Locator
     observation: str
     corroboration: Corroboration
-    anomaly_flags: Annotated[list[str], Field(max_length=0)]  # 값 목록 미정의 → 지금은 빈 목록만
+    anomaly_flags: Annotated[tuple[str, ...], Field(max_length=0)]  # 값 목록 미정의 → 지금은 빈 목록만
     review_required: bool
 
 
@@ -91,38 +94,50 @@ class Finding(_Stored):
     finding_id: UUID
     category: Category
     hypothesis: str
-    evidence: Annotated[list[Evidence], Field(min_length=1)]
+    evidence: Annotated[tuple[Evidence, ...], Field(min_length=1)]
     claim_basis: ClaimBasis
     severity_if_true: None  # 항상 존재. null = 등급 매핑 미정의((A) §2.4) — 등급 값 목록이 정해지면 넓힌다
     status: FindingStatus
     produced_by: ProducedBy
-    limitations: list[str]
-    next_steps: list[NextStep]
+    limitations: tuple[str, ...]
+    next_steps: tuple[NextStep, ...]
 
 
 class AdvisorySignal(_Stored):
     type: Literal["out_of_scope_advisory"]
     topic: str
-    basis: list[Evidence]
+    basis: tuple[Evidence, ...]
     suggestion: str
+
+
+def producer_versions_consistent(pipeline_mode: str, model_id: str | None, prompt_version: str | None) -> bool:
+    """(A) §2.4: rule_only면 model_id·prompt_version은 null, 그 외에는 필수 — LLM이 없는 경로에 값을 지어내지 않는다."""
+    if pipeline_mode == "rule_only":
+        return model_id is None and prompt_version is None
+    return model_id is not None and prompt_version is not None
 
 
 class AnalysisMeta(_Stored):
     """호출자(서버)가 넘긴다. 게이트는 만들지 않는다. 필드 타입은 (A) 미지정 → 구현 재량."""
-    model_id: str
+    model_id: ProducerVersion | None
     policy_version: str
-    prompt_version: str
+    prompt_version: ProducerVersion | None
     ruleset_version: str
     elapsed_ms: NonNegative
     token_usage: dict[str, NonNegative] | None = None
-    # 값 목록 미정의 → 4번(LLM 전략)에서 닫음. 서버가 넣는 값이라 LLM 경로가 아님.
-    pipeline_mode: str
+    pipeline_mode: PipelineMode
     manifest_snapshot: dict[str, Any]
+
+    @model_validator(mode="after")
+    def _versions_match_mode(self) -> Self:
+        if not producer_versions_consistent(self.pipeline_mode, self.model_id, self.prompt_version):
+            raise ValueError("rule_only ⇔ model_id·prompt_version null")
+        return self
 
 
 class AnalysisResult(_Stored):
     schema_version: Literal["1.0"]
-    analyzed_refs: list[UUID]
-    findings: list[Finding]
-    advisory_signals: list[AdvisorySignal]
+    analyzed_refs: tuple[UUID, ...]
+    findings: tuple[Finding, ...]
+    advisory_signals: tuple[AdvisorySignal, ...]
     analysis_meta: AnalysisMeta
