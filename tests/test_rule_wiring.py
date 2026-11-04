@@ -15,6 +15,7 @@ import ast
 import json
 import logging
 import os
+import pkgutil
 import shutil
 import subprocess
 import sys
@@ -26,15 +27,16 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 import sentinel
-from sentinel.common_types import TextBodyPointer
+import sentinel.pipeline
+import sentinel.server.app as server_app
 from sentinel.output_schema import AnalysisMeta, AnalysisResult, FindingDraft
-from sentinel.pipeline import execution, output_gate, rule_engine, schema_gate
+from sentinel.pipeline import entry, execution, output_gate, rule_engine, sanitization_check, schema_gate
 from sentinel.schema import ExecutionResponse
 from sentinel.server.app import create_app
 from tools.completed_path import construction_violations
 from tools.eval.harness import PredictionRun, RunMeta
 from tools.mutation_guard import assert_loaded_from, copy_with_mutation
-from tests.test_auth import HEADER, _drive, _scope, _status
+from tests.test_auth import HEADER, PIPELINE_FUNCTIONS, _drive, _scope, _status
 from tests.test_rule_engine import PAYLOAD, REF, _body, _q, _tx
 from tests.test_schema import _env, _raw
 
@@ -108,6 +110,13 @@ PLANTS = {
     "copy": "def f(result):\n    return result.copy(update={'findings': ()})\n",
     "copy_on_a_local_named_copy": "def f(copy):\n    return copy.copy(update={'findings': ()})\n",
     "dunder_class": "def f(result):\n    return result.__class__\n",
+    "object_setattr": "def f(r):\n    object.__setattr__(r, 'status', 'confirmed')\n",
+    "object_delattr": "def f(r):\n    object.__delattr__(r, 'status')\n",
+    "dunder_dict_item": "def f(r):\n    r.__dict__['status'] = 'confirmed'\n",
+    "dunder_dict_update": "def f(r):\n    r.__dict__.update(status='confirmed')\n",
+    "dunder_dict_by_name": "def f(r):\n    getattr(r, '__dict__')['status'] = 'confirmed'\n",
+    "setattr_by_name": "def f(r):\n    getattr(object, '__setattr__')(r, 'status', 'confirmed')\n",
+    "vars_item": "def f(r):\n    vars(r)['status'] = 'confirmed'\n",
     "type_of_instance": "def f(result):\n    return type(result)(**{})\n",
     "gate_skipped_attribute": "from sentinel.pipeline import output_gate\nr = output_gate._assign(1, 2, 3, 4)\n",
     "gate_skipped_import": "from sentinel.pipeline.output_gate import _assign\nr = _assign(1, 2, 3, 4)\n",
@@ -153,6 +162,35 @@ def test_removed_gate_build_is_found(tree):
 def test_type_annotations_and_deepcopy_are_not_construction_paths(tree, source):
     (tree / "pipeline" / "planted.py").write_text(source, encoding="utf-8")
     assert construction_violations(tree) == []
+
+
+# ── 핸들러: 진입 함수만 부른다 ─────────────────────────────────────
+
+def test_handler_reaches_the_pipeline_only_through_the_entry_function():
+    tree = ast.parse(Path(server_app.__file__).read_text(encoding="utf-8"))
+    stages = {m.name for m in pkgutil.iter_modules(sentinel.pipeline.__path__)}
+    imported = [a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and (n.module or "").startswith("sentinel.pipeline")
+                for a in n.names]
+    assert imported and set(imported) <= stages  # 함수를 직접 import하지 않는다(스파이 우회)
+    calls = {(n.func.value.id, n.func.attr) for n in ast.walk(tree) if isinstance(n, ast.Call)
+             and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id in stages}
+    assert calls == {("entry", "analyze")}
+
+
+def test_entry_function_is_covered_by_the_auth_spy():
+    assert (entry, "analyze") in PIPELINE_FUNCTIONS
+
+
+@pytest.mark.parametrize("error, code", [(schema_gate.SchemaRejected("x"), "schema_rejected"),
+                                         (sanitization_check.SanitizationRejected(["x"]), "sanitization_rejected")],
+                         ids=["schema", "sanitization"])
+def test_handler_only_translates_the_two_input_rejections(token, monkeypatch, error, code):
+    def rejected(raw, snapshot):
+        raise error
+
+    monkeypatch.setattr(entry, "analyze", rejected)
+    sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
+    assert _status(sent) == 422 and _json(sent) == {"error": code}
 
 
 # ── 동적: ④는 게이트를 지난다 ──────────────────────────────────────
@@ -570,6 +608,15 @@ SRC_MUTATIONS = {
                                 ".values()), advisory_signals=parsed.advisory_signals)\n"
                                 "    outside = _refs_outside(parsed, frozenset(by_id))  # ④\n",
                                 [_W + "test_invalid_twin_of_a_duplicate_is_not_hidden_by_the_merge[bad_last]"]),
+    "handler_calls_a_stage_directly": ("sentinel/server/app.py", "sentinel.server.app",
+                                       "            result = entry.analyze(raw, manifest_snapshot)\n",
+                                       "            schema_gate.parse_envelope(raw)\n"
+                                       "            result = entry.analyze(raw, manifest_snapshot)\n",
+                                       [_W + "test_handler_reaches_the_pipeline_only_through_the_entry_function"]),
+    "entry_skips_stage_three": ("sentinel/pipeline/entry.py", "sentinel.pipeline.entry",
+                                "    sanitization_check.verify_sanitization(envelope)\n", "",
+                                ["tests/test_eval_runner.py::test_input_that_stage_three_rejects_is_refused_not_scored",
+                                 "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage"]),
     "no_merge": ("sentinel/pipeline/output_gate.py", "sentinel.pipeline.output_gate",
                  "return _assign(_merged(parsed, by_id), tuple(by_id),", "return _assign(parsed, tuple(by_id),",
                  [_W + "test_exact_duplicates_merge_into_the_first_draft",
@@ -641,6 +688,12 @@ TOOL_MUTATIONS = {
                          [_W + "test_planted_construction_path_is_found[model_copy]",
                           _W + "test_planted_construction_path_is_found[parse_obj]",
                           _W + "test_planted_construction_path_is_found[result_type_adapter]"]),
+    "raw_write_check_off": ("tools/completed_path.py", "tools.completed_path",
+                            'RAW_WRITE_NAMES: Final = frozenset({"__setattr__", "__delattr__", "__dict__"})',
+                            "RAW_WRITE_NAMES: Final = frozenset()",
+                            [_W + "test_planted_construction_path_is_found[object_setattr]",
+                             _W + "test_planted_construction_path_is_found[dunder_dict_item]",
+                             _W + "test_planted_construction_path_is_found[dunder_dict_by_name]"]),
     "build_count_off": ("tools/completed_path.py", "tools.completed_path", "if count != 1]", "if False]",
                         [_W + "test_second_build_inside_the_allowed_function_is_found",
                          _W + "test_removed_gate_build_is_found"]),

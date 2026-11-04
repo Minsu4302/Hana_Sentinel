@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.23. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.24. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.23"
+derived_from: "docs/design-decision.md §3 매핑표 v1.24"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -616,7 +616,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용을 잡는 정적 검사는 아직 없다 — 층 B 러너 PR에서 추가)"
+      note: "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)"
     verification_tests:
       - "tests/test_rule_wiring.py::test_result_and_response_are_built_at_exactly_one_place_each"
       - "tests/test_rule_wiring.py::test_planted_construction_path_is_found"
@@ -628,6 +628,9 @@ guardrails:
       - "tests/test_rule_wiring.py::test_rule_draft_with_an_unresolvable_locator_is_output_rejected_and_audited"
       - "tests/test_rule_wiring.py::test_rule_draft_pointing_outside_analyzed_refs_is_output_rejected"
       - "tests/test_rule_wiring.py::test_output_rejected_reaches_the_client_as_a_200_with_null_result"
+      - "tests/test_rule_wiring.py::test_handler_reaches_the_pipeline_only_through_the_entry_function"
+      - "tests/test_rule_wiring.py::test_handler_only_translates_the_two_input_rejections"
+      - "tests/test_rule_wiring.py::test_entry_function_is_covered_by_the_auth_spy"
       - "tests/test_rule_wiring.py::test_gate_call_takes_produced_by_from_the_path_constant"
       - "tests/test_rule_wiring.py::test_every_finding_of_the_rule_path_is_marked_rule"
       - "tests/test_rule_wiring.py::test_produced_by_inside_a_rule_draft_is_rejected_even_when_it_says_rule"
@@ -681,9 +684,22 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 실제 채점(층 B)은 모델 결선 이후, 하네스 완성 ≠ 실제 측정 가능"
+      note: "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 층 B 실측 가능(rule_only — 러너 `make eval`). LLM 경로의 층 B는 LLM 결선 이후"
     verification_tests:
       - "tests/test_eval_harness.py::test_all_correct_predictions_score_perfectly"
+      - "tests/test_eval_runner.py::test_s_v1_report_has_the_expected_counts"
+      - "tests/test_eval_runner.py::test_every_s_v1_point_estimate_is_withheld"
+      - "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage"
+      - "tests/test_eval_runner.py::test_input_that_stage_three_rejects_is_refused_not_scored"
+      - "tests/test_eval_runner.py::test_runner_reaches_the_pipeline_only_through_the_entry_function"
+      - "tests/test_eval_runner.py::test_header_follows_the_meta_not_a_runner_constant"
+      - "tests/test_eval_runner.py::test_header_that_differs_from_the_meta_is_refused"
+      - "tests/test_eval_runner.py::test_fully_rejected_run_gives_no_report"
+      - "tests/test_eval_runner.py::test_split_argument_is_refused_when_the_dataset_records_none"
+      - "tests/test_eval_runner.py::test_same_input_gives_the_same_report"
+      - "tests/test_eval_runner.py::test_each_runner_guard_is_load_bearing_under_verified_mutation"
+      - "tests/test_eval_runner.py::test_make_eval_runs_the_real_target_without_the_pytest_path"
+      - "tests/test_eval_runner.py::test_make_eval_fails_when_the_target_loses_its_python_path"
       - "tests/test_eval_harness.py::test_planted_tp_fp_fn_counts_are_exact"
       - "tests/test_eval_harness.py::test_finding_on_hard_negative_is_fp_and_counted_in_j3"
       - "tests/test_eval_harness.py::test_output_rejected_transaction_turns_all_its_labels_into_fn"

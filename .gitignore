@@ -38,6 +38,9 @@ dist/
 htmlcov/
 *.log
 
+# ── 평가 보고서(`make eval` 산출물 — 커밋하지 않는다) ──
+reports/
+
 # ── 편집기 ──
 .vscode/
 .idea/
