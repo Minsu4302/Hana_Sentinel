@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.22",
+  "spec": "docs/design-decision.md §3 매핑표 v1.23",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -567,7 +567,7 @@
     "completed_via_gate": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명",
+      "note": "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사 대상 — 층 B 러너 PR에서 추가)",
       "verification_tests": [
         "tests/test_rule_wiring.py::test_result_and_response_are_built_at_exactly_one_place_each",
         "tests/test_rule_wiring.py::test_planted_construction_path_is_found",
