@@ -3,7 +3,7 @@
 초안에는 서버 부여 필드가 없다(타입에 자리가 없다). produced_by도 여기서 정하지 않는다 — 생산 경로는 호출자(④)가 게이트
 인자로 넘긴다. 초안은 LLM 초안과 똑같이 출력 게이트(`output_gate`)를 지난다. claim_basis는 전부 observed다(관측만 말한다).
 
-규칙 3종(category별):
+규칙 4종:
 - reflected_injection_indicator: 평문 파라미터 값(MaskedRef 건너뜀)에 HTML 특수문자가 있고, 그 값 전체가 응답 본문에 정확한
   부분 문자열로 있다. 엄격 JSON 본문은 문자열 값 노드를 디코드해서 보고(키 제외), 그 밖의 utf8은 content를 본다.
   omitted·base64·잘린 본문은 보지 않는다. 여러 노드에 반사되면 cna_sort_key 순 첫 노드만, 텍스트는 첫 출현만 evidence다.
@@ -12,6 +12,8 @@
 - info_exposure: 응답 본문에 스택 트레이스 형식이 있다. 엄격 JSON은 문자열 노드별, 그 밖의 utf8은 content.
 - security_misconfig: 응답 헤더 ACAO 정확히 1개 `*` ∧ ACAC 정확히 1개 `true`(값 trim, 대소문자 구분, MaskedRef면 미발화).
   같은 이름이 중복되면 미발화한다.
+- security_misconfig(출처 반사): 요청 Origin·응답 ACAO·ACAC가 각각 정확히 1개 평문이고, trim한 Origin과 ACAO가 정확히 같고
+  (대소문자 구분, `null` 출처 포함) ACAO ≠ `*` ∧ ACAC = `true`. ACAO=`*` 조건으로 위 규칙과 서로 배타적이다.
 
 JSON Pointer의 '-' 세그먼트는 Locator가 표현하지 못하므로((A) §2.6 한계) 키가 '-'인 노드는 보지 않는다.
 패턴은 입력 길이에 비례해 끝나야 한다 — 반복은 줄 경계나 길이 상한 안에 둔다(256KB 응답이 그대로 들어온다).
@@ -26,9 +28,9 @@ from sentinel import strict_json
 from sentinel.canonical_address import canonical_address, cna_sort_key
 from sentinel.common_types import BodyLocator, HeaderLocator, JsonBodyPointer, ParamLocator, Range, TextBodyPointer
 from sentinel.output_schema import EvidenceDraft, FindingDraft, NextStep
-from sentinel.schema import Body, Param, Transaction
+from sentinel.schema import Body, Header, Param, Transaction
 
-RULESET_VERSION: Final = "rules-1"
+RULESET_VERSION: Final = "rules-2"
 
 REFLECTION_TRIGGER_CHARS: Final = "<>\"'"
 STACK_TRACE_PATTERNS: Final = tuple(re.compile(p) for p in (
@@ -41,6 +43,7 @@ STACK_TRACE_PATTERNS: Final = tuple(re.compile(p) for p in (
     r"\.php on line \d+",                                                 # PHP
     r"Stack trace:\s*#0",
 ))
+REQUEST_ORIGIN_HEADER: Final = "origin"
 CORS_ORIGIN_HEADER: Final = "access-control-allow-origin"
 CORS_CREDENTIALS_HEADER: Final = "access-control-allow-credentials"
 
@@ -59,6 +62,12 @@ STACK_TRACE_LIMITATIONS: Final = (
 CORS_LIMITATIONS: Final = (
     "브라우저는 이 조합의 자격증명 요청을 거부한다",
     "중복 헤더는 판정하지 않는다",
+)
+CORS_REFLECTION_LIMITATIONS: Final = (
+    "허용 목록 일치로 되돌린 정상 응답과 임의 출처 반사를 이 트랜잭션만으로는 구분할 수 없다",
+    "마스킹된 Origin·ACAO는 보지 않는다",
+    "중복 헤더는 판정하지 않는다",
+    "단일 트랜잭션 관측",
 )
 
 
@@ -171,16 +180,17 @@ def stack_trace_rule(tx: Transaction) -> list[FindingDraft]:
     )]
 
 
-def _single_value(tx: Transaction, name: str) -> str | None:
-    """그 이름의 응답 헤더가 정확히 1개이고 평문이면 trim한 값. 아니면 None."""
-    values = [h.value for h in tx.response.headers if h.name.lower() == name]
+def _single_value(headers: list[Header], name: str) -> str | None:
+    """그 이름의 헤더가 정확히 1개이고 평문이면 trim한 값. 아니면 None."""
+    values = [h.value for h in headers if h.name.lower() == name]
     if len(values) != 1 or not isinstance(values[0], str):
         return None
     return values[0].strip()
 
 
 def cors_rule(tx: Transaction) -> list[FindingDraft]:
-    if _single_value(tx, CORS_ORIGIN_HEADER) != "*" or _single_value(tx, CORS_CREDENTIALS_HEADER) != "true":
+    headers = tx.response.headers
+    if _single_value(headers, CORS_ORIGIN_HEADER) != "*" or _single_value(headers, CORS_CREDENTIALS_HEADER) != "true":
         return []
     ref = tx.meta.transaction_id
     return [FindingDraft(
@@ -198,7 +208,32 @@ def cors_rule(tx: Transaction) -> list[FindingDraft]:
     )]
 
 
-RULES: Final[tuple[Callable[[Transaction], list[FindingDraft]], ...]] = (reflection_rule, stack_trace_rule, cors_rule)
+def cors_reflection_rule(tx: Transaction) -> list[FindingDraft]:
+    origin = _single_value(tx.request.headers, REQUEST_ORIGIN_HEADER)
+    allowed = _single_value(tx.response.headers, CORS_ORIGIN_HEADER)
+    credentials = _single_value(tx.response.headers, CORS_CREDENTIALS_HEADER)
+    if origin is None or origin != allowed or allowed == "*" or credentials != "true":
+        return []
+    ref = tx.meta.transaction_id
+    return [FindingDraft(
+        category="security_misconfig",
+        hypothesis="응답이 요청의 Origin 값을 허용 출처로 그대로 되돌리면서 자격증명 허용을 선언한다 — "
+                   "다른 출처에서 자격증명이 포함된 응답을 읽을 수 있는 CORS 구성일 수 있다.",
+        evidence=[EvidenceDraft(transaction_ref=ref, observation="요청의 출처 헤더",
+                                pointer=HeaderLocator(locus="req_header", name=REQUEST_ORIGIN_HEADER)),
+                  EvidenceDraft(transaction_ref=ref, observation="요청 출처와 같은 값의 허용 출처 응답 헤더",
+                                pointer=HeaderLocator(locus="resp_header", name=CORS_ORIGIN_HEADER)),
+                  EvidenceDraft(transaction_ref=ref, observation="자격증명을 허용하는 응답 헤더",
+                                pointer=HeaderLocator(locus="resp_header", name=CORS_CREDENTIALS_HEADER))],
+        claim_basis="observed",
+        limitations=list(CORS_REFLECTION_LIMITATIONS),
+        next_steps=[NextStep(type="verification", action="사람이 Burp에서 허용 목록 밖의 Origin으로 다시 보내 반사 여부를 확인한다",
+                             rationale="임의 출처를 되돌리는지는 단일 응답만으로 알 수 없다(도구는 전송하지 않는다)")],
+    )]
+
+
+RULES: Final[tuple[Callable[[Transaction], list[FindingDraft]], ...]] = (reflection_rule, stack_trace_rule, cors_rule,
+                                                                         cors_reflection_rule)
 
 
 def evaluate(tx: Transaction) -> list[FindingDraft]:

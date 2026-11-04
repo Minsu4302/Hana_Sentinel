@@ -14,7 +14,8 @@ import pytest
 from sentinel.common_types import BodyLocator, HeaderLocator, ParamLocator
 from sentinel.output_schema import SERVER_ASSIGNED_FIELDS, FindingDraft
 from sentinel.pipeline import output_gate, rule_engine
-from sentinel.pipeline.rule_engine import STACK_TRACE_PATTERNS, cors_rule, evaluate, reflection_rule, stack_trace_rule
+from sentinel.pipeline.rule_engine import (
+    STACK_TRACE_PATTERNS, cors_reflection_rule, cors_rule, evaluate, reflection_rule, stack_trace_rule)
 from sentinel.schema import Transaction
 
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000d4")
@@ -29,13 +30,13 @@ def _body(content, ctype="application/json", truncated=False, encoding="utf8") -
             "encoding": encoding, "content": content}
 
 
-def _tx(params=(), headers=(), body=None) -> Transaction:
+def _tx(params=(), headers=(), body=None, req_headers=()) -> Transaction:
     doc = {"meta": {"transaction_id": str(REF), "captured_at": "2026-10-27T10:00:00+09:00", "origin_ref": "burp-1",
                     "sanitization": {"applied": True, "failed": False, "policy_version": "p1", "redacted_count": 0,
                                      "redacted_kinds": {"token": 0, "cookie": 0, "pii": 0, "host": 0}}},
            "request": {"method": "GET", "scheme": "http", "host": "127.0.0.1", "port": 3000, "path": "/rest/x",
                        "query_params": [{"name": n, "value": v, "location": loc} for n, v, loc in params],
-                       "headers": [], "body": _body("", "text/plain")},
+                       "headers": [{"name": n, "value": v} for n, v in req_headers], "body": _body("", "text/plain")},
            "response": {"status": 200, "headers": [{"name": n, "value": v} for n, v in headers],
                         "body": body or _body("{}"), "elapsed_ms": 1}}
     return Transaction.model_validate_json(json.dumps(doc))
@@ -77,8 +78,9 @@ def test_clean_transaction_fires_nothing():
     assert evaluate(_tx([_q("apple")], [("Content-Type", "application/json")], _body('{"q": "apple"}'))) == []
 
 
-def test_ruleset_version_is_a_single_constant():
-    assert isinstance(rule_engine.RULESET_VERSION, str) and rule_engine.RULESET_VERSION
+def test_ruleset_frozen_before_s_v2_test_is_rules_2():
+    """(A) §6.2 (b): S v2 test 작성 전 동결된 값. 바꾸면 그 위의 test 주장도 함께 다시 봐야 한다."""
+    assert rule_engine.RULESET_VERSION == "rules-2"
 
 
 # ── ④ 반사 ───────────────────────────────────────────────────────
@@ -310,6 +312,87 @@ def test_header_name_case_and_value_whitespace_do_not_matter(headers):
         "duplicate_acac_mixed_case", "masked_acao", "masked_acac"])
 def test_other_header_combinations_do_not_fire(headers):
     assert cors_rule(_tx(headers=headers)) == []
+
+
+# ── ③' CORS 출처 반사 ─────────────────────────────────────────────
+
+ORIGIN = "https://a.example"
+
+
+def _origin_tx(req=(("Origin", ORIGIN),), resp=((ACAO, ORIGIN), (ACAC, "true"))) -> Transaction:
+    return _tx(headers=resp, req_headers=req)
+
+
+def test_reflected_origin_with_credentials_fires_with_three_header_evidence():
+    tx = _origin_tx()
+    [finding] = cors_reflection_rule(tx)
+    assert finding.category == "security_misconfig" and finding.claim_basis == "observed"
+    assert [e.pointer for e in finding.evidence] == [
+        HeaderLocator(locus="req_header", name="origin"),
+        HeaderLocator(locus="resp_header", name="access-control-allow-origin"),
+        HeaderLocator(locus="resp_header", name="access-control-allow-credentials")]
+    assert all(output_gate.resolves(e.pointer, tx) for e in finding.evidence)
+
+
+def test_reflected_origin_states_its_limits_and_leaves_the_resend_to_a_person():
+    [finding] = cors_reflection_rule(_origin_tx())
+    assert "허용 목록 일치로 되돌린 정상 응답과 임의 출처 반사를 이 트랜잭션만으로는 구분할 수 없다" in finding.limitations
+    assert {"마스킹된 Origin·ACAO는 보지 않는다", "중복 헤더는 판정하지 않는다", "단일 트랜잭션 관측"} <= set(finding.limitations)
+    assert "사람이 Burp에서" in finding.next_steps[0].action
+
+
+def test_hypothesis_of_the_origin_rule_does_not_carry_the_origin_value():
+    [finding] = cors_reflection_rule(_origin_tx())
+    assert ORIGIN not in finding.hypothesis and not any(ORIGIN in e.observation for e in finding.evidence)
+
+
+def test_null_origin_reflection_fires():
+    assert len(cors_reflection_rule(_origin_tx([("Origin", "null")], [(ACAO, "null"), (ACAC, "true")]))) == 1
+
+
+@pytest.mark.parametrize("req, resp", [
+    ([("ORIGIN", ORIGIN)], [(ACAO.upper(), ORIGIN), (ACAC.lower(), "true")]),
+    ([("Origin", f"  {ORIGIN} ")], [(ACAO, f" {ORIGIN}  "), (ACAC, " true ")]),
+], ids=["name_case", "value_trim"])
+def test_header_name_case_and_outer_whitespace_do_not_matter_for_the_origin_rule(req, resp):
+    tx = _origin_tx(req, resp)
+    [finding] = cors_reflection_rule(tx)
+    assert all(output_gate.resolves(e.pointer, tx) for e in finding.evidence)
+
+
+@pytest.mark.parametrize("req, resp", [
+    ([], [(ACAO, ORIGIN), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, "*"), (ACAC, "true")]),
+    ([("Origin", "*")], [(ACAO, "*"), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, "https://b.example"), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN.upper()), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN)]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, "True")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, "false")]),
+    ([("Origin", ORIGIN), ("origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAO, ORIGIN), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, "true"), (ACAC, "true")]),
+    ([("Origin", MASKED)], [(ACAO, ORIGIN), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, MASKED), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, MASKED)]),
+    ([("Origin", MASKED)], [(ACAO, MASKED), (ACAC, "true")]),
+], ids=["no_origin", "no_acao", "wildcard_acao", "wildcard_origin", "values_differ", "case_only_differs", "no_acac",
+        "acac_capitalized", "acac_false", "duplicate_origin", "duplicate_acao", "duplicate_acac", "masked_origin",
+        "masked_acao", "masked_acac", "both_masked"])
+def test_other_origin_combinations_do_not_fire(req, resp):
+    assert cors_reflection_rule(_origin_tx(req, resp)) == []
+
+
+@pytest.mark.parametrize("req, resp", [
+    ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, "*"), (ACAC, "true")]),
+    ([("Origin", "*")], [(ACAO, "*"), (ACAC, "true")]),
+], ids=["reflected", "wildcard", "wildcard_origin"])
+def test_wildcard_and_origin_rules_never_fire_together(req, resp):
+    tx = _origin_tx(req, resp)
+    assert len(cors_rule(tx)) + len(cors_reflection_rule(tx)) == 1
+    assert len([d for d in evaluate(tx) if d.category == "security_misconfig"]) == 1
 
 
 # ── 깊은 중첩: 파싱 실패가 ④를 죽이지 않는다 ───────────────────────
