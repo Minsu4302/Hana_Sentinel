@@ -948,3 +948,21 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - **S v2는 트랜잭션별 split을 기계 판독 가능하게 기록한다(생성기 SSOT)** → 이월처: S v2. 지금 `dataset_split`은 라벨 파일에 없는 필드를 읽어 null을 돌려준다. S v2 요건: split을 선언한 데이터셋에서 split 필드가 없으면 null이 아니라 오류다.
 - **(A) J9 문구는 '분할(dev/test)'이라 null을 말하지 않는다**: 이 PR은 계약 문구를 고치지 않는다 → 이월처: S v2의 (A) 개정.
 - **③' 출처 반사 규칙**: rules-1로 진행했다 → 결정 기한: S v2 test 작성 전.
+
+---
+
+## rules-2 — ③' 출처 반사 + 자격증명 규칙, S v2용 ruleset 동결 (Issue #78)
+
+### 0단계 결과
+- main v1.26 / 매핑표 v1.24, `RULESET_VERSION` = rules-1. S v1 Envelope 6건 모두 Origin 요청 헤더가 없다(요청 헤더는 Host·Cookie, IDOR 1건만 Authorization 추가).
+
+### 결과
+- security_misconfig 규칙 1개 추가(`cors_reflection_rule`). (A) 변경 0.
+- **S v2 test 작성 전 동결된 ruleset = rules-2(§6.2 (b)).** 규칙 커밋: `f676e33`.
+- S v1 동작 확인(측정 아님): `make eval` 보고서는 rules-1과 비교해 `ruleset_version` 한 줄만 다르다. TP 3 · FP 0 · FN 1(IDOR), J3 hard negative 0/1, 점추정 전부 null.
+
+### 미해결
+- **v1.26 미해결 ③' → 해소**(포함 결정, rules-2).
+- **S v2 요건: '허용 목록 일치로 되돌린 경우'를 security_misconfig hard negative로 포함** → 이월처: S v2. 규칙은 이 경우에도 발화한다(limitations에 명시) — FP로 측정된다.
+- **S v2 동결 기록에 동결 시점의 ruleset_version을 남기고 검사하는 방식** → 이월처: S v2 설계. 지금 동결을 지키는 것은 값을 고정한 테스트 하나뿐이고, 규칙 내용을 바꾸고 버전을 그대로 두는 경우는 기계가 잡지 못한다.
+- **빈 Origin과 빈 ACAO도 '정확히 같음'이라 발화한다**: 발주 조건 그대로 두었다 → 이월처: S v2 라벨링에서 사례가 나오면 판단.
