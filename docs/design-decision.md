@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.27 — Sentinel Harness
+# (A) 설계확정서 v1.28 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.27 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.28 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -55,7 +55,9 @@
 > **v1.26 (매핑표 v1.24):** 층 B 러너(코드 PR — 계약 변경 없음). §3.5 `completed_via_gate` 노트(저장 필드 직접 쓰기의 정적 검사가 생겼다)·`eval_harness` 노트(rule_only 층 B 실측 가능)를 실제 상태로 갱신. 서술 변경이라 `schema_version` 변화 없음.
 > **v1.27 (매핑표 v1.25):** S v2 계약(코드 0). §6.2 S v2 구성(사례 카탈로그 = 생성기 SSOT, 규모 게이트, 라벨링 지침의 위치·원칙·제1조, CORS 허용 목록 사례 제외, 작성 순서, 채점 단위, 동결 순서) + LabelFile 1.1(`split_scheme`·라벨별 `split`·`frozen_against`의 `ruleset_version`·`ruleset_hash`) + §6.3 J9 '없으면 null' + §3.5 신규 `ruleset_freeze`(enforced, 현재 rule_engine.py 한 파일)·`producer_freeze_order`(not_implemented).
   - LabelFile 1.1 = 가산, 소비자 있음(S v1) → 부 버전 증가. 1.0은 계속 읽힌다. AnalysisResult `schema_version` 변화 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04)
+> **v1.28 (매핑표 v1.25 유지):** 라벨 모델과 카테고리 경계(코드 0). §1.1 ①②③ 경계 문장 + §6.2 LabelFile 1.1 결함별 라벨(트랜잭션마다 라벨 ≥ 1) + 규모 게이트의 hard negative 세는 법 + 라벨링 원칙 O-4(관측이 같으면 라벨이 같다, positive는 관측 신호) + CORS 허용 목록 문장 교체 + §6.3 J1 결함별 라벨의 1:1 매칭.
+  - LabelFile 1.1은 소비자 0(데이터 없음)이라 1.1 안에서 변경하고 버전을 유지한다. 1.0(S v1)은 '트랜잭션마다 정확히 1개' 그대로다. §3 변경 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04)
 
 ---
 
@@ -93,6 +95,9 @@
 | ③ | 보안 오설정 | `security_misconfig` |
 | ④ | 반사형 인젝션 '징후' | `reflected_injection_indicator` |
 
+- **①의 경계:** 요청 주체와 응답 객체 소유 주체가 관측상 다른 것만(relation_preserving 라벨의 같음·다름). **가설까지만.**
+- **②의 경계:** 응답에 서버 내부 정보(스택 트레이스·DB/ORM 오류 메시지·서버 파일시스템 경로)가 관측되는 것만. **가설까지만.**
+- **③의 경계:** 응답에서 관측되는 보안 설정 오류만. S의 대상은 라벨링 지침의 닫힌 목록이다(목록 변경 = 지침 버전). **가설까지만.**
 - **④의 경계:** 이미 캡처된 요청+응답 한 쌍 안에서 관측되는 것만(값이 같은 응답에 반사됨 / 응답에 SQL 에러 문자열 등). **가설까지만, 능동 탐침 없음.** 검증은 사람이 Burp에서.
 
 ### 1.2 제외 카테고리와 그 처리
@@ -574,13 +579,14 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
                 frozen_against: { envelope_schema, raw_schema, labelfile_schema,
                                   ruleset_version, ruleset_hash,        # 1.1에서 필수, 1.0에는 없음
                                   masking_modes: { transaction_ref → strict_redaction | relation_preserving } },
-                labels: [Label] }                         # 트랜잭션마다 라벨 정확히 1개, 모드 기록도 정확히 1개
+                labels: [Label] }                         # 1.0: 트랜잭션마다 라벨 정확히 1개 / 1.1: 트랜잭션마다 라벨 ≥ 1. 모드 기록은 정확히 1개
   Label     = { transaction_ref(UUID), label_status: labeled_positive | verified_clean | unlabeled,
                 categories: [category 4종], anchors: [Locator(§2.6)], hard_negative: bool,
                 source: construction | catalog | adjudication,
                 split?: dev | test }                      # split_scheme이 있으면 필수
   ```
   - **1.1(가산, 소비자 있음 → 부 버전 증가):** split_scheme은 선택이다. split_scheme이 있으면 라벨의 split은 필수이고 누락은 오류다(null로 읽지 않는다). 1.0(S v1)은 계속 읽히고 split은 null이다.
+    - 라벨 모델(1.1): 트랜잭션마다 라벨 ≥ 1이다. labeled_positive는 결함마다 1개이고 같은 트랜잭션에 여러 개가 있을 수 있다. verified_clean·unlabeled는 그 트랜잭션의 유일한 라벨이다. hard_negative는 verified_clean에만 있다. categories 집합은 단일 결함의 모호 category에만 쓴다. 1.0(S v1)은 트랜잭션마다 정확히 1개 그대로다.
   - 상태 제약: labeled_positive → categories ≥ 1, anchors ≥ 1, hard_negative=false / verified_clean → anchors 0개, hard_negative=true면 categories = 흉내 낸 category(어느 category의 FP 후보인가), 아니면 categories 비움 / unlabeled → 둘 다 비움, hard_negative=false. J3의 'hard negative 부분집합'은 hard_negative로 거른다.
   - anchors는 Locator로 적는다(예측 Evidence와 같은 형식). 평가기는 읽을 때 `canonical_address`로 CNA로 바꾼다(§6.1 매칭).
   - masking_modes는 정답이 아니라 생산 조건이다. 동결 자산이 그 모드의 라벨 규칙(§2.3)을 따르는지 회귀 검사한다(`dataset_mode_consistency`). 엔진 ③은 모드를 모른다 — 모드별 ③ 경로는 없다.
@@ -595,19 +601,20 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 - **S v2 구성:**
   - **사례 카탈로그 = 생성기 SSOT(선언형):** 사례마다 case_id, 엔드포인트(method, 경로 템플릿), pattern_id, split, label_status, categories, anchors, hard_negative, masking_mode, source를 둔다. 생성기는 (엔드포인트, 패턴) 조합 중복 0·엔드포인트 단위 split·규모 게이트를 강제한다.
-  - **규모 게이트:** test는 labeled_positive ≥ 39, verified_clean ≥ 39이고 그중 category마다 positive ≥ 8, hard negative ≥ 4다. dev는 positive ≥ 20, clean ≥ 20이다.
+  - **규모 게이트:** test는 labeled_positive ≥ 39, verified_clean ≥ 39이고 그중 category마다 positive ≥ 8, hard negative ≥ 4다. dev는 positive ≥ 20, clean ≥ 20이다. hard negative 수는 verified_clean 트랜잭션만 센다(positive 트랜잭션 안의 대조 사례, 예: 입력 무관 DB 오류는 세지 않는다).
     - 한계: 템플릿으로 생성하므로 사례 사이의 유사성이 남는다(Wilson의 독립 가정은 근사). 정밀도의 n은 라벨 수가 아니라 예측 수라 이 게이트로 보장되지 않는다.
   - **라벨링 지침:** 레포 문서 `docs/labeling-guideline.md`에 두고 버전을 붙이며, 카탈로그 작성 전에 동결한다(본문은 지침 PR). §6.1의 anchor 지침은 그대로 적용한다.
     - 원칙: 지침은 §1.1 정의에서만 도출한다. 규칙·생산자를 보고 설계하지 않는다.
     - 제1조: 라벨은 마스킹 후 트랜잭션에서 관측 가능한 근거로 판정 가능해야 한다.
+    - O-4: 관측이 같은 두 트랜잭션은 라벨이 같다. positive는 관측 신호이고 악용 가능성이 아니다(한계).
     - hard negative마다 §1.1 근거를 적는다. 규칙을 아는 작성자의 편향은 1인 단계 한계다.
-  - **제외:** CORS 허용 목록 일치 사례는 S에서 제외한다(단일 트랜잭션으로 판정 불가 — 한계).
+  - **CORS 허용 목록 일치 사례:** 관측상 SM-P2와 같으므로 그렇게 라벨하고, 그 배경의 사례를 따로 구성하지 않는다.
   - **작성 순서:** ruleset 동결(rules-2, 완료) → 지침 동결 → 카탈로그 → 생성·동결 → 생산자 첫 실행. LLM은 dev에서만 조정한다(기계로 증명 불가 — 한계).
   - **채점 단위:** split_scheme이 있는 데이터셋은 split 인자가 필수이고 그 split만 채점한다. 인자가 없으면 거부한다.
   - **동결 순서:** 생성기는 현재 규칙 해시가 FROZEN_RULESETS에 없으면 생성을 거부한다. 하네스는 test split 보고에서 데이터셋 기록과 다른 ruleset이면 "동결 순서 밖 — 측정 아님"으로 표기한다(`producer_freeze_order`). 해시 범위는 rule_engine.py·strict_json.py·canonical_address.py이고, 타입 파일(common_types·output_schema·schema)은 제외한다(한계 — 타입 변경은 잡지 못한다).
 
 ### 6.3 지표
-- **J1 P/R:** §6.1 매칭 규칙. Precision 대표값은 S에서만 낸다. J는 알려진 라벨 기준 Recall + 미판정 건수. category별 + 전체 micro. 대표 = S / 현실성 = J, 섞어 보고하지 않는다.
+- **J1 P/R:** §6.1 매칭 규칙. Precision 대표값은 S에서만 낸다. J는 알려진 라벨 기준 Recall + 미판정 건수. category별 + 전체 micro. 대표 = S / 현실성 = J, 섞어 보고하지 않는다. 결함별 라벨에도 §6.1의 1:1 매칭을 그대로 쓴다(한 트랜잭션에 라벨이 여러 개면 TP도 여러 개일 수 있다).
   - 대표 지표 = 엄격 매칭(위치 + category).
   - 보조 지표 = 위치만 일치(category 무관)한 P/R + category 혼동 행렬.
   - category는 맞혔으나 위치가 틀린 예측은 어느 쪽 지표에도 TP로 들어가지 않는다(매칭 불성립).
