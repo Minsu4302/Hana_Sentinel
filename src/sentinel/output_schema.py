@@ -11,10 +11,12 @@
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, Any, Final, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
 from sentinel.common_types import Locator
 
@@ -75,7 +77,30 @@ class AnalysisDraft(_Draft):
 
 
 # ── 저장용 타입 (서버만 구성) ─────────────────────────────────────────
-# 불변이다 — frozen + 목록 필드는 tuple(JSON 형태는 배열 그대로). 게이트 통과 뒤 내용을 바꾸는 경로를 두지 않는다.
+# 불변이다 — frozen + 목록 필드는 tuple, 맵 필드는 깊은 읽기 전용 사본(JSON 형태는 배열·객체 그대로). 게이트 통과 뒤 내용을
+# 바꾸는 경로를 두지 않는다.
+
+def _deep_frozen(value: Any) -> Any:
+    """JSON 값의 읽기 전용 사본 — 객체는 MappingProxyType, 배열은 tuple. 원본과 공유하지 않는다. 그 밖의 타입은 거부."""
+    if isinstance(value, dict):
+        return MappingProxyType({k: _deep_frozen(v) for k, v in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_deep_frozen(v) for v in value)
+    if value is None or isinstance(value, (str, int, float)):
+        return value
+    raise ValueError("JSON 값이 아님")
+
+
+def _thawed(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {k: _thawed(v) for k, v in value.items()}
+    if isinstance(value, tuple):
+        return [_thawed(v) for v in value]
+    return value
+
+
+_FrozenMap = (AfterValidator(_deep_frozen), PlainSerializer(_thawed))
+
 
 class _Stored(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
@@ -124,9 +149,9 @@ class AnalysisMeta(_Stored):
     prompt_version: ProducerVersion | None
     ruleset_version: str
     elapsed_ms: NonNegative
-    token_usage: dict[str, NonNegative] | None = None
+    token_usage: Annotated[dict[str, NonNegative], *_FrozenMap] | None = None
     pipeline_mode: PipelineMode
-    manifest_snapshot: dict[str, Any]
+    manifest_snapshot: Annotated[dict[str, Any], *_FrozenMap]
 
     @model_validator(mode="after")
     def _versions_match_mode(self) -> Self:

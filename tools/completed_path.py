@@ -9,7 +9,7 @@
   ② 받는 쪽을 가리지 않는 우회 생성: `model_construct`·`construct`·`parse_obj`·`parse_raw`·`parse_file`·`from_orm`.
   ③ 게이트 건너뛰기: `_assign` 참조는 `validate_draft` 안에서만(검사 ①~⑤ 없이 AnalysisResult에 닿는 유일한 함수).
   ④ 인스턴스에서 새 값을 찍는 경로: `.model_copy(...)`(헤더 이름 정규화 `_normalized` 한 곳만 예외 — 대상이 Locator),
-     `.copy(...)`(표준 `copy` 모듈 제외), `.__class__`, `type(x)(...)`.
+     `.copy(...)`, `.__class__`, `type(x)(...)`. `copy.deepcopy`는 값을 바꿀 인자가 없어 대상이 아니다.
 
 범위(정직 표기): 정적 범위다. getattr·import 런타임 조립은 여기서 잡지 않는다(그 경로는 `DYNAMIC` 금지 종류의 몫).
 """
@@ -65,7 +65,7 @@ class _Scan(ast.NodeVisitor):
         if isinstance(func, ast.Attribute):
             if func.attr == "model_copy" and (self.rel, self.function) != MODEL_COPY_SITE:
                 self._flag("model_copy", node)
-            if func.attr == "copy" and not (isinstance(func.value, ast.Name) and func.value.id == "copy"):
+            if func.attr == "copy":
                 self._flag("copy", node)
         if isinstance(func, ast.Call) and isinstance(func.func, ast.Name) and func.func.id == "type":
             self._flag("type_call", node)

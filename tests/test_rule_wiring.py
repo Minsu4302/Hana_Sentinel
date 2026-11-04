@@ -4,7 +4,7 @@
 - 동적: ④의 result는 게이트 반환값뿐이고, 규칙이 잘못된 초안을 내면 output_rejected다.
 - produced_by는 경로 상수다. 초안·규칙 결과 어디서도 받지 않는다(주입 → 거부).
 - 중복 처리는 전체 검증 뒤다: 무효 초안이 병합으로 숨지 않는다.
-- 게이트 반환값은 불변이다(frozen + tuple).
+- 게이트 반환값은 불변이다(frozen + tuple + 깊은 읽기 전용 맵).
 - 불변식 위조: completed ⇔ result ≠ null / rule_only ⇔ model_id·prompt_version null.
 
 S v1 확인은 측정이 아니라 동작 확인이다((A) §6.2 — S v1은 규칙에 대해 오염된 스모크 집합).
@@ -20,9 +20,10 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 import sentinel
 from sentinel.common_types import TextBodyPointer
@@ -105,6 +106,7 @@ PLANTS = {
     "parse_raw": "def f(x):\n    return x.parse_raw('{}')\n",
     "model_copy": "def f(result):\n    return result.model_copy(update={'findings': ()})\n",
     "copy": "def f(result):\n    return result.copy(update={'findings': ()})\n",
+    "copy_on_a_local_named_copy": "def f(copy):\n    return copy.copy(update={'findings': ()})\n",
     "dunder_class": "def f(result):\n    return result.__class__\n",
     "type_of_instance": "def f(result):\n    return type(result)(**{})\n",
     "gate_skipped_attribute": "from sentinel.pipeline import output_gate\nr = output_gate._assign(1, 2, 3, 4)\n",
@@ -147,8 +149,8 @@ def test_removed_gate_build_is_found(tree):
     "from sentinel.output_schema import AnalysisResult\ndef f(x: AnalysisResult) -> AnalysisResult:\n    return x\n",
     "from sentinel.output_schema import AnalysisResult\nx: AnalysisResult | None = None\n",
     "import copy\ndef f(x):\n    return copy.deepcopy(x)\n",
-], ids=["annotation", "variable_annotation", "copy_module"])
-def test_type_annotations_and_the_copy_module_are_not_construction_paths(tree, source):
+], ids=["annotation", "variable_annotation", "deepcopy"])
+def test_type_annotations_and_deepcopy_are_not_construction_paths(tree, source):
     (tree / "pipeline" / "planted.py").write_text(source, encoding="utf-8")
     assert construction_violations(tree) == []
 
@@ -320,10 +322,123 @@ def test_list_fields_of_a_gate_result_cannot_be_changed_in_place(get):
         get(_result()).append(None)
 
 
+SNAPSHOT = {"capabilities": {"k": {"status": "enforced", "nodes": ["a", {"n": 1}]}}, "version": 1}
+USAGE = {"prompt": 1}
+
+
+def _meta_of_a_gate_result():
+    meta = _meta(pipeline_mode="rule_llm", model_id="m", prompt_version="v", token_usage=dict(USAGE),
+                 manifest_snapshot=json.loads(json.dumps(SNAPSHOT)))
+    draft = json.dumps({"findings": [], "advisory_signals": []})
+    return output_gate.validate_draft(draft, transactions=(TX,), produced_by="llm", analysis_meta=meta).analysis_meta
+
+
+def _set_top(m):
+    m.manifest_snapshot["version"] = 2
+
+
+def _add_top(m):
+    m.manifest_snapshot["new"] = 1
+
+
+def _del_top(m):
+    del m.manifest_snapshot["version"]
+
+
+def _set_nested(m):
+    m.manifest_snapshot["capabilities"]["k"]["status"] = "tampered"
+
+
+def _set_inside_a_list(m):
+    m.manifest_snapshot["capabilities"]["k"]["nodes"][1]["n"] = 2
+
+
+def _set_usage(m):
+    m.token_usage["prompt"] = 0
+
+
+@pytest.mark.parametrize("change", [_set_top, _add_top, _del_top, _set_nested, _set_inside_a_list, _set_usage],
+                         ids=lambda f: f.__name__.strip("_"))
+def test_map_fields_of_a_gate_result_cannot_be_changed_by_item(change):
+    with pytest.raises(TypeError):
+        change(_meta_of_a_gate_result())
+
+
+@pytest.mark.parametrize("change", [lambda m: m.manifest_snapshot.update(x=1), lambda m: m.manifest_snapshot.pop("version"),
+                                    lambda m: m.manifest_snapshot.clear(), lambda m: m.token_usage.update(x=1),
+                                    lambda m: m.manifest_snapshot["capabilities"]["k"]["nodes"].append("x")],
+                         ids=["update", "pop", "clear", "usage_update", "list_append"])
+def test_map_fields_of_a_gate_result_have_no_mutating_methods(change):
+    with pytest.raises(AttributeError):
+        change(_meta_of_a_gate_result())
+
+
+def test_changing_the_source_map_does_not_reach_the_result():
+    source = json.loads(json.dumps(SNAPSHOT))
+    meta = _meta(manifest_snapshot=source)
+    source["capabilities"]["k"]["status"] = "tampered"
+    assert meta.manifest_snapshot["capabilities"]["k"]["status"] == "enforced"
+
+
+def test_real_stage_four_result_has_a_read_only_snapshot_too():
+    result = execution.build_execution_response(_envelope_with(TX), json.loads(json.dumps(SNAPSHOT))).result
+    with pytest.raises(TypeError):
+        result.analysis_meta.manifest_snapshot["capabilities"]["k"]["status"] = "tampered"
+
+
+def _mutable_values(value) -> list:
+    """모델 필드·맵·튜플을 따라 내려가며 찾은 가변 컨테이너."""
+    if isinstance(value, BaseModel):
+        return [m for name in type(value).model_fields for m in _mutable_values(getattr(value, name))]
+    if isinstance(value, (list, dict, set, bytearray)):
+        return [value]
+    if isinstance(value, MappingProxyType):
+        return [m for v in value.values() for m in _mutable_values(v)]
+    if isinstance(value, tuple):
+        return [m for v in value for m in _mutable_values(v)]
+    return []
+
+
+def test_no_mutable_container_is_reachable_from_a_gate_result():
+    meta = _meta(pipeline_mode="rule_llm", model_id="m", prompt_version="v", token_usage=dict(USAGE),
+                 manifest_snapshot=json.loads(json.dumps(SNAPSHOT)))
+    draft = json.dumps({"findings": [_finding(HEADER_PTR, limitations=["l"])],
+                        "advisory_signals": [_advisory({"locus": "resp_status"})]})
+    result = output_gate.validate_draft(draft, transactions=(TX,), produced_by="llm", analysis_meta=meta)
+    assert result.findings and result.advisory_signals and _mutable_values(result) == []
+
+
+@pytest.mark.parametrize("value", [{"a": {1, 2}}, {"a": bytearray(b"x")}, {"a": object()}], ids=["set", "bytearray", "object"])
+def test_snapshot_refuses_values_that_are_not_json(value):
+    with pytest.raises(ValidationError):
+        _meta(manifest_snapshot=value)
+
+
+def test_read_only_maps_serialize_as_plain_json_objects_and_arrays():
+    dumped = _meta(pipeline_mode="rule_llm", model_id="m", prompt_version="v", token_usage=dict(USAGE),
+                   manifest_snapshot=json.loads(json.dumps(SNAPSHOT))).model_dump(mode="json")
+    assert dumped["manifest_snapshot"] == SNAPSHOT and dumped["token_usage"] == USAGE
+    assert type(dumped["manifest_snapshot"]) is dict and json.dumps(dumped)
+
+
 def test_result_json_keeps_arrays_for_list_fields():
     dumped = _result().model_dump(mode="json")
     assert isinstance(dumped["findings"], list) and isinstance(dumped["findings"][0]["evidence"], list)
     assert isinstance(dumped["analyzed_refs"], list) and dumped["advisory_signals"] == []
+
+
+# ── ③: 깊은 중첩 본문은 500이 아니라 거부 + 감사 ───────────────────
+
+def test_deeply_nested_body_with_a_json_span_is_rejected_and_audited_at_stage_three_not_a_500(token, caplog):
+    deep = "[" * 100_000 + "]" * 100_000
+    env = _env()
+    env["transactions"][0]["response"]["body"].update(
+        content=deep, size_bytes=len(deep), content_type="application/json", encoding="utf8", truncated=False,
+        masked_spans=[{"at": {"kind": "json", "path": "/0"}, "ref": {"masked": True, "label": None, "kind": "token"}}])
+    with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
+        sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(env))
+    assert _status(sent) == 422 and _json(sent) == {"error": "sanitization_rejected"}
+    assert any("masked_span_json_unparseable" in r.getMessage() for r in caplog.records if r.name == "sentinel.audit")
 
 
 # ── 불변식 위조 ────────────────────────────────────────────────────
@@ -465,6 +580,24 @@ SRC_MUTATIONS = {
                           [_W + "test_gate_result_rejects_field_assignment",
                            _W + "test_finding_inside_a_gate_result_rejects_field_assignment",
                            _W + "test_evidence_inside_a_gate_result_rejects_field_assignment"]),
+    "maps_not_frozen": ("sentinel/output_schema.py", "sentinel.output_schema",
+                        "        return MappingProxyType({k: _deep_frozen(v) for k, v in value.items()})\n",
+                        "        return {k: _deep_frozen(v) for k, v in value.items()}\n",
+                        [_W + "test_map_fields_of_a_gate_result_cannot_be_changed_by_item[set_top]",
+                         _W + "test_map_fields_of_a_gate_result_cannot_be_changed_by_item[set_usage]",
+                         _W + "test_real_stage_four_result_has_a_read_only_snapshot_too",
+                         _W + "test_no_mutable_container_is_reachable_from_a_gate_result"]),
+    "maps_frozen_only_at_the_top": ("sentinel/output_schema.py", "sentinel.output_schema",
+                                    "        return MappingProxyType({k: _deep_frozen(v) for k, v in value.items()})\n",
+                                    "        return MappingProxyType(value)\n",
+                                    [_W + "test_map_fields_of_a_gate_result_cannot_be_changed_by_item[set_nested]",
+                                     _W + "test_changing_the_source_map_does_not_reach_the_result",
+                                     _W + "test_no_mutable_container_is_reachable_from_a_gate_result"]),
+    "arrays_in_maps_stay_lists": ("sentinel/output_schema.py", "sentinel.output_schema",
+                                  "        return tuple(_deep_frozen(v) for v in value)\n",
+                                  "        return [_deep_frozen(v) for v in value]\n",
+                                  [_W + "test_map_fields_of_a_gate_result_have_no_mutating_methods[list_append]",
+                                   _W + "test_no_mutable_container_is_reachable_from_a_gate_result"]),
     "status_result_invariant_off": ("sentinel/schema.py", "sentinel.schema",
                                     '        if (self.analysis_status == "completed") != (self.result is not None):\n',
                                     "        if False:\n",
@@ -499,7 +632,8 @@ SRC_MUTATIONS = {
                                     "    except RecursionError:  # 깊은 중첩은 값 문제다 — 호출자가 ValueError 하나만 다루면 되게 한다\n"
                                     '        raise ValueError("중첩이 너무 깊음") from None\n',
                                     "    except KeyError:\n        raise\n",
-                                    [_E + "test_deeply_nested_json_body_is_read_as_text_without_crashing"]),
+                                    [_E + "test_deeply_nested_json_body_is_read_as_text_without_crashing",
+                                     _W + "test_deeply_nested_body_with_a_json_span_is_rejected_and_audited_at_stage_three_not_a_500"]),
 }
 TOOL_MUTATIONS = {
     "static_check_off": ("tools/completed_path.py", "tools.completed_path", "        found += scan.violations\n",
