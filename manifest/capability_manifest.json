@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.24",
+  "spec": "docs/design-decision.md §3 매핑표 v1.25",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -733,6 +733,20 @@
       ]
     },
     "dataset_case_independence": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "S v2 동결 시",
+      "verification_tests": []
+    },
+    "ruleset_freeze": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "범위 — 현재 rule_engine.py 한 파일. 3파일 확장은 생성기 PR",
+      "verification_tests": [
+        "tests/test_rule_engine.py::test_rule_file_matches_the_frozen_hash_of_its_ruleset"
+      ]
+    },
+    "producer_freeze_order": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
       "target": "S v2 동결 시",

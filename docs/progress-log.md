@@ -963,6 +963,27 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 
 ### 미해결
 - **v1.26 미해결 ③' → 해소**(포함 결정, rules-2).
-- **S v2 요건: '허용 목록 일치로 되돌린 경우'를 security_misconfig hard negative로 포함** → 이월처: S v2. 규칙은 이 경우에도 발화한다(limitations에 명시) — FP로 측정된다.
+- **(대체됨 — (A) v1.27: S에서 제외)** S v2 요건: '허용 목록 일치로 되돌린 경우'를 security_misconfig hard negative로 포함 → 이월처: S v2. 규칙은 이 경우에도 발화한다(limitations에 명시) — FP로 측정된다.
 - **동결 강제(리뷰 조건 ②)**: `tools/eval/frozen_rulesets.py` 표 + 테스트가 버전 ∈ 표 ∧ 파일 해시 일치를 검사한다. 규칙 내용만 바꾸고 버전을 두면 실패한다. 범위는 `rule_engine.py` 한 파일이다 — 규칙이 쓰는 `strict_json`·`canonical_address` 변경은 잡지 못한다.
 - **manifest 키 등록과 동결 순서 검사, S v2 동결 기록의 ruleset_version** → 이월처: S v2 (A) 개정·설계.
+
+---
+
+## (A) v1.27 — S v2 계약 (Issue #80)
+
+### 0단계 결과
+- (A) v1.26 / 매핑표 v1.24 → 문서 v1.27, 매핑표 v1.25. 열린 PR·Issue 0.
+- 라벨링 지침 위치 제안: `docs/labeling-guideline.md`.
+
+### 결과
+- §6.2 S v2 구성·LabelFile 1.1 / §6.3 J9 / §3.5 신규 `ruleset_freeze`(enforced, 기존 노드 등록)·`producer_freeze_order`(not_implemented). 코드·테스트 변경 0.
+- **rules-2 절 이월 항목 대체**: CORS 허용 목록 일치 사례는 hard negative가 아니라 S에서 제외한다(단일 트랜잭션으로 판정 불가).
+- **v1.26 미해결 'J9 문구가 null을 말하지 않음' → 해소.**
+- **v1.26 미해결 'split 필드 누락은 오류'·rules-2 미해결 '동결 순서 검사·manifest 키' → 계약 해소, 구현은 생성기 PR.**
+
+### 계약이 코드보다 앞선 구간 (이월: 생성기 + S v2 동결 PR)
+- LabelFile 1.1(`Label.split`, `split_scheme`, `frozen_against.ruleset_version·ruleset_hash`), 러너 split 필수·split별 채점, 생성기 거부, '동결 순서 밖' 표기, 해시 범위 3파일 확장.
+
+### 미해결
+- **④ positive의 'SQL 에러 문자열'과 S v1**: S v1 `d603e430`의 응답에는 SQL 에러 문자열이 있는데 라벨은 info_exposure뿐이다. 지침대로면 S v1과 일관되지 않는 지점이 하나 있다 → 이월처: 지침 PR(S v1은 동결본이라 건드리지 않음).
+- **동결 해시의 타입 파일 제외**: common_types·output_schema·schema 변경은 잡지 못한다(회신 결정, (A) §6.2 기록).
