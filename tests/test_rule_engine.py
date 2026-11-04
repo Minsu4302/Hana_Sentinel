@@ -8,6 +8,7 @@ import json
 import re
 import time
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +18,7 @@ from sentinel.pipeline import output_gate, rule_engine
 from sentinel.pipeline.rule_engine import (
     STACK_TRACE_PATTERNS, cors_reflection_rule, cors_rule, evaluate, reflection_rule, stack_trace_rule)
 from sentinel.schema import Transaction
+from tools.eval.frozen_rulesets import FROZEN_RULESETS, ruleset_file_hash
 
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000d4")
 MASKED = {"masked": True, "label": None, "kind": "token"}
@@ -81,6 +83,18 @@ def test_clean_transaction_fires_nothing():
 def test_ruleset_frozen_before_s_v2_test_is_rules_2():
     """(A) §6.2 (b): S v2 test 작성 전 동결된 값. 바꾸면 그 위의 test 주장도 함께 다시 봐야 한다."""
     assert rule_engine.RULESET_VERSION == "rules-2"
+
+
+def test_rule_file_matches_the_frozen_hash_of_its_ruleset():
+    assert rule_engine.RULESET_VERSION in FROZEN_RULESETS
+    assert ruleset_file_hash(Path(rule_engine.__file__)) == FROZEN_RULESETS[rule_engine.RULESET_VERSION]
+
+
+def test_frozen_hash_does_not_depend_on_the_checkout_line_endings(tmp_path):
+    lf, crlf = tmp_path / "lf.py", tmp_path / "crlf.py"
+    lf.write_bytes(b"a = 1\nb = 2\n")
+    crlf.write_bytes(b"a = 1\r\nb = 2\r\n")
+    assert ruleset_file_hash(lf) == ruleset_file_hash(crlf)
 
 
 # ── ④ 반사 ───────────────────────────────────────────────────────
@@ -377,9 +391,12 @@ def test_header_name_case_and_outer_whitespace_do_not_matter_for_the_origin_rule
     ([("Origin", ORIGIN)], [(ACAO, MASKED), (ACAC, "true")]),
     ([("Origin", ORIGIN)], [(ACAO, ORIGIN), (ACAC, MASKED)]),
     ([("Origin", MASKED)], [(ACAO, MASKED), (ACAC, "true")]),
+    ([("Origin", "")], [(ACAO, ""), (ACAC, "true")]),
+    ([("Origin", "  ")], [(ACAO, " "), (ACAC, "true")]),
+    ([("Origin", ORIGIN)], [(ACAO, ""), (ACAC, "true")]),
 ], ids=["no_origin", "no_acao", "wildcard_acao", "wildcard_origin", "values_differ", "case_only_differs", "no_acac",
         "acac_capitalized", "acac_false", "duplicate_origin", "duplicate_acao", "duplicate_acac", "masked_origin",
-        "masked_acao", "masked_acac", "both_masked"])
+        "masked_acao", "masked_acac", "both_masked", "both_empty", "both_blank", "empty_acao"])
 def test_other_origin_combinations_do_not_fire(req, resp):
     assert cors_reflection_rule(_origin_tx(req, resp)) == []
 

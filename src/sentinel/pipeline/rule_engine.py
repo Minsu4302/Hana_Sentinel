@@ -12,8 +12,8 @@
 - info_exposure: 응답 본문에 스택 트레이스 형식이 있다. 엄격 JSON은 문자열 노드별, 그 밖의 utf8은 content.
 - security_misconfig: 응답 헤더 ACAO 정확히 1개 `*` ∧ ACAC 정확히 1개 `true`(값 trim, 대소문자 구분, MaskedRef면 미발화).
   같은 이름이 중복되면 미발화한다.
-- security_misconfig(출처 반사): 요청 Origin·응답 ACAO·ACAC가 각각 정확히 1개 평문이고, trim한 Origin과 ACAO가 정확히 같고
-  (대소문자 구분, `null` 출처 포함) ACAO ≠ `*` ∧ ACAC = `true`. ACAO=`*` 조건으로 위 규칙과 서로 배타적이다.
+- security_misconfig(출처 반사): 요청 Origin·응답 ACAO·ACAC가 각각 정확히 1개 평문이고, trim한 Origin과 ACAO가 비어 있지 않고
+  정확히 같고(대소문자 구분, `null` 출처 포함) ACAO ≠ `*` ∧ ACAC = `true`. ACAO=`*` 조건으로 위 규칙과 서로 배타적이다.
 
 JSON Pointer의 '-' 세그먼트는 Locator가 표현하지 못하므로((A) §2.6 한계) 키가 '-'인 노드는 보지 않는다.
 패턴은 입력 길이에 비례해 끝나야 한다 — 반복은 줄 경계나 길이 상한 안에 둔다(256KB 응답이 그대로 들어온다).
@@ -212,7 +212,7 @@ def cors_reflection_rule(tx: Transaction) -> list[FindingDraft]:
     origin = _single_value(tx.request.headers, REQUEST_ORIGIN_HEADER)
     allowed = _single_value(tx.response.headers, CORS_ORIGIN_HEADER)
     credentials = _single_value(tx.response.headers, CORS_CREDENTIALS_HEADER)
-    if origin is None or origin != allowed or allowed == "*" or credentials != "true":
+    if not origin or origin != allowed or allowed == "*" or credentials != "true":
         return []
     ref = tx.meta.transaction_id
     return [FindingDraft(
