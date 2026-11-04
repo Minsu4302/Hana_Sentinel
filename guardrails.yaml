@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.24. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.25. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.24"
+derived_from: "docs/design-decision.md §3 매핑표 v1.25"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -802,3 +802,20 @@ guardrails:
       target: "S v2 동결 시"
     verification_tests: []
     manifest_key: dataset_case_independence
+  - id: ruleset_freeze
+    description: "동결 표의 ruleset 해시가 규칙 파일과 일치(규칙 내용만 바꾸고 버전을 두면 실패)"
+    target_layer: "테스트"
+    status:
+      state: enforced
+      note: "범위 — 현재 rule_engine.py 한 파일. 3파일 확장은 생성기 PR"
+    verification_tests:
+      - "tests/test_rule_engine.py::test_rule_file_matches_the_frozen_hash_of_its_ruleset"
+    manifest_key: ruleset_freeze
+  - id: producer_freeze_order
+    description: "현재 규칙 해시가 동결 표에 없으면 생성 거부 + test 보고에서 데이터셋 기록과 다른 ruleset은 '동결 순서 밖 — 측정 아님' 표기"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "S v2 동결 시"
+    verification_tests: []
+    manifest_key: producer_freeze_order
