@@ -921,3 +921,30 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - **`object.__setattr__`·`__dict__`의 정적 검사는 아직 없다**: 노트가 말한 대로 지금 `tools/completed_path.py`는 이 둘을 보지 않는다 → 이월처: 층 B 러너 PR.
 - **`eval_harness` 노트('층 B는 모델 결선 이후')는 낡았지만 고치지 않았다**: 규칙 경로로 층 B를 돌릴 수 있게 됐다. 발주대로 상태 서술로 바꾼다 → 이월처: 러너가 생기는 코드 PR.
 - **③' 출처 반사 규칙: 설계자 결정 대기** → 이월처: 러너 PR 전 회신.
+
+---
+
+## (A) v1.26 — 층 B 러너, rule_only 첫 실측: S v1 스모크 (Issue #76)
+
+### 0단계 결과
+- (A) v1.25 / 매핑표 v1.23 → 문서 v1.26, 매핑표 v1.24. `ruleset_version` = rules-1(③' PR 없음).
+- ②③④ 단일 진입 함수가 없어 멈춤 → A안 승인: `sentinel.pipeline.entry.analyze` 추출. 패키지 `__init__`은 인증 스파이 열거 밖이라 서브모듈에 뒀다.
+
+### 첫 실행 (동작 확인 — 측정 아님, §6.2: S v1은 규칙에 대해 오염된 스모크 집합)
+- J9 머리: dataset S-v1 / set S / split null(분할 없음) / envelope·raw·labelfile schema 1.0 / pipeline_mode rule_only / model_id null / prompt_version null / ruleset_version rules-1
+- J1 엄격: TP 3 · FP 0 · FN 1(IDOR, access_control). 정밀도 구간 [0.4385, 1.0](표본 부족 n=3), 재현율 구간 [0.3006, 0.9544](표본 부족 n=4)
+- J2 거부 0/6 / J3 verified_clean 0/2, hard negative 0/1 / J4 not_run / J5 보류 / J6 rule TP 3, llm_only 0. 점추정은 전부 null이다.
+- 보고서는 두 번 실행해 바이트가 같았다(`reports/eval/S-v1.json`, 커밋 안 함).
+
+### 구현 중 깨진 가정
+- **pytest의 `pythonpath` 설정이 `make eval`의 실패를 가렸다.** 테스트는 통과했는데 실제 `make eval`은 `sentinel` import에 실패했다. 타깃에 `PYTHONPATH=src`를 지정했다. `make eval` 자체는 자동 테스트가 없고 손으로 확인했다.
+
+### 해소
+- **v1.25 미해결 '`object.__setattr__`·`__dict__` 정적 검사 없음' → 해소.** `__delattr__`·`vars(...)`·문자열 표기도 함께 막고, 읽기도 막는다(쓸 일이 없고 읽기와 쓰기를 정적으로 가르면 구멍이 남는다).
+- **v1.25 미해결 `eval_harness` 노트 → 해소.**
+
+### 미해결
+- **전부 거부 실행의 보고**: 지금은 사유 코드로 실패하고 보고서가 없다. output_rejected에 생산자 메타를 동봉할지는 → 이월처: LLM 결선 (A) 개정.
+- **S v2는 트랜잭션별 split을 기계 판독 가능하게 기록한다(생성기 SSOT)** → 이월처: S v2. 지금 `dataset_split`은 라벨 파일에 없는 필드를 읽어 null을 돌려준다.
+- **(A) J9 문구는 '분할(dev/test)'이라 null을 말하지 않는다**: 이 PR은 계약 문구를 고치지 않는다 → 이월처: S v2의 (A) 개정.
+- **③' 출처 반사 규칙**: rules-1로 진행했다 → 결정 기한: S v2 test 작성 전.

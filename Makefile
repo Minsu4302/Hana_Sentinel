@@ -13,7 +13,7 @@ endif
 export PYTHONUTF8 := 1
 export PYTHONIOENCODING := utf-8
 
-.PHONY: verify secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve
+.PHONY: verify secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve eval
 
 ## verify: 시크릿 전수 스캔 → 가드레일 정합(guardrails.yaml↔(A) §3, manifest↔재파생) → pytest(+ enforced 검증 노드 수집·통과 자기검증)
 verify: secret-scan guardrails-check test
@@ -42,6 +42,11 @@ install-dev:
 ## serve: 분석 서버 기동(127.0.0.1 고정, 바인드 주소 옵션 없음)
 serve:
 	$(PYTHON) -m sentinel.server
+
+## eval: 동결 데이터셋을 실제 ②③④로 통과시켜 채점(프로세스 안, 보고서는 gitignore 경로 reports/eval)
+eval: export PYTHONPATH := src
+eval:
+	$(PYTHON) -m tools.eval.runner
 
 install-hooks:
 	$(PYTHON) -m pre_commit install

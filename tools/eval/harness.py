@@ -1,8 +1,8 @@
 """평가 하네스 — 동결 데이터셋 + 예측 실행 → 채점 보고. (A) §6.1 판정 단위·매칭, §6.2 라벨 상태, §6.3 지표. `eval_harness`.
 
 범위(정직 표기): 이 하네스가 보장하는 것은 '채점 로직이 정답을 아는 입력에서 정확하고, 최대 매칭을 보장하며, 결정론적'이라는
-데까지다(층 A — 손으로 만든 예측 픽스처로 검증). 실제 모델이 얼마나 잘하는가(층 B)는 채점할 모델 출력이 생긴 뒤의 일이다 —
-예측 입력 인터페이스(`PredictionRun`)는 그 자리로 비워 둔다. 하네스 완성 ≠ 실제 측정 가능.
+데까지다(층 A — 손으로 만든 예측 픽스처로 검증). 실제 출력의 채점(층 B)은 러너(`tools.eval.runner`)가 `PredictionRun`으로
+넘긴다 — 지금은 rule_only 경로뿐이고, LLM 경로의 층 B는 LLM 결선 이후다.
 
 절차:
 1. 데이터: 동결 회귀 검사(버전·엔진 ②③·모드)와 라벨 무결성을 통과한 데이터셋만 채점한다(`tools.dataset`).
@@ -31,7 +31,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from sentinel.canonical_address import CNA, canonical_address, cna_sort_key
-from sentinel.output_schema import AnalysisResult, PipelineMode, producer_versions_consistent
+from sentinel.output_schema import AnalysisMeta, AnalysisResult, PipelineMode, producer_versions_consistent
 from sentinel.pipeline import schema_gate
 from sentinel.schema import Transaction
 from tools.dataset.freeze import engine_regression_problems, mode_problems, version_freeze_problems
@@ -44,7 +44,7 @@ MAX_HALF_WIDTH = 0.15         # J8 초기 임계값(설정값 — 정본이되 �
 
 class RunMeta(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
-    split: Literal["dev", "test"]
+    split: Literal["dev", "test"] | None  # 데이터셋 기록. 기록이 없으면 null(S v1)
     pipeline_mode: PipelineMode
     model_id: str | None
     prompt_version: str | None
@@ -57,11 +57,26 @@ class RunMeta(BaseModel):
         return self
 
 
+def _same_producer(run_meta: RunMeta, meta: AnalysisMeta) -> bool:
+    return ((run_meta.pipeline_mode, run_meta.model_id, run_meta.prompt_version, run_meta.ruleset_version)
+            == (meta.pipeline_mode, meta.model_id, meta.prompt_version, meta.ruleset_version))
+
+
 class PredictionRun(BaseModel):
-    """예측 입력 인터페이스. 층 A는 손으로 만든 픽스처, 층 B(모델 결선 이후)는 실제 생산 출력이 이 자리에 들어온다."""
+    """예측 입력 인터페이스. 층 A는 손으로 만든 픽스처, 층 B는 러너가 만든 실제 생산 출력이 이 자리에 들어온다.
+    보고 머리는 결과의 analysis_meta와 같아야 한다 — 머리가 결과를 다르게 말하는 실행은 채점하지 않는다."""
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
     run_meta: RunMeta
     results: dict[UUID, AnalysisResult | Literal["output_rejected"]]
+
+    @model_validator(mode="after")
+    def _header_matches_results(self) -> Self:
+        for r in self.results.values():
+            if r == "output_rejected":
+                continue
+            if not _same_producer(self.run_meta, r.analysis_meta):
+                raise ValueError("보고 머리와 결과의 analysis_meta가 다름")
+        return self
 
 
 class DatasetRejected(Exception):
@@ -213,6 +228,7 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
 
     return {
         "header": {"dataset_id": label_file.dataset_id, "set": "S", "split": run.run_meta.split,
+                   "split_note": "분할 없음" if run.run_meta.split is None else None,
                    "dataset_versions": label_file.frozen_against.model_dump(mode="json", exclude={"masking_modes"}),
                    "pipeline_mode": run.run_meta.pipeline_mode, "model_id": run.run_meta.model_id,
                    "prompt_version": run.run_meta.prompt_version,

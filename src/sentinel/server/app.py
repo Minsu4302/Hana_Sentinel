@@ -1,9 +1,9 @@
 """FastAPI 앱 — 단일 분석 엔드포인트. 최외곽은 토큰 게이트(W1-04).
 
 (A) §3.0 파이프라인
-① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ② 스키마 검증(W1-05, `pipeline.schema_gate`)
-→ ③ Sanitization 독립 재검증(W1-06, `pipeline.sanitization_check`) → ④ ExecutionResponse(W1-07,
-`pipeline.execution`). ④는 규칙 엔진 → 출력 게이트를 지나 completed | output_rejected + manifest 스냅샷을 돌려준다.
+① 토큰 검증(W1-04, `auth.TokenGate` — 이 앱 바깥) → ②③④는 `pipeline.entry.analyze` 한 함수다(② 스키마 검증 → ③ Sanitization
+독립 재검증 → ④ 규칙 엔진 → 출력 게이트 → completed | output_rejected + manifest 스냅샷). 핸들러는 입력 거부 예외를 HTTP로
+바꾸기만 하고 단계 함수를 직접 부르지 않는다.
 
 원시 요청 본문은 MAX_REQUEST_BYTES까지만 읽는다(재검증은 본문 전체를 스캔하므로 무한 본문 차단, 413).
 파이프라인 함수는 `모듈.함수`로 호출한다(스파이 우회 금지 — sentinel.pipeline 머리말 참조).
@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from sentinel.manifest_snapshot import load_manifest_snapshot
-from sentinel.pipeline import execution, sanitization_check, schema_gate
+from sentinel.pipeline import entry, sanitization_check, schema_gate
 from sentinel.server.auth import TokenGate
 
 ANALYZE_PATH = "/v1/analyze"
@@ -51,14 +51,11 @@ def create_api(manifest_snapshot: dict[str, Any]) -> FastAPI:
             return JSONResponse({"error": "payload_too_large"}, status_code=413)
         # 거부 응답에 오류 상세(입력 값 포함 가능)를 반사하지 않는다
         try:
-            envelope = schema_gate.parse_envelope(raw)
+            result = entry.analyze(raw, manifest_snapshot)
         except schema_gate.SchemaRejected:
             return JSONResponse({"error": "schema_rejected"}, status_code=422)
-        try:
-            sanitization_check.verify_sanitization(envelope)
         except sanitization_check.SanitizationRejected:
             return JSONResponse({"error": "sanitization_rejected"}, status_code=422)
-        result = execution.build_execution_response(envelope, manifest_snapshot)
         return JSONResponse(result.model_dump(mode="json"), status_code=200)
 
     return api
