@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.23 — Sentinel Harness
+# (A) 설계확정서 v1.24 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.23 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.24 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -50,7 +50,8 @@
 > **v1.22 (매핑표 v1.20):** 낡은 '주차' 표현 정리(뜻 변경 없음 — §2.5, §3 머리말 상태 4종, §3.0 '④ [현재]', §3.1 `local_llm_vs_egress` 노트, §3.5 각주 제목 '출력 게이트 enforced 범위'(본문 불변), §3.6 제목 '기반 적대적 테스트') + §3.1 `claude_md_sync_check` 범위 확장(설명 문구 속 키 표기 0) + §1.4 머리 문장 한 구절. `schema_version` 값 변화 없음.
 > **v1.23 (매핑표 v1.21):** rule-only 결선의 계약·원칙 선행 개정(코드는 다음 PR). §2.4 `produced_by` 서버 부여 사실 서술(규칙 변경 아님) + `analysis_meta.pipeline_mode` 닫힌 enum `rule_only | rule_llm`, rule_only에서 `model_id`·`prompt_version` = null + §2.5 `ExecutionResponse.result`와 불변식(completed ⇔ result ≠ null) + §3.5 각주 본문(유일 통로 → `completed_via_gate`) + §3.5 신규 `completed_via_gate`(not_implemented) + §6.2 블라인드 원칙 확장(생산자 버전 동결 후 test 작성, 1인 단계 한계, S v1 = 규칙에 대해 오염된 스모크 집합) + 출력 계약 서술의 생산자 일반화(규칙·LLM — §2.4·§2.5, §3.5 각주 첫 문장 '게이트 자체의 enforced 범위'). 서술 변경이라 `schema_version` 변화 없음.
 >   - `pipeline_mode` 닫힌 enum = 비가산, rule_only의 null 허용 = 비가산, `ExecutionResponse.result` = 비가산(필수 필드). 소비자 0이라 AnalysisResult `schema_version` 유지(ExecutionResponse는 자체 버전 필드가 없다).
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03)
+> **v1.24 (매핑표 v1.22):** 규칙 엔진 + ④ rule-only 결선(코드 PR — 계약 변경 없음). §3.5 `completed_via_gate` 승격(not_implemented → enforced, 현존 경로 한정, 증명은 같은 PR — 이 PR이 그 키의 목표 사건) + §3.0 ④ '[현재]' 줄과 §2.5 `not_implemented`의 현재 동작 서술을 실제 동작으로 갱신(서술 변경이라 `schema_version` 변화 없음).
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04)
 
 ---
 
@@ -295,7 +296,7 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 > **왜 분리?** `findings:[]`가 "분석 완료·깨끗함"인지 "아직 분석 안 함"인지 혼동 금지. **분석 안 함 ≠ 분석 후 취약점 없음.** 평가의 '정상 사례 정확도'가 이 구분에 의존한다. 현재 골격은 이 타입만 반환한다.
 
 - **`analysis_status` = 닫힌 enum:** `not_implemented | completed | output_rejected`.
-  - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 동작).
+  - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 ④는 이 값을 반환하지 않는다 — 규칙 경로가 `completed`·`output_rejected`를 반환한다).
   - `completed`: 분석이 끝나고 결과(AnalysisResult)가 `result`에 동봉됨. 분석 후 깨끗함 = `completed` + `findings: []`.
   - `output_rejected`: 초안(규칙·LLM)이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
 - 세 값은 "분석 안 함 / 분석 후 결과 있음(깨끗함 포함) / 분석 결과 폐기"를 구분하기 위한 것이다.
@@ -376,7 +377,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.21 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.22 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -394,7 +395,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 ③ Sanitization 독립 재검증 ──생문자열 패턴 잔존──▶ applied 무관 거부 + 감사
    │  (+ fail-closed: applied==false ‖ failed==true ‖ 필드누락 ‖ 타입오류 → 거부)
    │통과
-④ [현재] 분석 없음 → ExecutionResponse(analysis_status="not_implemented") 반환
+④ [현재] 규칙엔진 → 출력 게이트 → ExecutionResponse(analysis_status="completed" | "output_rejected") 반환(rule_only, 저장 없음)
    [이후]  규칙엔진 → LLM → 출력 스키마 검증 → 저장
 ```
 **감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부) — 수용 요청 감사(B-6) 범위 확정 시.
@@ -467,7 +468,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
-| ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | not_implemented → 규칙 엔진 결선 시 | `completed_via_gate` |
+| ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명) | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |

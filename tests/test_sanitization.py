@@ -91,7 +91,7 @@ def test_actually_masked_input_passes():
     verify_sanitization(parse_envelope(_raw(_lying_receipt(_env()))))
 
 
-def test_actually_masked_input_reaches_not_implemented_path(token):
+def test_actually_masked_input_reaches_stage_four(token):
     sent, _ = _drive(create_app(token), _scope([(HEADER, token)]), _raw(_env()))
     assert _status(sent) == 200
 

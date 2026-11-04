@@ -879,3 +879,29 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
 - 처음 팩은 §2.4 `analyzed_refs`·§2.5 `output_rejected`의 'LLM 한정' 문구를 코드 PR로 넘기려 했으나, rule_only 경로에서의 계약 의미이므로 계약 PR에서 정한다(코드 PR에 (A) 계약을 섞지 않는다) → 이 PR에서 처리.
 - 바꾼 문장(게이트·출력 검증의 대상): §2.4 트리 `analyzed_refs`·`category`·`severity_if_true`·`status`·`produced_by`·`corroboration`·`anomaly_flags` 주석, `analyzed_refs`·`severity_if_true`·`corroboration·review_required`·출력 검증 규칙·status 승격 서술, §2.5 `output_rejected` → '초안(규칙·LLM)' / '분석 단계(규칙·LLM)' / '초안 아님'. §3.5 각주 첫 문장 '2주차 enforced 범위' → '게이트 자체의 enforced 범위'(뜻 변경 0).
 - 그대로 둔 문장(LLM에만 해당): §2.4 제목 'LLM 환각을 계약으로 차단', `analyzed_refs` 근거의 자기참조 문장, `severity_if_true` 근거의 'LLM에 다시 위임하는 뒷문', `analysis_meta`의 'LLM이 없는 경로', 출력 검증 규칙 근거의 '환각을 부분적으로 신뢰'.
+
+---
+
+## (A) v1.24 — 규칙 엔진 + ④ rule-only 결선 (Issue #72)
+
+### 결과
+- 규칙 3종(`sentinel.pipeline.rule_engine`, `RULESET_VERSION` 1곳) → `validate_draft`(produced_by = 경로 상수 `RULE_PATH`) → `ExecutionResponse(completed | output_rejected)`. pipeline_mode=rule_only, model_id·prompt_version=null, 저장 없음(D5).
+- 서버 중복 처리(§2.4)를 게이트 안, 전체 검증 뒤로 구현. 저장용 타입은 frozen + tuple(JSON 형태는 배열 그대로).
+- `completed_via_gate` → enforced(현존 경로 한정). 정적 검사는 `tools/completed_path.py`.
+- S v1 6건은 예상표와 일치(측정 아님 — §6.2).
+
+### 구현 중 깨진 가정
+- **승인안의 스택 패턴 2개가 256KB에서 다항 시간이었다.** .NET(`.*`·`.+` 겹침)은 입력을 2배로 늘리면 약 8배(20KB 14초), Node(`^\s*`가 개행을 삼킴)는 약 4배(32KB 2초). 뜻은 유지하고 반복을 줄 경계·길이 상한 안에 두었다. 최악 입력 11종은 입력별 전 패턴 합계 0.2초 미만.
+- **`strict_json.parse`가 깊은 중첩에서 `RecursionError`를 그대로 던졌다**(문서화된 계약은 ValueError). 규칙은 모든 응답 본문을 파싱하므로 ④가 500으로 죽는 경로였다. parse에서 ValueError로 바꿨다. 기존 ③(`masked_span_check`)의 같은 경로도 함께 고쳐진다 — json span이 있는 깊은 중첩 본문이 500 대신 unparseable 거부가 된다.
+- **첫 정적 검사가 게이트 건너뛰기를 놓쳤다.** `execution.py`가 `validate_draft` 대신 `output_gate._assign`을 직접 부르는 변이가 정적 검사를 통과했다(동적 테스트만 잡음). `_assign` 참조를 `validate_draft` 안으로 한정했다.
+
+### 미해결
+- **`'` 때문에 무해한 이름 반사에도 울린다**: 최소 조건의 `'`로 `O'Reilly` 원형 에코도 발화한다. 양성 여부는 S v2 라벨링 지침이 규칙과 독립으로 정한다 → 이월처: S v2.
+- **③' 출처 반사 규칙: 이 PR에는 넣지 않음.** S v1에는 Origin 헤더가 없어 예상표에 영향 없음 → 이월처: S v2 test 작성 전 별도 PR 여부를 설계자가 결정(대기).
+- **키가 `-`인 JSON 노드는 규칙이 보지 않는다**: Locator가 그 세그먼트를 표현하지 못한다((A) §2.6 한계). 그 노드에만 있는 반사·트레이스는 FN → 이월처: 없음(한계로 유지, limitations에는 적지 않음).
+- **`analysis_meta`의 맵 필드 → 해소(리뷰 조건 ①).** `manifest_snapshot`·`token_usage`는 깊은 읽기 전용 사본이다(객체 MappingProxyType, 배열 tuple, JSON 밖 타입 거부, JSON 형태는 그대로). 범위: 공개 API로의 변경 차단이다 — `object.__setattr__`·`__dict__` 직접 조작은 파이썬에서 막을 수 없다. `ExecutionResponse.manifest_snapshot`(result 밖 응답용 사본)은 지시 범위 밖이라 dict 그대로다.
+- **`skipped_reasons`의 최소 1개**: 지금은 항상 `llm_analysis_not_implemented`가 있어 유지했다. rule_llm 경로는 빈 목록이 맞을 수 있다 → 이월처: LLM 결선 PR.
+- **(A) J9 문구에는 pipeline_mode가 없다**: 하네스 머리에는 병기했고(회신대로), 이 PR은 계약 문구를 고치지 않는다 → 이월처: 층 B 러너 PR 직전의 (A) 문서 개정.
+- **반사 규칙의 시간은 파라미터 수 × 본문 크기에 비례한다**: 1MB 요청 상한 안의 최악(파라미터 2만 개 × JSON 노드 2만 개)이 약 13초, 텍스트 본문 256KB는 약 3초다. 토큰을 가진 호출자만 닿는 경로이고 상한이 있어 유한하다. 파라미터 상한은 넣지 않는다 → 이월처: 어댑터 (A) 개정(입력 크기 예산과 같은 주제).
+- **스택 패턴의 길이 상한(상한을 넘는 프레임은 미탐)** → 이월처: 없음(설정값으로 기록). Node: `at ` 뒤 줄 내용 1~512자 / Java: 클래스·메서드 1~512자, 파일명 1~256자 / Python: `File "…"`의 경로 1~1024자 / .NET: 메서드 1~512자, 인자 0~512자, 경로 1~512자. 나머지 패턴(`Exception in thread "`, `Traceback`, `.php on line`, `Stack trace:`)은 상한 없음.
+- **`_Scan`의 `copy` 모듈 예외 제거(리뷰 확인 중 발견).** 받는 쪽 이름만 봐서 지역 변수 `copy`의 `.copy(update=…)`가 통과했다. src/sentinel에 `.copy(` 호출이 없어 예외를 없앴다. 남은 예외는 `_normalized`의 `model_copy` 한 곳이다.

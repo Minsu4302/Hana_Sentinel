@@ -74,7 +74,7 @@ def _result(findings: list[dict]) -> dict:
     return {"schema_version": "1.0", "analyzed_refs": sorted({e["transaction_ref"] for f in findings for e in f["evidence"]}),
             "findings": findings, "advisory_signals": [],
             "analysis_meta": {"model_id": "fixture", "policy_version": "p", "prompt_version": "v0", "ruleset_version": "r0",
-                              "elapsed_ms": 0, "pipeline_mode": "fixture", "manifest_snapshot": {}}}
+                              "elapsed_ms": 0, "pipeline_mode": "rule_llm", "manifest_snapshot": {}}}
 
 
 def _run(findings: list[dict], rejected: tuple[str, ...] = (), extra: dict | None = None) -> PredictionRun:
@@ -83,7 +83,8 @@ def _run(findings: list[dict], rejected: tuple[str, ...] = (), extra: dict | Non
         results[findings[0]["evidence"][0]["transaction_ref"]] = _result(findings)
     results.update(extra or {})
     return PredictionRun.model_validate_json(json.dumps(
-        {"run_meta": {"split": "dev", "model_id": "fixture", "prompt_version": "v0", "ruleset_version": "r0"},
+        {"run_meta": {"split": "dev", "pipeline_mode": "rule_llm", "model_id": "fixture", "prompt_version": "v0",
+                      "ruleset_version": "r0"},
          "results": results}))
 
 
@@ -306,7 +307,7 @@ def test_harness_refuses_labels_pointing_nowhere(tmp_path):
 
 def test_prediction_interface_is_strict():
     with pytest.raises(ValidationError):
-        PredictionRun.model_validate_json(json.dumps({"run_meta": {"split": "dev", "model_id": "m", "prompt_version": "p",
+        PredictionRun.model_validate_json(json.dumps({"run_meta": {"split": "dev", "pipeline_mode": "rule_llm", "model_id": "m", "prompt_version": "p",
                                                                    "ruleset_version": "r", "extra": 1}, "results": {}}))
 
 

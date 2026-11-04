@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.21. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.22. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.21"
+derived_from: "docs/design-decision.md §3 매핑표 v1.22"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -274,7 +274,7 @@ guardrails:
       state: enforced
     verification_tests:
       - "tests/test_schema.py::test_valid_envelope_passes"
-      - "tests/test_schema.py::test_valid_envelope_reaches_the_not_implemented_path_after_token"
+      - "tests/test_schema.py::test_valid_envelope_reaches_stage_four_after_token"
       - "tests/test_schema.py::test_rejects_schema_violation"
       - "tests/test_schema.py::test_rejects_non_envelope_bytes"
       - "tests/test_schema.py::test_schema_rejection_is_audited_without_input_values"
@@ -615,9 +615,34 @@ guardrails:
     description: "④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정)"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "규칙 엔진 결선 시"
-    verification_tests: []
+      state: enforced
+      note: "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명"
+    verification_tests:
+      - "tests/test_rule_wiring.py::test_result_and_response_are_built_at_exactly_one_place_each"
+      - "tests/test_rule_wiring.py::test_planted_construction_path_is_found"
+      - "tests/test_rule_wiring.py::test_second_build_inside_the_allowed_function_is_found"
+      - "tests/test_rule_wiring.py::test_removed_gate_build_is_found"
+      - "tests/test_rule_wiring.py::test_completed_result_is_the_object_the_gate_returned"
+      - "tests/test_rule_wiring.py::test_gate_rejection_overrides_a_rule_finding"
+      - "tests/test_rule_wiring.py::test_rule_draft_with_no_evidence_is_output_rejected_and_audited"
+      - "tests/test_rule_wiring.py::test_rule_draft_with_an_unresolvable_locator_is_output_rejected_and_audited"
+      - "tests/test_rule_wiring.py::test_rule_draft_pointing_outside_analyzed_refs_is_output_rejected"
+      - "tests/test_rule_wiring.py::test_output_rejected_reaches_the_client_as_a_200_with_null_result"
+      - "tests/test_rule_wiring.py::test_gate_call_takes_produced_by_from_the_path_constant"
+      - "tests/test_rule_wiring.py::test_every_finding_of_the_rule_path_is_marked_rule"
+      - "tests/test_rule_wiring.py::test_produced_by_inside_a_rule_draft_is_rejected_even_when_it_says_rule"
+      - "tests/test_rule_wiring.py::test_invalid_twin_of_a_duplicate_is_not_hidden_by_the_merge"
+      - "tests/test_rule_wiring.py::test_gate_result_rejects_field_assignment"
+      - "tests/test_rule_wiring.py::test_finding_inside_a_gate_result_rejects_field_assignment"
+      - "tests/test_rule_wiring.py::test_evidence_inside_a_gate_result_rejects_field_assignment"
+      - "tests/test_rule_wiring.py::test_list_fields_of_a_gate_result_cannot_be_changed_in_place"
+      - "tests/test_rule_wiring.py::test_map_fields_of_a_gate_result_cannot_be_changed_by_item"
+      - "tests/test_rule_wiring.py::test_map_fields_of_a_gate_result_have_no_mutating_methods"
+      - "tests/test_rule_wiring.py::test_no_mutable_container_is_reachable_from_a_gate_result"
+      - "tests/test_rule_wiring.py::test_status_and_result_cannot_disagree"
+      - "tests/test_rule_wiring.py::test_analysis_meta_cannot_invent_or_omit_producer_versions"
+      - "tests/test_rule_wiring.py::test_each_wiring_guard_is_load_bearing_under_verified_mutation"
+      - "tests/test_rule_wiring.py::test_static_check_is_load_bearing_under_verified_mutation"
     manifest_key: completed_via_gate
   - id: assertive_token_guard
     description: "hypothesis 단정 토큰 차단"
