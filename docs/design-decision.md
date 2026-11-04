@@ -469,7 +469,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
-| ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사 대상 — 층 B 러너 PR에서 추가)) | `completed_via_gate` |
+| ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용을 잡는 정적 검사는 아직 없다 — 층 B 러너 PR에서 추가)) | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
 | 환각 리터럴 격리 | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |
