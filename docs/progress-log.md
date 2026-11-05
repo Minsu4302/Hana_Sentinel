@@ -1131,3 +1131,15 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 - 읽는 법: J3 전체 비율은 실제 빈도가 아니다. Precision 1.0(n=9)의 구간은 p=1이라 좁게 나온 것이고, 게이트(n ≥ 39)가 보장한 값이 아니다.
 - **간헐 실패**: `tests/test_output_gate.py::test_unresolvable_pointer_audit_has_no_header_name_path_or_range_values`(SQLite `-journal` 목록·읽기 경합). enforced 노드의 거짓 실패는 '재실행 습관'을 만들어 진짜 실패를 가린다 → 다음 PR에서 수정.
 - **교훈**: 측정 전 해석 기준을 손으로 적어 미탐 범위를 빠뜨렸다(IE-P1 일부·IE-P3·DB 오류·SM-P3~P5). 다음 측정부터 '조항 × 규칙 커버리지' 표로 기계 도출한다.
+
+---
+
+## 감사 파일 간헐 실패 수정 (Issue #91)
+
+### 원인
+- 스레드 경합이 아니다(쓰기는 동기). 커밋 뒤 삭제 중인 SQLite `-journal`이 Windows 목록에 잠깐 남아, 읽을 때 `FileNotFoundError`·`PermissionError`가 났다.
+- 재현: 감사 쓰기 3회 → 목록 → 읽기를 3,000회씩 3번 반복. 수정 전 162/9,000건 실패(1.8%).
+
+### 결과
+- `tests/support/audit_files.py`: 본 파일과 곁 파일을 모두 읽고, 실제로 사라진 곁 파일만 견딘다. 본 파일·곁 파일이 아닌 파일·계속 잠긴 곁 파일은 실패한다. 검사 범위는 줄지 않았다.
+- **곁 파일 소멸을 견뎌도 범위가 줄지 않는 근거**: rollback journal은 변경 전 페이지라 새 데이터는 본 파일에 있다. WAL이면 재읽기로 대비한다.

@@ -29,6 +29,7 @@ from sentinel.audit import attach_audit_store, detach_audit_store, read_audit_ev
 from sentinel.output_schema import SERVER_ASSIGNED_FIELDS, AnalysisDraft, AnalysisMeta, AnalysisResult, Finding
 from sentinel.pipeline.output_gate import REASON_CODES, OutputRejection
 from sentinel.schema import Transaction
+from tests.support.audit_files import audit_store_bytes
 from tests.test_auth import PIPELINE_FUNCTIONS
 from tools.mutation_guard import MutationNotApplied, assert_loaded_from, copy_with_mutation
 
@@ -409,7 +410,7 @@ def test_rejection_audit_has_reason_codes_only_no_draft_content(store, caplog):
     events = read_audit_events(store)
     assert [e["event"] for e in events] == ["output_rejected"] * 3
     assert all(set(e["message"].split("reasons=", 1)[1].split(",")) <= set(REASON_CODES) for e in events)
-    db_bytes = b"".join(p.read_bytes() for p in store.parent.iterdir() if p.name.startswith(store.name))
+    db_bytes = audit_store_bytes(store)
     for m in markers + [str(OTHER_REF)]:
         assert m.encode() not in db_bytes
         assert m not in caplog.text
@@ -597,7 +598,7 @@ def test_unresolvable_pointer_audit_has_no_header_name_path_or_range_values(stor
     with caplog.at_level(logging.DEBUG):
         results = [_one(p) for p in pointers]
     assert all(isinstance(r, OutputRejection) and r.reason_codes == ("pointer_unresolvable",) for r in results)
-    db_bytes = b"".join(p.read_bytes() for p in store.parent.iterdir() if p.name.startswith(store.name))
+    db_bytes = audit_store_bytes(store)
     for marker in (header, header.lower(), key, emoji):
         assert marker.encode() not in db_bytes and marker not in caplog.text
     for number in ("31", "47"):
