@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.29 — Sentinel Harness
+# (A) 설계확정서 v1.30 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.29 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.30 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -58,7 +58,8 @@
 > **v1.28 (매핑표 v1.25 유지):** 라벨 모델과 카테고리 경계(코드 0). §1.1 ①②③ 경계 문장 + §6.2 LabelFile 1.1 결함별 라벨(트랜잭션마다 라벨 ≥ 1) + 규모 게이트의 트랜잭션 단위 세는 법 + 라벨링 원칙 O-4(관측이 같으면 라벨이 같다, positive는 관측 신호) + CORS 허용 목록 문장 교체 + §6.3 J1 결함별 라벨의 1:1 매칭.
   - LabelFile 1.1은 소비자 0(데이터 없음)이라 1.1 안에서 변경하고 버전을 유지한다. 1.0(S v1)은 '트랜잭션마다 정확히 1개' 그대로다. §3 변경 없음.
 > **v1.29 (매핑표 v1.26):** S v2 생성기 장치(코드 PR — 계약 변경 없음). §3.5 `dataset_case_independence`·`producer_freeze_order` 승격(not_implemented → enforced, 합성 카탈로그로 증명 — 키가 주장하는 것은 생성기 검사 장치다) + 신규 `guideline_freeze`(enforced) + `ruleset_freeze` 범위 3파일. 서술 변경이라 `schema_version` 변화 없음.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04)
+> **v1.30 (매핑표 v1.26 유지):** S v2 동결 기록(§6.2) + 카탈로그 필드 목록을 결함별 라벨에 맞춤 + `dataset_case_independence` 설명에서 'S v2 동결 시' 삭제. §3·계약 변경 없음.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05)
 
 ---
 
@@ -598,11 +599,11 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - 결함 패턴 = SSOT가 사례에 부여한 패턴 ID. verified_clean·hard negative도 패턴 ID를 갖는다.
   - 근거: 같은 조합의 변형으로 n을 채우면 Wilson의 독립 가정이 깨져 구간이 거짓으로 좁아진다.
   - S v1 = 규칙 이전 데이터셋(S v2부터 적용). 사람이 읽은 조합은 겹치지 않으나 기계 판정 근거 없음(생성기에 패턴 ID·엔드포인트 템플릿 없음). 동결본은 건드리지 않는다.
-  - 강제: `dataset_case_independence`(S v2 동결 시 — 생성기 SSOT가 엔드포인트 템플릿·패턴 ID를 기계 판독 가능하게 갖고 조합 중복을 검사한다. 이 검사를 위한 LabelFile 변경은 없다).
+  - 강제: `dataset_case_independence`(생성기 SSOT가 엔드포인트 템플릿·패턴 ID를 기계 판독 가능하게 갖고 조합 중복을 검사한다. 이 검사를 위한 LabelFile 변경은 없다).
 - **첫 동결(S v1):** 마스킹된 Envelope 6건 + 라벨 파일 — category 4종 각 labeled_positive 1건(그중 IDOR 1건은 relation_preserving, anchor가 헤더·본문에 걸침), verified_clean 1건, hard negative 1건. 원본은 커밋하지 않는다(§1.3 ⓕ). 표본 충족(J8)과 'category마다 hard negative'는 첫 동결의 목표가 아니다 — 구조 검증이 목적이고 사례는 평가 하네스 이후 새 데이터셋 버전으로 늘린다.
 
 - **S v2 구성:**
-  - **사례 카탈로그 = 생성기 SSOT(선언형):** 사례마다 case_id, 엔드포인트(method, 경로 템플릿), pattern_id, split, label_status, categories, anchors, hard_negative, masking_mode, source를 둔다. 생성기는 (엔드포인트, 패턴) 조합 중복 0·엔드포인트 단위 split·규모 게이트를 강제한다.
+  - **사례 카탈로그 = 생성기 SSOT(선언형):** 머리에 지침 버전·해시를 적고, 사례마다 case_id, 엔드포인트(method, 경로 템플릿), pattern_id, split, masking_mode, source, labels(결함마다 label_status·categories·anchors·hard_negative·clause), tx(트랜잭션 선언)를 둔다. 생성기는 (엔드포인트, 패턴) 조합 중복 0·엔드포인트 단위 split·규모 게이트를 강제한다.
   - **규모 게이트:** test는 labeled_positive 트랜잭션 ≥ 39, verified_clean ≥ 39이고 그중 category마다 positive ≥ 8, hard negative ≥ 4다. dev는 positive ≥ 20, clean ≥ 20이다. hard negative 수는 verified_clean 트랜잭션만 센다(positive 트랜잭션 안의 대조 사례, 예: 입력 무관 DB 오류는 세지 않는다).
     - 한계: 템플릿으로 생성하므로 사례 사이의 유사성이 남는다(Wilson의 독립 가정은 근사). 정밀도의 n은 라벨 수가 아니라 예측 수라 이 게이트로 보장되지 않는다.
   - **라벨링 지침:** 레포 문서 `docs/labeling-guideline.md`에 두고 버전을 붙이며, 카탈로그 작성 전에 동결한다(본문은 지침 PR). §6.1의 anchor 지침은 그대로 적용한다.
@@ -614,6 +615,8 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - **작성 순서:** ruleset 동결(rules-2, 완료) → 지침 동결 → 카탈로그 → 생성·동결 → 생산자 첫 실행. LLM은 dev에서만 조정한다(기계로 증명 불가 — 한계).
   - **채점 단위:** split_scheme이 있는 데이터셋은 split 인자가 필수이고 그 split만 채점한다. 인자가 없으면 거부한다.
   - **동결 순서:** 생성기는 현재 규칙 해시가 FROZEN_RULESETS에 없으면 생성을 거부한다. 하네스는 test split 보고에서 데이터셋 기록과 다른 ruleset이면 "동결 순서 밖 — 측정 아님"으로 표기한다(`producer_freeze_order`). 해시 범위는 rule_engine.py·strict_json.py·canonical_address.py이고, 타입 파일(common_types·output_schema·schema)은 제외한다(한계 — 타입 변경은 잡지 못한다).
+- **S v2 동결:** 마스킹된 Envelope 120건 + 라벨 파일(LabelFile 1.1) + 사례 카탈로그(`datasets/S/catalog-v2.json`). 엔드포인트 30개. test 80건(labeled_positive 40, verified_clean 40 — hard negative 26, 일반 14), dev 40건(labeled_positive 20, verified_clean 20). 복수 라벨 트랜잭션 test 5건, dev 2건. 라벨링 지침 v1, ruleset rules-2, 데이터 커밋 `d85b0fb`. 원본은 커밋하지 않는다(§1.3 ⓕ).
+  - 한계: J3 전체 비율은 실제 빈도 추정이 아니다(hard negative 과대 대표 — hard negative·일반 clean 부분집합을 따로 읽는다). 요청 본문 값은 구성하지 않았다. 사례는 템플릿으로 생성되어 유사하고(① 소유자 필드 포함), dev/test는 엔드포인트 단위로만 분리되어 패턴 템플릿을 공유한다 — dev 튜닝 효과가 test로 실제보다 잘 옮겨 갈 수 있다. 경로 사례는 실제 요청에서는 인코딩될 문자를 원문으로 구성했다.
 
 ### 6.3 지표
 - **J1 P/R:** §6.1 매칭 규칙. Precision 대표값은 S에서만 낸다. J는 알려진 라벨 기준 Recall + 미판정 건수. category별 + 전체 micro. 대표 = S / 현실성 = J, 섞어 보고하지 않는다. 결함별 라벨에도 §6.1의 1:1 매칭을 그대로 쓴다(한 트랜잭션에 라벨이 여러 개면 TP도 여러 개일 수 있다). 보고에 복수 라벨 트랜잭션 수를 병기한다.
