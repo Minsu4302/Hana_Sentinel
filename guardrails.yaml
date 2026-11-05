@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.28. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.29. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.28"
+derived_from: "docs/design-decision.md §3 매핑표 v1.29"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -129,6 +129,29 @@ guardrails:
       - "tests/test_llm_adapter.py::test_server_dripping_the_headers_ends_at_the_deadline"
       - "tests/test_llm_adapter.py::test_failure_carries_no_prompt_or_response_content"
     manifest_key: llm_adapter_bounds
+  - id: llm_view_budget
+    description: "LLM 입력 뷰는 순서·머리꼬리 보존 규칙을 따르고 예산 관계식 안에 있다. 잘리면 서버가 limitations를 붙인다"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: llm_view_budget
+  - id: llm_concurrency
+    description: "LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: llm_concurrency
+  - id: llm_model_identity
+    description: "model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능"
+    target_layer: "외부"
+    status:
+      state: unverifiable
+    verification_tests: []
+    manifest_key: llm_model_identity
   - id: inference_server_binding
     description: "추론 서버의 바인딩 주소, 그리고 루프백 포트에서 듣는 프로세스의 정체성(포워더 여부·포트 선점)은 우리 테스트 밖 — OS·운영 절차가 실주체. 기동 절차 문서로 보완"
     target_layer: "외부"
@@ -525,9 +548,17 @@ guardrails:
     target_layer: "테스트"
     status:
       state: not_implemented
-      target: "수용 요청 감사(B-6) 범위 확정 시"
+      target: "결선 PR(범위 — LLM 감사)"
     verification_tests: []
     manifest_key: audit_write_failure
+  - id: llm_io_audit
+    description: "LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: llm_io_audit
   - id: masked_span_integrity
     description: "Body 불변식 1~6을 ③에서 검증"
     target_layer: "스키마·validator"
@@ -678,6 +709,30 @@ guardrails:
       derived_from: [evidence_min_one, evidence_ref_integrity, server_assigned_status, category_closed_enum]
     verification_tests: []
     manifest_key: output_schema_gate
+  - id: producer_gate_merge
+    description: "생산자별 초안을 각각 검증한 뒤 (category, CNA 집합) 일치를 병합하고 _assign 1회로 만든다. 규칙 초안 거부는 output_rejected, LLM 초안 거부·실패는 completed + 규칙 결과 + 실패 사유"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: producer_gate_merge
+  - id: clean_requires_no_failure
+    description: "깨끗함 = completed ∧ findings [] ∧ 실패 사유 없음. LLM 실패 + 빈 findings는 깨끗함이 아니다"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: clean_requires_no_failure
+  - id: prompt_model_freeze
+    description: "rule_llm의 test split은 FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정(아니면 동결 순서 밖 표기)"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "결선 PR"
+    verification_tests: []
+    manifest_key: prompt_model_freeze
   - id: completed_via_gate
     description: "④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정)"
     target_layer: "테스트"
@@ -731,7 +786,7 @@ guardrails:
     verification_tests: []
     manifest_key: corroboration_check
   - id: hallucinated_literal_isolation
-    description: "환각 리터럴 격리"
+    description: "환각 리터럴 격리(LLM 자유 문자열의 정책 패턴 리터럴 치환 + 플래그, 원문 저장·로그 금지, 플래그 달린 evidence는 유효 근거 제외)"
     target_layer: "테스트"
     status:
       state: not_implemented
@@ -743,7 +798,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: not_implemented
-      target: "LLM 결선 시"
+      target: "세션 개념 도입 시"
     verification_tests: []
     manifest_key: anomaly_aggregation
   - id: eval_harness

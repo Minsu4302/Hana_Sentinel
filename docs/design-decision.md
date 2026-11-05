@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.32 — Sentinel Harness
+# (A) 설계확정서 v1.33 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.32 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.33 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -61,7 +61,9 @@
 > **v1.30 (매핑표 v1.26 유지):** S v2 동결 기록(§6.2) + 카탈로그 필드 목록을 결함별 라벨에 맞춤 + `dataset_case_independence` 설명에서 'S v2 동결 시' 삭제. §3·계약 변경 없음.
 > **v1.31 (매핑표 v1.27):** 어댑터 계약 1부 — 송신 경로(코드 0). src/sentinel에 http.client import를 허용하는 첫 계약이다(금지선 문구 불변). §1.3 ⓐ 해석 신설 + ⓑ 해석 강제 매핑·가중치 반입 + §3.1 `no_autonomous_send` 문구(예외: 어댑터 1파일의 http.client) + 신규 `llm_adapter_loopback_only`·`llm_adapter_no_target_resend`·`llm_input_from_sanitized`·`llm_adapter_bounds`(not_implemented)·`inference_server_binding`(unverifiable) + `egress_enforcement_owner` 노트 + §1.4 N1·N2행 + 부록 구조화 출력·추론 서버 선정 기준.
 > **v1.32 (매핑표 v1.28):** 어댑터 구현(코드 PR — 계약 변경 없음, 파이프라인 결선 없음). §3.1 `llm_adapter_loopback_only`·`llm_adapter_no_target_resend`·`llm_input_from_sanitized`·`llm_adapter_bounds` 승격(not_implemented → enforced) + `no_autonomous_send` 노트(실제 예외 반영). ③의 통과 표지 `SanitizedEnvelope` 도입.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05)
+> **v1.33 (매핑표 v1.29):** 어댑터 계약 2부 — 파이프라인·출력·감사(코드 0). §2.4 '전체 폐기'를 생산자 초안 단위로(계약 변경 — 부분 수용 금지는 유지) + 인젝션 피해 범위 + 환각 리터럴 재정의 + `analysis_meta.llm_outcome` / §2.5 `skipped_reasons` 구분·깨끗함 정의·실패 사유 닫힌 목록 / §2.8 신설(입력 뷰·프롬프트·구조화 출력·감사·model_id·추론 서버 인증·동시성) / §3.0 / §6.2·§6.3 J2·J3·J6, 프롬프트·모델 동결, test 측정 기록 / §3 신규 키 7개·재목표 3개.
+  - `analysis_meta.llm_outcome` = 가산, 소비자 없음(결선 전). `schema_version` 유지.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05)
 
 ---
 
@@ -264,7 +266,8 @@ AnalysisResult
 ├─ findings       : [Finding]         # 탐지 4종만. 빈 배열 = 정상(단, ExecutionResponse와 구분 ↓)
 ├─ advisory_signals: [AdvisorySignal] # 카테고리 밖 조언. ★탐지 아님
 └─ analysis_meta  : { model_id | null, policy_version, prompt_version | null, ruleset_version,
-                      elapsed_ms, token_usage?, pipeline_mode: rule_only | rule_llm, manifest_snapshot }
+                      elapsed_ms, token_usage?, pipeline_mode: rule_only | rule_llm,
+                      llm_outcome: null | ok | rejected | failed:<사유>, manifest_snapshot }   # rule_only에서 null
 
 Finding
 ├─ finding_id(UUID)
@@ -284,7 +287,7 @@ Evidence
 ├─ pointer: Locator        # §2.6. locus는 Locator 안의 판별자다(별도 locus 필드 없음)
 ├─ observation(str)        # 관측 사실(해석 아님). 가명 라벨 그대로 인용 가능
 ├─ corroboration: matched|unmatched|not_checkable|not_run   # 서버 생성(초안 아님). not_run=대조 미실행 / not_checkable=대조 불가
-├─ anomaly_flags: [...]    # 서버 재대조 로직이 생성(초안 아님). 예: hallucinated_literal_suspected
+├─ anomaly_flags: [...]    # 서버가 생성(초안 아님). 값: hallucinated_literal_suspected
 └─ review_required(bool)   # 서버 기본값 true(미대조 상태의 fail-safe)
 
 AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], suggestion }
@@ -298,10 +301,14 @@ AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], sugges
 - **produced_by 서버 부여:** 서버가 생산 경로로 부여한다(초안에 없고, 게이트에는 호출자 인자로만 들어간다). 근거: 초안이 자기 생산자를 쓰면 J6(produced_by별 P/R)가 자기신고가 된다.
 - **analysis_meta:** `pipeline_mode`는 닫힌 enum `rule_only | rule_llm`이다. `model_id`·`prompt_version`은 rule_only에서 null이고, 그 외에는 필수다(LLM이 없는 경로에 모델·프롬프트 값을 지어내지 않는다).
 - **corroboration·review_required:** 서버가 생성한다(초안 아님). `not_run` = 대조 미실행, `not_checkable` = 대조 불가. `review_required`의 서버 기본값은 true — 미대조 상태의 fail-safe.
-- **출력 검증 규칙(전체 폐기):** 초안(규칙·LLM)의 어느 한 부분이라도 검증에 실패하면 결과 전체를 폐기한다(부분 수용 금지). 폐기는 조용히 하지 않는다 — 사유 코드를 감사에 남기고, `ExecutionResponse.analysis_status = output_rejected`로 명시한다(§2.5). 근거: 깨끗한 부분만 골라내는 것은 환각을 부분적으로 신뢰하는 것이다. 빈 결과로 위장하면 '분석 실패'와 '분석 후 깨끗함'이 다시 섞인다.
+- **출력 검증 규칙(전체 폐기 — 생산자 초안 단위):** 한 생산자의 초안 어느 한 부분이라도 검증에 실패하면 그 초안 전체를 폐기한다(부분 수용 금지). 폐기는 조용히 하지 않는다 — 사유 코드를 감사에 남긴다. 근거: 깨끗한 부분만 골라내는 것은 환각을 부분적으로 신뢰하는 것이다. 빈 결과로 위장하면 '분석 실패'와 '분석 후 깨끗함'이 다시 섞인다.
+  - 생산자별 초안을 받는 게이트 함수가 각 초안을 검증하고, (category, CNA 집합)이 일치하면 병합한 뒤(문구는 규칙 쪽, `produced_by=hybrid`) `_assign`을 1회 호출한다. 근거: 두 초안을 하나로 묶으면 LLM이 실패할 때마다 결정론적인 규칙 결과까지 사라지고 J6 해석도 흐려진다.
+  - 규칙 초안 거부 = `output_rejected`(시스템 버그, fail-closed). LLM 초안 거부·실패 = `completed` + 규칙 결과 + 실패 사유(§2.5).
+- **인젝션 피해 범위:** LLM에게는 도구·송신이 없으므로 인젝션의 최대 피해는 틀린 초안이며, 게이트와 사람이 거른다.
 - **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. 초안에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
 - **evidence 무결성:** transaction_ref ∈ analyzed_refs + pointer가 마스킹 후 데이터에서 해석됨 + pointer/observation이 **마스킹 후 데이터로 검증 가능** + observation 핵심 주장이 실제 발견되는지 재대조.
-- **환각 리터럴 격리:** 재대조 실패 + 민감패턴 의심 → `hallucinated_literal_suspected`(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 의심 문자열 미저장·미로그·집계 원문 제외. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
+- **환각 리터럴 격리:** LLM 자유 문자열(observation·hypothesis·limitations·next_steps)에 정책 패턴 리터럴이 있으면, 같은 정책 패턴 집합 안에서 ③이 데이터에 없음을 보장하므로 데이터 밖 값이다. 치환하고 `hallucinated_literal_suspected`를 붙인다(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 원문은 저장·로그하지 않는다. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
+  - 한계: 정책 패턴에 걸리지 않는 환각(지어낸 이름·값)은 잡지 못한다 — `corroboration_check`(미구현)의 몫이다.
 - **중복 처리:** Finding끼리는 (category, Evidence CNA 집합)이 정확히 같을 때만 병합한다(CNA → §2.6). CNA가 일부 겹치는 것만으로는 병합하지 않는다. advisory의 CNA 집합이 어떤 finding과 정확히 같으면 advisory를 버린다(finding 우선). 평가 채점은 이 중복 처리를 거친 출력을 대상으로 한다.
   - 근거: 겹침으로 병합하면 사슬 병합이 생기고, 거친 노드(body_text)가 서로 다른 결함을 끌어모은다. 보안 도구에서 과병합은 결함을 숨기고, 과소병합은 중복을 보여 줄 뿐이다(fail-safe 방향). 남은 중복은 평가에서 측정된다.
 
@@ -313,10 +320,14 @@ ExecutionResponse = { analysis_status, skipped_reasons: [str], manifest_snapshot
 
 - **`analysis_status` = 닫힌 enum:** `not_implemented | completed | output_rejected`.
   - `not_implemented`: 분석 단계가 구현되지 않아 분석하지 않음(현재 ④는 이 값을 반환하지 않는다 — 규칙 경로가 `completed`·`output_rejected`를 반환한다).
-  - `completed`: 분석이 끝나고 결과(AnalysisResult)가 `result`에 동봉됨. 분석 후 깨끗함 = `completed` + `findings: []`.
-  - `output_rejected`: 초안(규칙·LLM)이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
+  - `completed`: 분석이 끝나고 결과(AnalysisResult)가 `result`에 동봉됨.
+  - `output_rejected`: 규칙 초안이 검증에 실패해 결과 전체를 폐기함(§2.4 출력 검증 규칙 — 시스템 버그). 입력 거부(HTTP 4xx)와는 다른, **출력** 거부다.
 - 세 값은 "분석 안 함 / 분석 후 결과 있음(깨끗함 포함) / 분석 결과 폐기"를 구분하기 위한 것이다.
 - **불변식:** `completed` ⇔ `result` ≠ null / `not_implemented`·`output_rejected` ⇒ `result` = null.
+- **`skipped_reasons`:** '모드상 미수행'(예: `llm_analysis_not_implemented`)과 '실패'(`llm_rejected`·`llm_failed:<사유>`)를 구분한다. rule_llm 성공 시 빈 목록을 허용한다.
+  - 실패 사유 닫힌 목록: `unavailable` · `timeout` · `oversize` · `truncated`(finish_reason=length) · `unparseable` · `audit_write`.
+  - `analysis_meta.llm_outcome` = `ok | rejected | failed:<사유>`.
+- **깨끗함 = `completed` ∧ `findings: []` ∧ 실패 사유 없음.** LLM 실패 + 빈 findings는 깨끗함이 아니다.
 
 ### 2.6 공용 타입 (§2.2·§2.3·§2.4가 참조 — 의존 방향은 §2.6 → 나머지, 한쪽뿐)
 ```
@@ -391,9 +402,25 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - 근거: common_types(§2.6)에 두면 엔진이 물리적으로 import할 수 있어 '있는데 안 쓴다'를 따로 지켜야 한다. 코드 응집도를 이유로 common_types를 택하지 않는다.
 - **schema_version:** 원본 JSON 최상위에 `schema_version: "1.0"`을 둔다(Envelope가 버전을 지는 것과 같은 자리). 마스커는 이 버전을 읽고, 모르는 버전이면 거부한다. 첫 소비자 = fixture 마스커(마스커-A에서 생긴다). 지금은 정의만이다 — §2 버전 규칙.
 
+### 2.8 LLM 경로 (rule_llm) — 입력 뷰·프롬프트·구조화 출력·감사
+
+- **입력 뷰:** `llm_input` 한 곳에서만 만든다(`llm_input_from_sanitized`). 순서는 헤더 → 파라미터 → 본문이고, 본문은 머리와 꼬리를 보존한다. §2.2의 절단과는 별개다.
+  - 뷰가 잘리면 서버가 limitations에 "LLM 입력 뷰가 일부만 포함"을 붙인다(LLM이 쓰지 않는다).
+  - Evidence는 뷰가 아니라 마스킹된 Transaction 전체에 대해 해석한다. 게이트는 전체 Transaction을 본다.
+  - 예산 관계식: 뷰 토큰 / 프롬프트 처리 속도 + max_tokens / 생성 속도 + 여유 ≤ 전체 기한(`llm_adapter_bounds`). 값은 설정값이다(정본이 아니며 결선 PR에서 실측한다).
+- **프롬프트:** 고정 지시문 + 구획된 데이터 블록이다. 트랜잭션은 JSON 문자열로 넣고 신뢰 불가 데이터로 표시한다. `prompt_version` = 템플릿 파일 해시다.
+- **구조화 출력:** 정의처는 Pydantic FindingDraft 목록이다. 전송은 `$ref`를 풀어 넣은 평탄화 스키마(response_format)다.
+  - LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋).
+  - 파싱 실패 → `llm_failed:unparseable`. 재시도는 없다(v1 — 다시 생성하면 J2를 가린다).
+- **감사(B-6):** LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, `llm_outcome`, `prompt_version`, `model_id`를 남긴다. 내용은 남기지 않는다(`llm_io_audit`). 내용 보존은 저장 설계(D5)로 넘긴다.
+  - LLM 감사 기록에 실패하면 LLM 결과를 폐기하고(`llm_failed:audit_write`) 규칙 결과는 유지한다.
+- **model_id:** `이름@sha256:<가중치 해시>`다. 기동 절차에서 기록한 값을 설정으로 받는다. 서버가 보고하는 경로와 대조하는 데까지만 가능하다(`llm_model_identity` — unverifiable).
+- **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사의 고정 목록(메시지 역할·response_format·인증 헤더)은 결선 PR에서 다시 고정한다.
+- **동시성:** LLM 호출은 스레드풀에서 하고 동시 처리는 1건이다. 이벤트 루프를 막지 않는다 — LLM 처리 중에도 토큰 검증이 응답해야 한다(`llm_concurrency`).
+
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.28 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.29 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -412,9 +439,9 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
    │  (+ fail-closed: applied==false ‖ failed==true ‖ 필드누락 ‖ 타입오류 → 거부)
    │통과
 ④ [현재] 규칙엔진 → 출력 게이트 → ExecutionResponse(analysis_status="completed" | "output_rejected") 반환(rule_only, 저장 없음)
-   [이후]  규칙엔진 → LLM → 출력 스키마 검증 → 저장
+   [이후]  규칙엔진 + LLM(§2.8) → 생산자별 게이트·병합(§2.4) → 저장
 ```
-**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부) — 수용 요청 감사(B-6) 범위 확정 시.
+**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부)는 모든 감사 기록의 원칙이다. 현재 강제 범위(`audit_write_failure`)는 LLM 감사이고(§2.8 — LLM 결과 폐기, 규칙 결과 유지), 수용 요청 감사 등 나머지는 미구현이다.
 
 ### 3.1 D. 실행경계
 | 규칙 | 목표층위 | 상태 | manifest 키 |
@@ -428,6 +455,9 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 — 현존 경로 한정, 결선 PR에서 재증명 / LLM 출력은 게이트로만) | 아키텍처 테스트 | enforced(현존 경로 한정 — 호출 지점 0곳. 결선 PR에서 재증명) | `llm_adapter_no_target_resend` |
 | 어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정. 타입은 2부 입력 뷰) | 아키텍처 테스트 | enforced(③ 표지 타입과 불변 스냅샷, 생성 지점 정적 고정. 입력 뷰는 2부) | `llm_input_from_sanitized` |
 | 어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드 | 테스트 | enforced | `llm_adapter_bounds` |
+| LLM 입력 뷰는 순서·머리꼬리 보존 규칙을 따르고 예산 관계식 안에 있다. 잘리면 서버가 limitations를 붙인다 | 테스트 | not_implemented → 결선 PR | `llm_view_budget` |
+| LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다 | 테스트 | not_implemented → 결선 PR | `llm_concurrency` |
+| model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능 | — | unverifiable | `llm_model_identity` |
 | 추론 서버의 바인딩 주소, 그리고 루프백 포트에서 듣는 프로세스의 정체성(포워더 여부·포트 선점)은 우리 테스트 밖 — OS·운영 절차가 실주체. 기동 절차 문서로 보완 | — | unverifiable | `inference_server_binding` |
 | 127.0.0.1 바인딩 | 테스트+설정 | enforced | `loopback_binding` |
 | 요청자 토큰 검증(공유시크릿) | validator+테스트 | enforced | `request_token_validation` |
@@ -471,7 +501,8 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 원본 트래픽 미기록(기능 부재) | 테스트 | enforced | `no_raw_persistence` |
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
-| 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 수용 요청 감사(B-6) 범위 확정 시 | `audit_write_failure` |
+| 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 결선 PR(범위 — LLM 감사) | `audit_write_failure` |
+| LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다 | 테스트 | not_implemented → 결선 PR | `llm_io_audit` |
 | Body 불변식 1~6을 ③에서 검증 | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `masked_span_integrity` |
 | 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | enforced(relation_preserving 출력에만 — strict는 label=null이라 대상 아님) | `label_consistency` |
 
@@ -489,11 +520,14 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | status 서버부여·LLM 생성불가 | validator | enforced(검증 함수 단위) | `server_assigned_status` |
 | category 폐쇄형 enum | 스키마 | enforced(검증 함수 단위) | `category_closed_enum` |
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
+| 생산자별 초안을 각각 검증한 뒤 (category, CNA 집합) 일치를 병합하고 _assign 1회로 만든다. 규칙 초안 거부는 output_rejected, LLM 초안 거부·실패는 completed + 규칙 결과 + 실패 사유 | 테스트 | not_implemented → 결선 PR | `producer_gate_merge` |
+| 깨끗함 = completed ∧ findings [] ∧ 실패 사유 없음. LLM 실패 + 빈 findings는 깨끗함이 아니다 | 테스트 | not_implemented → 결선 PR | `clean_requires_no_failure` |
+| rule_llm의 test split은 FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정(아니면 동결 순서 밖 표기) | 테스트 | not_implemented → 결선 PR | `prompt_model_freeze` |
 | ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)) | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
-| 환각 리터럴 격리 | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |
-| 반복 이상 → 세션 신호 | 테스트 | not_implemented → LLM 결선 시 | `anomaly_aggregation` |
+| 환각 리터럴 격리(LLM 자유 문자열의 정책 패턴 리터럴 치환 + 플래그, 원문 저장·로그 금지, 플래그 달린 evidence는 유효 근거 제외) | 테스트 | not_implemented → LLM 결선 시 | `hallucinated_literal_isolation` |
+| 반복 이상 → 세션 신호 | 테스트 | not_implemented → 세션 개념 도입 시 | `anomaly_aggregation` |
 | 평가 하네스 | 테스트 | enforced(채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 층 B 실측 가능(rule_only — 러너 `make eval`). LLM 경로의 층 B는 LLM 결선 이후) | `eval_harness` |
 | 정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨 | 테스트 | enforced(모드 무관 — 항상 적용) | `canonical_address` |
 | 엔진(src/sentinel)이 평가 라벨 경로를 읽지 않음(데이터 읽기 금지 — `engine_tools_isolation`의 코드 import 금지와 다른 격리) | 아키텍처 테스트 | enforced(정적 범위 — 라벨 경로 문자열·라벨 타입 import·이름 0까지. 런타임 조립 경로는 범위 밖) | `label_isolation` |
@@ -624,6 +658,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - **CORS 허용 목록 일치 사례:** 관측상 SM-P2와 같으므로 그렇게 라벨하고, 그 배경의 사례를 따로 구성하지 않는다.
   - **작성 순서:** ruleset 동결(rules-2, 완료) → 지침 동결 → 카탈로그 → 생성·동결 → 생산자 첫 실행. LLM은 dev에서만 조정한다(기계로 증명 불가 — 한계).
   - **채점 단위:** split_scheme이 있는 데이터셋은 split 인자가 필수이고 그 split만 채점한다. 인자가 없으면 거부한다.
+  - **rule_llm의 test split:** FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정이다. 아니면 "동결 순서 밖 — 측정 아님"으로 표기한다(`prompt_model_freeze`). test 측정마다 progress-log 커밋이 의무다(대상은 S v2. 억지력이며 증명이 아니다).
   - **동결 순서:** 생성기는 현재 규칙 해시가 FROZEN_RULESETS에 없으면 생성을 거부한다. 하네스는 test split 보고에서 데이터셋 기록과 다른 ruleset이면 "동결 순서 밖 — 측정 아님"으로 표기한다(`producer_freeze_order`). 해시 범위는 rule_engine.py·strict_json.py·canonical_address.py이고, 타입 파일(common_types·output_schema·schema)은 제외한다(한계 — 타입 변경은 잡지 못한다).
 - **S v2 동결:** 마스킹된 Envelope 120건 + 라벨 파일(LabelFile 1.1) + 사례 카탈로그(`datasets/S/catalog-v2.json`). 엔드포인트 30개. test 80건(labeled_positive 40, verified_clean 40 — hard negative 26, 일반 14), dev 40건(labeled_positive 20, verified_clean 20). 복수 라벨 트랜잭션 test 5건, dev 2건. 라벨링 지침 v1, ruleset rules-2, 데이터 커밋 `d85b0fb`. 원본은 커밋하지 않는다(§1.3 ⓕ).
   - 한계: J3 전체 비율은 실제 빈도 추정이 아니다(hard negative 과대 대표 — hard negative·일반 clean 부분집합을 따로 읽는다). 요청 본문 값은 구성하지 않았다. 사례는 템플릿으로 생성되어 유사하고(① 소유자 필드 포함), dev/test는 엔드포인트 단위로만 분리되어 패턴 템플릿을 공유한다 — dev 튜닝 효과가 test로 실제보다 잘 옮겨 갈 수 있다. 경로 사례는 실제 요청에서는 인코딩될 문자를 원문으로 구성했다.
@@ -635,12 +670,12 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - category는 맞혔으나 위치가 틀린 예측은 어느 쪽 지표에도 TP로 들어가지 않는다(매칭 불성립).
   - 정당하게 두 category에 걸치는 결함은 V.categories를 집합으로 둔다.
 - **중복:** 매칭 후 남은 중복 예측은 FP로 센다(1:1 매칭에서 둘째 예측은 자연히 FP). 이와 별도로 중복률을 진단 지표로 보고한다.
-- **J2 output_rejected 트랜잭션:** 그 라벨은 전부 FN이다(제외 금지). 거부율은 별도 보고한다.
-- **J3 정상 오탐률** = verified_clean 중 finding ≥ 1인 비율. hard negative 부분집합은 별도 보고한다.
+- **J2 거부·실패:** `output_rejected`는 규칙 쪽 버그만 뜻하고, 그 라벨은 전부 FN이다(제외 금지). LLM 거부율·실패율(사유별)을 보고한다.
+- **J3 정상 오탐률** = verified_clean 중 finding ≥ 1인 비율. hard negative 부분집합은 별도 보고한다. rule_llm은 전체와 LLM 성공 부분집합을 병기한다.
 - **J4 검증 가능한 결과 비율** = 중복 처리 후 finding 중 corroboration=matched가 1개 이상인 비율. `corroboration_check` 구현 전에는 not_run으로 표기하고 숫자를 내지 않는다.
 - **J5 분석 시간 절감률:** 1인 단계에서는 보류한다(unverifiable 성격). 숫자화하지 않는다.
   - 근거: 정답을 아는 사람이 잰 수동 시간은 거짓 보장이다. 팀 확장 시 결함 목록을 모르는 점검자 대상, 교차 배치, 트랜잭션 풀 분할, 시간은 정확도와 함께 보고 — 프로토콜로 이월.
-- **J6 AI 기여도:** 규칙 단독 vs 규칙+LLM ablation(같은 데이터셋, ΔP·ΔR), produced_by별 P/R, LLM만 찾은 TP 수. 규칙 단독 기준선 = `pipeline_mode=rule_only` 실행이다(같은 데이터셋·같은 `ruleset_version`끼리 비교).
+- **J6 AI 기여도:** 규칙 단독 vs 규칙+LLM ablation(같은 데이터셋, ΔP·ΔR), produced_by별 P/R, LLM만 찾은 TP 수. 규칙 단독 기준선 = `pipeline_mode=rule_only` 실행이다(같은 데이터셋·같은 `ruleset_version`끼리 비교). rule_llm은 전체와 LLM 성공 부분집합을 병기한다.
 - **J7 불확실성:** 비율은 Wilson 95% 구간. 버전 간 비교는 트랜잭션 단위 쌍체 bootstrap. 대표 지표에서 차이 구간이 통째로 0 아래면 회귀이고, 개선 주장도 같은 기준을 쓴다.
 - **J8 최소 표본:** Wilson 구간 반폭 ≤ 0.15일 때만 점추정값을 낸다. 그보다 넓으면 "표본 부족(n=k)" + 구간. 0.15는 초기 임계값이다(설정값 — `DEFAULT_PORT`와 같은 성격(실측으로 조정 가능, 정본이되 불변식 아님)).
 - **J9 보고 머리:** 데이터셋 버전·집합(S/J)·분할(dev/test, 없으면 null)·pipeline_mode·model_id·prompt_version·ruleset_version. rule_only에서 model_id·prompt_version은 null로 적는다(대체 문자열 금지).

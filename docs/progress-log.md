@@ -1184,3 +1184,22 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 - **추론 서버에 API 키를 쓸지** → 이월처: 2부. 지금 어댑터는 키를 보내지 않는다.
 - **`llm_input`의 내용은 트랜잭션 JSON 그대로다** → 이월처: 2부 입력 뷰.
 - **결선 이월**: ④는 아직 원본 Envelope를 쓴다 — 결선 PR에서 `entry.analyze`가 `SanitizedEnvelope`를 받아 ④·어댑터 모두 같은 스냅샷을 쓰게 하고 `tests/test_sanitization.py:152`를 함께 고친다.
+
+---
+
+## (A) v1.33 — 어댑터 계약 2부 (Issue #97)
+
+### 0단계 결과
+- (A) v1.32 / 매핑표 v1.28 → 문서 v1.33, 매핑표 v1.29.
+- 부딪힌 문장: §2.4 출력 검증 규칙·환각 리터럴·anomaly_flags 주석·analysis_meta 트리 / §2.5 completed·output_rejected의 뜻 / §3.0 [이후]·감사 실패 줄 / §6.3 J2·J3·J6.
+- model_id 출처는 신규 unverifiable 키 `llm_model_identity`로 제안했다(egress 계열이 아니라 값의 진위 문제다).
+
+### 결과
+- §2.8 신설, 신규 키 7개(not_implemented 6, unverifiable 1), 재목표 3개. 코드·테스트 변경 0. `docs/inference-server.md`에 `--no-slots`·API 키.
+
+### 계약이 코드보다 앞선 구간 (이월: 결선 PR)
+- 생산자별 게이트, `llm_outcome`, `skipped_reasons` 최소 1개 해제, 입력 뷰, 프롬프트, 평탄화 스키마, 환각 리터럴, 감사, 스레드풀, API 키 헤더, 하네스 J2·J3·J6.
+
+### 해소
+- **G1 미해결 '전부 거부 실행의 보고'**: LLM 거부는 `completed`로 메타가 남아 해소된다. 러너의 `all_output_rejected`는 규칙 버그 경로로만 남는다.
+- **`skipped_reasons` 최소 1개**(v1.24 이월) → 계약 해소, 구현은 결선 PR.
