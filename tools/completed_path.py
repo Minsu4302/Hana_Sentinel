@@ -1,7 +1,10 @@
-"""`completed_via_gate` 정적 검사 — (A) §3.5. src/sentinel에서 AnalysisResult·ExecutionResponse가 만들어지는 곳은 각각 한 곳뿐.
+"""생성 지점 정적 검사 — (A) §3.5 `completed_via_gate`, §3.1 `llm_input_from_sanitized`. src/sentinel에서 아래 타입이 만들어지는 곳은
+각각 한 곳뿐.
 
 - AnalysisResult: `pipeline/output_gate.py`의 `_assign` 안 생성자 호출 1개
 - ExecutionResponse: `pipeline/execution.py`의 `build_execution_response` 안 생성자 호출 1개
+- SanitizedEnvelope: `pipeline/sanitization_check.py`의 `verify_sanitization` 안 생성자 호출 1개
+- LlmInput: `pipeline/llm_adapter.py`의 `llm_input` 안 생성자 호출 1개(그곳의 `isinstance` 입력 확인 1개는 허용)
 
 금지(범위는 src/sentinel — tools·tests 제외):
   ① 두 이름의 그 밖의 값 참조 전부: 다른 곳의 생성자, `.model_validate*`, `TypeAdapter(...)`, 별칭 대입, 상속, 문자열 표기.
@@ -22,7 +25,10 @@ from pathlib import Path
 from typing import Final
 
 BUILDERS: Final = {"AnalysisResult": ("pipeline/output_gate.py", "_assign"),
-                   "ExecutionResponse": ("pipeline/execution.py", "build_execution_response")}
+                   "ExecutionResponse": ("pipeline/execution.py", "build_execution_response"),
+                   "SanitizedEnvelope": ("pipeline/sanitization_check.py", "verify_sanitization"),
+                   "LlmInput": ("pipeline/llm_adapter.py", "llm_input")}
+ISINSTANCE_SITES: Final = {"SanitizedEnvelope": ("pipeline/llm_adapter.py", "llm_input")}  # 입력 타입 확인 1곳
 BYPASS_ATTRS: Final = frozenset({"model_construct", "construct", "parse_obj", "parse_raw", "parse_file", "from_orm"})
 MODEL_COPY_SITE: Final = ("pipeline/output_gate.py", "_normalized")
 RAW_WRITE_NAMES: Final = frozenset({"__setattr__", "__delattr__", "__dict__"})
@@ -54,12 +60,22 @@ class _Scan(ast.NodeVisitor):
             self.visit(node.value)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module == "dataclasses" and any(a.name == "replace" for a in node.names):
+            self._flag("bypass:replace", node)
         for alias in node.names:
             if alias.name in BUILDERS and alias.asname:
                 self._flag(f"aliased_import:{alias.name}", node)
 
+    def _allowed_isinstance(self, node: ast.Call) -> bool:
+        return (isinstance(node.func, ast.Name) and node.func.id == "isinstance" and len(node.args) == 2
+                and isinstance(node.args[1], ast.Name)
+                and ISINSTANCE_SITES.get(node.args[1].id) == (self.rel, self.function))
+
     def visit_Call(self, node: ast.Call) -> None:
         func = node.func
+        if self._allowed_isinstance(node):
+            self.visit(node.args[0])
+            return
         if isinstance(func, ast.Name) and BUILDERS.get(func.id) == (self.rel, self.function):
             self.builds[func.id] += 1
             for child in [*node.args, *node.keywords]:
@@ -87,6 +103,8 @@ class _Scan(ast.NodeVisitor):
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         self._check_assign(node.attr, node)
+        if node.attr == "replace" and isinstance(node.value, ast.Name) and node.value.id == "dataclasses":
+            self._flag("bypass:replace", node)
         if node.attr in BUILDERS:
             self._flag(f"reference:{node.attr}", node)
         if node.attr in BYPASS_ATTRS or node.attr == "__class__":

@@ -1159,3 +1159,28 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 미해결
 - **`llama-server`는 요청의 `image_url`이 원격 URL이면 서버가 직접 가져온다**(문서 확인, 끄는 플래그는 못 찾음) → `llm_adapter_loopback_only`의 'content는 문자열만'과 기동 조건(텍스트 전용 모델, `--offline`)으로 대체(리뷰 반영).
 - **Windows 10 LTSC 1809 동작**: Ollama는 공식 최소 요건(22H2)에 못 미친다. llama.cpp는 문서에 최소 버전이 없다 → 이월처: 민수 판정 뒤 실측.
+
+---
+
+## 어댑터 구현 + 1809 실측 (Issue #95)
+
+### 0단계 결과
+- ③ `verify_sanitization`은 `None`을 돌려줘 통과를 타입으로 구분할 수 없었다 → 표지 타입 `SanitizedEnvelope` 도입(승인).
+- Envelope 계열은 `frozen`이지만 `list` 필드는 가변이다 → 표지는 원본을 참조하지 않고 JSON 문자열 스냅샷을 담는다. Envelope 자체는 바꾸지 않았다.
+
+### 결과
+- `sentinel/pipeline/llm_adapter.py`(http.client만, 호출 지점 0곳), `tools/llm_adapter_check.py`, `docs/inference-server.md`. 파이프라인 결선 없음.
+- `no_autonomous_send`의 파일 예외는 `tools/arch_boundary.py`의 `ALLOWED_SEND` 1건이다.
+
+### 1809 실측 (이 PC: Windows 10 빌드 17763, 6코어·12스레드, 메모리 약 16GB)
+- 바이너리: `llama-b12119-bin-win-cpu-x64.zip`, SHA-256 `37a6c6c9eae5b7baa2619cba513781fad15ca0f63f7d07362ec83a294cf96f86`(GitHub asset digest 일치).
+- 모델: `qwen2.5-1.5b-instruct-q4_k_m.gguf`(rev `91cad51170dc`, Apache-2.0, 1,117,320,736바이트), SHA-256 `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`(일치).
+- 방화벽: bin 폴더 실행 파일 22개 모두 아웃바운드 차단 규칙 확인, 차단 로그 켬. 기동은 규칙 완료 알림 뒤.
+- (a) 1809에서 기동됨(약 2초에 모델 로드). (b) `127.0.0.1:18765`만 LISTEN. (c) `/v1/chat/completions` + JSON 스키마 제약 5/5가 스키마를 지킴. (d) S v2 dev Envelope 중앙값 크기(1,078바이트, 377토큰)에서 프롬프트 처리 약 160토큰/초, 생성 약 14토큰/초, 요청당 6~9초. (e) 방화벽 로그의 아웃바운드 DROP 0건. 다만 이 로그에는 프로세스 이름이 없고, 아웃바운드 시도 자체가 없었다는 증명도 아니다.
+- 서버 로그에 입력 내용은 남지 않았다(이 버전, 기본 로그 수준).
+- 서버 경고: "API 키 없음, CORS 전체 허용" → `docs/inference-server.md`에 기록. 품질은 평가하지 않았다.
+
+### 미해결
+- **추론 서버에 API 키를 쓸지** → 이월처: 2부. 지금 어댑터는 키를 보내지 않는다.
+- **`llm_input`의 내용은 트랜잭션 JSON 그대로다** → 이월처: 2부 입력 뷰.
+- **결선 이월**: ④는 아직 원본 Envelope를 쓴다 — 결선 PR에서 `entry.analyze`가 `SanitizedEnvelope`를 받아 ④·어댑터 모두 같은 스냅샷을 쓰게 하고 `tests/test_sanitization.py:152`를 함께 고친다.

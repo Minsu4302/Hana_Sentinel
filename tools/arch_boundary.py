@@ -228,6 +228,20 @@ def scan_package(root: Path) -> list[Violation]:
 # 범위 밖이다. 테스트 egress 가드(소켓을 바꿔 끼워 '막는' 코드)는 tests/support에 있다(tests → egress_runtime_block).
 TOOLS_SEND_KINDS = (SEND, DYNAMIC, TESTS)
 
+# `no_autonomous_send`의 파일 예외((A) §3.1): 어댑터 1파일의 http.client만. 파일과 모듈이 모두 맞아야 한다.
+ALLOWED_SEND: dict[str, set[str]] = {"pipeline/llm_adapter.py": {"http.client"}}
+
+
+def _send_allowed(v: Violation, root: Path) -> bool:
+    rel = Path(v.path).relative_to(root).as_posix()
+    return any(v.target == m or v.target.startswith(m + ".") for m in ALLOWED_SEND.get(rel, ()))
+
+
+def engine_send_violations(engine_root: Path) -> list[Violation]:
+    root = Path(engine_root)
+    found = [v for v in scan_package(root) if v.kind in (SEND, DYNAMIC)]
+    return [v for v in found if not _send_allowed(v, root)]
+
 
 def tools_send_violations(tools_root: Path) -> list[Violation]:
     return [v for v in scan_package(tools_root) if v.kind in TOOLS_SEND_KINDS]

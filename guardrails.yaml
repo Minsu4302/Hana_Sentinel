@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.27. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.28. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.27"
+derived_from: "docs/design-decision.md §3 매핑표 v1.28"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -62,9 +62,12 @@ guardrails:
     target_layer: "아키텍처테스트"
     status:
       state: enforced
-      note: "현재 예외 없음 — 예외의 구현·테스트는 어댑터 구현 PR"
+      note: "예외 1건 — pipeline/llm_adapter.py의 http.client"
     verification_tests:
       - "tests/test_architecture.py::test_engine_package_has_no_send_or_socket_imports"
+      - "tests/test_llm_adapter.py::test_engine_send_exception_is_exactly_one_file_and_one_module"
+      - "tests/test_llm_adapter.py::test_http_client_in_another_file_is_a_violation"
+      - "tests/test_llm_adapter.py::test_other_send_module_in_the_adapter_is_a_violation"
       - "tests/test_architecture.py::test_rejects_planted_send_or_socket_import"
       - "tests/test_architecture.py::test_rejects_statically_unverifiable_dynamic_import"
       - "tests/test_architecture.py::test_rejects_planted_import_in_nested_subpackage"
@@ -75,33 +78,56 @@ guardrails:
     description: "어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단)"
     target_layer: "아키텍처테스트"
     status:
-      state: not_implemented
-      target: "어댑터 구현 PR"
-    verification_tests: []
+      state: enforced
+      note: "정적 범위 + 루프백 스텁의 동적 확인. 추론 서버 실행은 범위 밖"
+    verification_tests:
+      - "tests/test_llm_adapter.py::test_adapter_source_has_no_loopback_violation"
+      - "tests/test_llm_adapter.py::test_planted_edit_is_found"
+      - "tests/test_llm_adapter.py::test_planted_code_is_found"
+      - "tests/test_llm_adapter.py::test_connect_goes_only_to_the_loopback_address"
+      - "tests/test_llm_adapter.py::test_request_is_a_post_to_the_constant_path_with_string_content"
+      - "tests/test_llm_adapter.py::test_redirect_is_not_followed"
+      - "tests/test_llm_adapter.py::test_adapter_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_adapter.py::test_adapter_guard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_adapter_loopback_only
   - id: llm_adapter_no_target_resend
     description: "어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 — 현존 경로 한정, 결선 PR에서 재증명 / LLM 출력은 게이트로만)"
     target_layer: "아키텍처테스트"
     status:
-      state: not_implemented
-      target: "어댑터 구현 PR"
-    verification_tests: []
+      state: enforced
+      note: "현존 경로 한정 — 호출 지점 0곳. 결선 PR에서 재증명"
+    verification_tests:
+      - "tests/test_llm_adapter.py::test_input_type_has_only_the_content_field"
+      - "tests/test_llm_adapter.py::test_adapter_api_takes_no_host_or_target"
+      - "tests/test_llm_adapter.py::test_method_and_path_are_the_inference_api_constants"
+      - "tests/test_llm_adapter.py::test_nothing_calls_the_adapter_yet"
+      - "tests/test_llm_adapter.py::test_planted_call_site_is_found"
     manifest_key: llm_adapter_no_target_resend
   - id: llm_input_from_sanitized
     description: "어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정. 타입은 2부 입력 뷰)"
     target_layer: "아키텍처테스트"
     status:
-      state: not_implemented
-      target: "어댑터 구현 PR"
-    verification_tests: []
+      state: enforced
+      note: "③ 표지 타입과 불변 스냅샷, 생성 지점 정적 고정. 입력 뷰는 2부"
+    verification_tests:
+      - "tests/test_llm_adapter.py::test_input_comes_from_the_sanitized_snapshot"
+      - "tests/test_llm_adapter.py::test_value_that_did_not_pass_stage_three_is_refused"
+      - "tests/test_llm_adapter.py::test_envelope_itself_is_refused"
+      - "tests/test_llm_adapter.py::test_change_to_the_envelope_after_stage_three_does_not_reach_the_input"
+      - "tests/test_llm_adapter.py::test_sanitized_and_input_are_built_at_one_place_each"
+      - "tests/test_llm_adapter.py::test_planted_construction_is_found"
     manifest_key: llm_input_from_sanitized
   - id: llm_adapter_bounds
     description: "어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "어댑터 구현 PR"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_llm_adapter.py::test_oversized_response_stops_with_a_reason_code"
+      - "tests/test_llm_adapter.py::test_silent_server_ends_with_io_timeout_within_the_deadline"
+      - "tests/test_llm_adapter.py::test_server_dripping_the_body_ends_at_the_deadline"
+      - "tests/test_llm_adapter.py::test_server_dripping_the_headers_ends_at_the_deadline"
+      - "tests/test_llm_adapter.py::test_failure_carries_no_prompt_or_response_content"
     manifest_key: llm_adapter_bounds
   - id: inference_server_binding
     description: "추론 서버의 바인딩 주소, 그리고 루프백 포트에서 듣는 프로세스의 정체성(포워더 여부·포트 선점)은 우리 테스트 밖 — OS·운영 절차가 실주체. 기동 절차 문서로 보완"

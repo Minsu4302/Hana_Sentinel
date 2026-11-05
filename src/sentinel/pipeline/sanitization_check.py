@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+from dataclasses import dataclass
 from typing import Any, Final
 from urllib.parse import unquote_plus
 
@@ -115,7 +116,18 @@ def check_transaction(tx: Transaction, where: str, policy: SanitizationPolicy) -
     return found
 
 
-def verify_sanitization(envelope: Envelope, policy: SanitizationPolicy = DEFAULT_POLICY) -> None:
+@dataclass(frozen=True)
+class SanitizedEnvelope:
+    """③을 통과했다는 표지. 검증한 값의 불변 스냅샷을 담는다 — Envelope은 frozen이어도 목록이 가변이라 원본을 참조하지 않는다.
+    `verify_sanitization`만 만든다(`llm_input_from_sanitized`)."""
+    transactions_json: str
+
+
+def _snapshot(envelope: Envelope) -> str:
+    return envelope.model_dump_json(include={"transactions"})
+
+
+def verify_sanitization(envelope: Envelope, policy: SanitizationPolicy = DEFAULT_POLICY) -> SanitizedEnvelope:
     reasons: list[str] = []
     for i, tx in enumerate(envelope.transactions):
         reasons += check_transaction(tx, f"tx{i}", policy)
@@ -123,3 +135,4 @@ def verify_sanitization(envelope: Envelope, policy: SanitizationPolicy = DEFAULT
         unique = tuple(sorted(set(reasons)))
         audit_log.warning("sanitization_rejected count=%d reasons=%s", len(unique), ",".join(unique))
         raise SanitizationRejected(unique)
+    return SanitizedEnvelope(transactions_json=_snapshot(envelope))
