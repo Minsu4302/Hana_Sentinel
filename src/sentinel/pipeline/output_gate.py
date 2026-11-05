@@ -1,6 +1,9 @@
-"""출력 스키마 게이트 — (A) §2.4 출력 검증 규칙, §2.6 Locator, §3.5 C·E. 초안(규칙·LLM) → AnalysisResult | OutputRejection.
+"""출력 스키마 게이트 — (A) §2.4 출력 검증 규칙, §2.6 Locator, §3.5 C·E. 생산자별 초안 → AnalysisResult | OutputRejection.
 
-검사(하나라도 실패하면 결과 전체 폐기 — 부분 수용 없음):
+폐기 단위는 생산자 초안이다. 규칙 초안이 거부되면 OutputRejection(시스템 버그, fail-closed), LLM 초안이 거부되면 규칙 결과는
+남기고 `llm_outcome`에 적는다. 두 초안을 하나로 묶으면 LLM이 실패할 때마다 규칙 결과까지 사라진다.
+
+초안마다의 검사(하나라도 실패하면 그 초안 전체 폐기 — 부분 수용 없음):
   ① 초안 스키마(`AnalysisDraft`: strict, 추가 필드 금지 — 서버 부여 필드 주입은 `server_field_injected`,
      Locator 형태·JSON Pointer 문법 포함)
   ② category 폐쇄형 4종(`category_closed_enum`) — 초안 타입의 Literal
@@ -8,11 +11,12 @@
      않는다((A) 미정)
   ④ 모든 Evidence(finding·advisory)의 transaction_ref ∈ analyzed_refs(`evidence_ref_integrity`)
   ⑤ 모든 Evidence의 pointer(Locator)가 그 transaction(마스킹 후 데이터)에서 해석됨(`evidence_pointer_resolves`)
-모든 검사가 끝난 뒤 중복을 처리한다(§2.4): (category, Evidence CNA 집합)이 정확히 같은 Finding은 첫 초안만 남기고, CNA 집합이
-어떤 Finding과 정확히 같은 advisory는 버린다. 검증보다 뒤에 두는 이유: 먼저 병합하면 무효 초안이 병합으로 사라져 전체 폐기가
-부분 수용이 된다.
+LLM 초안에는 Locator의 range가 없어야 한다(뷰 오프셋 ≠ 원본 오프셋).
+모든 검사가 끝난 뒤 중복을 처리한다(§2.4): (category, Evidence CNA 집합)이 정확히 같은 Finding은 하나로 합친다. 생산자가 다르면
+규칙 문구를 남기고 produced_by=hybrid다. CNA 집합이 어떤 Finding과 정확히 같은 advisory는 버린다. 검증보다 뒤에 두는 이유: 먼저
+병합하면 무효 초안이 병합으로 사라져 전체 폐기가 부분 수용이 된다.
 통과하면 서버가 부여한다(`server_assigned_status` 외): status=unverified, finding_id=UUID, corroboration=not_run,
-anomaly_flags=[], review_required=true, severity_if_true=null, produced_by·analysis_meta=인자,
+anomaly_flags=[], review_required=true, severity_if_true=null, produced_by=생산 경로, analysis_meta=호출자가 만든 값,
 analyzed_refs=transactions의 ID 목록, schema_version="1.0". 헤더 Locator의 name은 소문자로 정규화해 저장한다.
 
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
@@ -31,7 +35,7 @@ analyzed_refs를 따로 받지 않고 transactions에서 파생한다 — 둘이
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, get_args
 from uuid import UUID, uuid4
@@ -43,7 +47,7 @@ from sentinel.canonical_address import canonical_address
 from sentinel.common_types import BodyLocator, HeaderLocator, ParamLocator, Range, ReqLineLocator, StatusLocator
 from sentinel.output_schema import (
     SERVER_ASSIGNED_FIELDS, AdvisorySignal, AnalysisDraft, AnalysisMeta, AnalysisResult, Evidence, EvidenceDraft,
-    Finding, ProducedBy)
+    Finding, FindingDraft, ProducedBy, LLM_FAILURE_REASONS)
 from sentinel.schema import Body, Transaction
 
 audit_log = logging.getLogger("sentinel.audit")
@@ -57,8 +61,11 @@ REASON_CODES: Final = (
     "evidence_missing",               # evidence 0개인 Finding
     "evidence_ref_outside_analyzed",  # analyzed_refs 밖 transaction_ref
     "pointer_unresolvable",           # Locator가 그 transaction의 마스킹 후 데이터에서 해석되지 않음
+    "llm_range_present",              # LLM 초안에 Locator range가 있음
     "result_build_failed",            # 방어: 검사 통과 후 저장용 타입 구성 실패
 )
+LLM_PATH: Final = "llm"
+HYBRID: Final = "hybrid"
 
 
 
@@ -72,27 +79,103 @@ class OutputRejection:
             raise ValueError("OutputRejection.reason_codes는 비어 있지 않은 닫힌 목록 값이어야 함")
 
 
+@dataclass(frozen=True)
+class LlmFailure:
+    """LLM 초안을 받지 못함((A) §2.5 닫힌 목록). 내용은 담지 않는다."""
+    reason: str
+
+    def __post_init__(self) -> None:
+        if self.reason not in LLM_FAILURE_REASONS:
+            raise ValueError("LlmFailure.reason은 닫힌 목록 값이어야 함")
+
+
 def validate_draft(draft: str | bytes, *, transactions: Sequence[Transaction], produced_by: str,
                    analysis_meta: AnalysisMeta) -> AnalysisResult | OutputRejection:
-    by_id = _checked_server_args(transactions, produced_by, analysis_meta)
+    """생산자가 하나인 경로."""
+    if not isinstance(analysis_meta, AnalysisMeta):
+        raise ValueError("analysis_meta는 AnalysisMeta여야 함")
+    return validate_producers(draft, None, transactions=transactions, produced_by=produced_by,
+                              make_meta=lambda _llm_outcome: analysis_meta)
+
+
+def validate_producers(rule_draft: str | bytes, llm: str | bytes | LlmFailure | None, *, transactions: Sequence[Transaction],
+                       produced_by: str, make_meta: Callable[[str | None], AnalysisMeta]) -> AnalysisResult | OutputRejection:
+    """규칙 초안과 LLM 초안을 각각 검증한 뒤 병합한다. llm이 None이면 LLM이 없는 경로다."""
+    by_id = _checked_server_args(transactions, produced_by)
+    rule = _checked_draft(rule_draft, by_id)
+    if isinstance(rule, OutputRejection):
+        return rule
+    parsed, llm_outcome = _llm_result(llm, by_id)
+    findings, advisories = _combined(rule, parsed, by_id, produced_by)
+    return _build(findings, advisories, tuple(by_id), make_meta(llm_outcome))
+
+
+def _checked_draft(draft: str | bytes, by_id: dict[UUID, Transaction], event: str = "output_rejected") -> AnalysisDraft | OutputRejection:
     try:
         parsed = AnalysisDraft.model_validate_json(draft)  # ①②③
     except ValidationError as exc:
-        return _reject(_classify(exc))
+        return _reject(_classify(exc), event)
     outside = _refs_outside(parsed, frozenset(by_id))  # ④
     if outside:
-        return _reject(("evidence_ref_outside_analyzed",))
+        return _reject(("evidence_ref_outside_analyzed",), event)
     unresolved = _unresolvable(parsed, by_id)  # ⑤
     if unresolved:
-        return _reject(("pointer_unresolvable",))
+        return _reject(("pointer_unresolvable",), event)
+    return parsed
+
+
+def _has_range(parsed: AnalysisDraft) -> bool:
+    for _name, _i, e in _all_evidence(parsed):
+        pointer = e.pointer.body if isinstance(e.pointer, BodyLocator) else e.pointer
+        if getattr(pointer, "range", None) is not None:
+            return True
+    return False
+
+
+def _llm_result(llm: str | bytes | LlmFailure | None, by_id: dict[UUID, Transaction]) -> tuple[AnalysisDraft | None, str | None]:
+    if llm is None:
+        return None, None
+    if isinstance(llm, LlmFailure):
+        return None, f"failed:{llm.reason}"
+    parsed = _checked_draft(llm, by_id, "llm_draft_rejected")
+    if isinstance(parsed, OutputRejection):
+        return None, "rejected"
+    if _has_range(parsed):
+        _reject(("llm_range_present",), "llm_draft_rejected")
+        return None, "rejected"
+    return parsed, "ok"
+
+
+def _key(f: FindingDraft, by_id: dict[UUID, Transaction]) -> tuple[str, frozenset]:
+    return f.category, _cna_set(f.evidence, by_id)
+
+
+def _combined(rule: AnalysisDraft, llm: AnalysisDraft | None, by_id: dict[UUID, Transaction],
+              produced_by: str) -> tuple[list[tuple[FindingDraft, str]], list]:
+    tagged: dict[tuple[str, frozenset], tuple[FindingDraft, str]] = {}
+    for f in rule.findings:
+        tagged.setdefault(_key(f, by_id), (f, produced_by))
+    for f in llm.findings if llm is not None else ():
+        key = _key(f, by_id)
+        if key not in tagged:
+            tagged[key] = (f, LLM_PATH)
+        elif tagged[key][1] != LLM_PATH:
+            tagged[key] = (tagged[key][0], HYBRID)
+    finding_sets = {cnas for _category, cnas in tagged}
+    advisories = [a for draft in (rule, llm) if draft is not None for a in draft.advisory_signals
+                  if _cna_set(a.basis, by_id) not in finding_sets]
+    return list(tagged.values()), advisories
+
+
+def _build(findings: list[tuple[FindingDraft, str]], advisories: list, refs: tuple[UUID, ...],
+           meta: AnalysisMeta) -> AnalysisResult | OutputRejection:
     try:
-        return _assign(_merged(parsed, by_id), tuple(by_id), produced_by, analysis_meta)
+        return _assign(findings, advisories, refs, meta)
     except ValidationError:
         return _reject(("result_build_failed",))
 
 
-def _checked_server_args(transactions: Sequence[Transaction], produced_by: str,
-                         analysis_meta: AnalysisMeta) -> dict[UUID, Transaction]:
+def _checked_server_args(transactions: Sequence[Transaction], produced_by: str) -> dict[UUID, Transaction]:
     # 메시지에 인자 값을 넣지 않는다.
     if isinstance(transactions, (str, bytes)) or not all(isinstance(t, Transaction) for t in transactions):
         raise ValueError("transactions는 Transaction 목록이어야 함")
@@ -102,8 +185,6 @@ def _checked_server_args(transactions: Sequence[Transaction], produced_by: str,
         raise ValueError("transactions는 비어 있지 않고 transaction_id 중복이 없어야 함")
     if type(produced_by) is not str or produced_by not in get_args(ProducedBy):
         raise ValueError("produced_by는 rule|llm|hybrid 중 하나여야 함")
-    if not isinstance(analysis_meta, AnalysisMeta):
-        raise ValueError("analysis_meta는 AnalysisMeta여야 함")
     return by_id
 
 
@@ -146,19 +227,6 @@ def _unresolvable(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> froz
 
 def _cna_set(evidence: Sequence[EvidenceDraft], by_id: dict[UUID, Transaction]) -> frozenset:
     return frozenset(canonical_address(by_id[e.transaction_ref], e.pointer) for e in evidence)
-
-
-def _merged(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> AnalysisDraft:
-    seen: set[tuple[str, frozenset]] = set()
-    findings = []
-    for f in parsed.findings:
-        key = (f.category, _cna_set(f.evidence, by_id))
-        if key not in seen:
-            seen.add(key)
-            findings.append(f)
-    finding_sets = {cnas for _category, cnas in seen}
-    return AnalysisDraft(findings=findings, advisory_signals=[a for a in parsed.advisory_signals
-                                                              if _cna_set(a.basis, by_id) not in finding_sets])
 
 
 # ── 위치 해석 ─────────────────────────────────────────────────────
@@ -221,8 +289,8 @@ def _body_resolves(body: Body, at) -> bool:
 
 # ── 거부·부여 ─────────────────────────────────────────────────────
 
-def _reject(codes: tuple[str, ...]) -> OutputRejection:
-    audit_log.warning("output_rejected count=%d reasons=%s", len(codes), ",".join(codes))
+def _reject(codes: tuple[str, ...], event: str = "output_rejected") -> OutputRejection:
+    audit_log.warning("%s count=%d reasons=%s", event, len(codes), ",".join(codes))
     return OutputRejection(codes)
 
 
@@ -231,14 +299,15 @@ def _evidence(d: EvidenceDraft) -> Evidence:
                     corroboration="not_run", anomaly_flags=(), review_required=True)
 
 
-def _assign(parsed: AnalysisDraft, refs: tuple[UUID, ...], produced_by: str, meta: AnalysisMeta) -> AnalysisResult:
+def _assign(tagged: list[tuple[FindingDraft, str]], advisory_drafts: list, refs: tuple[UUID, ...],
+            meta: AnalysisMeta) -> AnalysisResult:
     findings = tuple(Finding(finding_id=uuid4(), category=f.category, hypothesis=f.hypothesis,
                              evidence=tuple(_evidence(e) for e in f.evidence), claim_basis=f.claim_basis,
-                             severity_if_true=None, status="unverified", produced_by=produced_by,
+                             severity_if_true=None, status="unverified", produced_by=source,
                              limitations=tuple(f.limitations), next_steps=tuple(f.next_steps))
-                     for f in parsed.findings)
+                     for f, source in tagged)
     advisories = tuple(AdvisorySignal(type=a.type, topic=a.topic, basis=tuple(_evidence(e) for e in a.basis),
                                       suggestion=a.suggestion)
-                       for a in parsed.advisory_signals)
+                       for a in advisory_drafts)
     return AnalysisResult(schema_version="1.0", analyzed_refs=refs, findings=findings, advisory_signals=advisories,
                           analysis_meta=meta)

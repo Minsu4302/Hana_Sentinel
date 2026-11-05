@@ -24,6 +24,9 @@ FROZEN_RULESETS: Final = {
 RULESET_SCOPE_HISTORY: Final = {
     "rules-2": "4a4535d623eee4e819842d63523e83a09120da35952635a574d236df6788e62e",
 }
+# rule_llm test split의 측정 조건(§6.2). 프롬프트 동결 때 채운다. 지금은 비어 있어 rule_llm의 test는 전부 동결 순서 밖이다.
+FROZEN_PROMPTS: Final[frozenset[str]] = frozenset()
+FROZEN_MODELS: Final[frozenset[str]] = frozenset()
 FROZEN_GUIDELINES: Final = {
     "v1": "abd4c6896a179f209466b35fd1b55406dec91bd8788d7948bffa00093846aae7",
 }

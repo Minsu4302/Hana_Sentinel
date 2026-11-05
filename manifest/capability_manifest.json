@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.29",
+  "spec": "docs/design-decision.md §3 매핑표 v1.30",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -649,27 +649,47 @@
       "verification_tests": []
     },
     "producer_gate_merge": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "합성 초안으로 증명 — 어댑터 결선은 L3",
+      "verification_tests": [
+        "tests/test_producer_gate.py::test_llm_draft_rejected_keeps_the_rule_findings",
+        "tests/test_producer_gate.py::test_one_invalid_finding_discards_the_whole_llm_draft",
+        "tests/test_producer_gate.py::test_rule_draft_rejected_is_output_rejected_even_with_a_good_llm_draft",
+        "tests/test_producer_gate.py::test_same_defect_from_both_producers_is_one_hybrid_with_the_rule_wording",
+        "tests/test_producer_gate.py::test_overlapping_evidence_does_not_merge_across_producers",
+        "tests/test_producer_gate.py::test_server_field_in_an_llm_draft_is_rejected",
+        "tests/test_producer_gate.py::test_range_in_an_llm_draft_is_rejected",
+        "tests/test_producer_gate.py::test_producer_guard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "clean_requires_no_failure": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "verification_tests": [
+        "tests/test_producer_gate.py::test_rule_only_with_no_findings_is_clean",
+        "tests/test_producer_gate.py::test_rule_llm_success_with_no_findings_is_clean",
+        "tests/test_producer_gate.py::test_llm_failure_with_no_findings_is_not_clean",
+        "tests/test_producer_gate.py::test_failure_outcome_cannot_hide_behind_other_skipped_reasons",
+        "tests/test_producer_gate.py::test_failure_reason_cannot_be_claimed_on_a_successful_result",
+        "tests/test_producer_gate.py::test_skipped_reasons_are_a_closed_list"
+      ]
     },
     "prompt_model_freeze": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "동결 표는 비어 있다 — 등록은 프롬프트 동결 때",
+      "verification_tests": [
+        "tests/test_producer_gate.py::test_frozen_tables_start_empty",
+        "tests/test_producer_gate.py::test_rule_llm_test_split_is_out_of_order_until_prompt_and_model_are_frozen",
+        "tests/test_producer_gate.py::test_rule_llm_needs_both_prompt_and_model_frozen",
+        "tests/test_producer_gate.py::test_harness_guard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "completed_via_gate": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "현존 경로 한정 — 이후 경로(LLM 등)는 그 결선 PR에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)",
+      "note": "현존 경로 한정 — 생산자별 게이트 경로까지 재증명, 어댑터 결선은 L3에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)",
       "verification_tests": [
         "tests/test_rule_wiring.py::test_result_and_response_are_built_at_exactly_one_place_each",
         "tests/test_rule_wiring.py::test_planted_construction_path_is_found",
@@ -685,6 +705,8 @@
         "tests/test_rule_wiring.py::test_handler_only_translates_the_two_input_rejections",
         "tests/test_rule_wiring.py::test_entry_function_is_covered_by_the_auth_spy",
         "tests/test_rule_wiring.py::test_gate_call_takes_produced_by_from_the_path_constant",
+        "tests/test_producer_gate.py::test_rule_llm_success_has_no_skipped_reasons",
+        "tests/test_producer_gate.py::test_rule_bug_in_rule_llm_mode_is_output_rejected",
         "tests/test_rule_wiring.py::test_every_finding_of_the_rule_path_is_marked_rule",
         "tests/test_rule_wiring.py::test_produced_by_inside_a_rule_draft_is_rejected_even_when_it_says_rule",
         "tests/test_rule_wiring.py::test_invalid_twin_of_a_duplicate_is_not_hidden_by_the_merge",
@@ -731,6 +753,9 @@
       "note": "채점기 검증까지 — 정답을 아는 입력에서 정확·최대 매칭·결정론. 층 B 실측 가능(rule_only — 러너 `make eval`). LLM 경로의 층 B는 LLM 결선 이후",
       "verification_tests": [
         "tests/test_eval_harness.py::test_all_correct_predictions_score_perfectly",
+        "tests/test_producer_gate.py::test_j2_reports_llm_rejection_and_failure_by_reason",
+        "tests/test_producer_gate.py::test_j3_and_j6_report_the_llm_success_subset",
+        "tests/test_producer_gate.py::test_j6_subset_leaves_out_the_failed_transactions",
         "tests/test_s_v2_generator.py::test_both_labels_right_gives_two_true_positives",
         "tests/test_s_v2_generator.py::test_only_the_chosen_split_is_scored",
         "tests/test_s_v2_generator.py::test_split_dataset_needs_the_split_argument",

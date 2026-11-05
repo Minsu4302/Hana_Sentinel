@@ -57,6 +57,8 @@ def _json(sent) -> dict:
 
 
 def _meta(**over) -> AnalysisMeta:
+    if over.get("pipeline_mode") == "rule_llm":
+        over.setdefault("llm_outcome", "ok")
     return AnalysisMeta(**{"model_id": None, "policy_version": "p", "prompt_version": None, "ruleset_version": "r",
                            "elapsed_ms": 0, "pipeline_mode": "rule_only", "manifest_snapshot": {}, **over})
 
@@ -196,14 +198,14 @@ def test_handler_only_translates_the_two_input_rejections(token, monkeypatch, er
 # ── 동적: ④는 게이트를 지난다 ──────────────────────────────────────
 
 def test_completed_result_is_the_object_the_gate_returned(monkeypatch):
-    real, returned = output_gate.validate_draft, []
-    monkeypatch.setattr(output_gate, "validate_draft", lambda *a, **k: returned.append(real(*a, **k)) or returned[-1])
+    real, returned = output_gate.validate_producers, []
+    monkeypatch.setattr(output_gate, "validate_producers", lambda *a, **k: returned.append(real(*a, **k)) or returned[-1])
     response = execution.build_execution_response(ENVELOPE, {})
     assert response.analysis_status == "completed" and len(returned) == 1 and response.result is returned[0]
 
 
 def test_gate_rejection_overrides_a_rule_finding(monkeypatch):
-    monkeypatch.setattr(output_gate, "validate_draft", lambda *a, **k: output_gate.OutputRejection(("draft_unparseable",)))
+    monkeypatch.setattr(output_gate, "validate_producers", lambda *a, **k: output_gate.OutputRejection(("draft_unparseable",)))
     response = execution.build_execution_response(_envelope_with(TX), {})
     assert response.analysis_status == "output_rejected" and response.result is None
 
@@ -258,7 +260,7 @@ def test_response_is_not_stored_or_sent_anywhere_by_the_stage():
 
 def test_gate_call_takes_produced_by_from_the_path_constant():
     tree = ast.parse(Path(execution.__file__).read_text(encoding="utf-8"))
-    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "validate_draft"]
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "validate_producers"]
     assert len(calls) == 1
     [arg] = [k.value for k in calls[0].keywords if k.arg == "produced_by"]
     assert isinstance(arg, ast.Name) and arg.id == "RULE_PATH" and execution.RULE_PATH == "rule"
@@ -482,7 +484,7 @@ def test_deeply_nested_body_with_a_json_span_is_rejected_and_audited_at_stage_th
 # ── 불변식 위조 ────────────────────────────────────────────────────
 
 def _response(**over) -> dict:
-    return {"analysis_status": "completed", "skipped_reasons": ["x"], "manifest_snapshot": {}, "result": _result(), **over}
+    return {"analysis_status": "completed", "skipped_reasons": ["llm_analysis_not_implemented"], "manifest_snapshot": {}, "result": _result(), **over}
 
 
 def test_valid_status_and_result_pairs_pass():
@@ -589,13 +591,13 @@ sys.exit(int(code))
 """
 _W = "tests/test_rule_wiring.py::"
 _E = "tests/test_rule_engine.py::"
-GATE_CALL = ("    outcome = output_gate.validate_draft(draft, transactions=transactions, produced_by=RULE_PATH,\n"
-             "                                         analysis_meta=_analysis_meta(manifest_snapshot, started))\n")
+GATE_CALL = ("    outcome = output_gate.validate_producers(\n"
+             "        draft, None if llm_run is None else llm_run.output, transactions=transactions, produced_by=RULE_PATH,\n"
+             "        make_meta=lambda llm_outcome: _analysis_meta(manifest_snapshot, started, llm_run, llm_outcome))\n")
 SRC_MUTATIONS = {
     "gate_bypassed": ("sentinel/pipeline/execution.py", "sentinel.pipeline.execution", GATE_CALL,
-                      "    outcome = output_gate._assign(output_gate.AnalysisDraft.model_validate_json(draft), "
-                      "tuple(t.meta.transaction_id for t in transactions), RULE_PATH, "
-                      "_analysis_meta(manifest_snapshot, started))\n",
+                      "    outcome = output_gate._build([(f, RULE_PATH) for f in output_gate.AnalysisDraft.model_validate_json(draft).findings], "
+                      "[], tuple(t.meta.transaction_id for t in transactions), _analysis_meta(manifest_snapshot, started, llm_run, None))\n",
                       [_W + "test_rule_draft_with_an_unresolvable_locator_is_output_rejected_and_audited",
                        _W + "test_result_and_response_are_built_at_exactly_one_place_each"]),
     "produced_by_not_the_constant": ("sentinel/pipeline/execution.py", "sentinel.pipeline.execution",
@@ -618,9 +620,9 @@ SRC_MUTATIONS = {
                                 ["tests/test_eval_runner.py::test_input_that_stage_three_rejects_is_refused_not_scored",
                                  "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage"]),
     "no_merge": ("sentinel/pipeline/output_gate.py", "sentinel.pipeline.output_gate",
-                 "return _assign(_merged(parsed, by_id), tuple(by_id),", "return _assign(parsed, tuple(by_id),",
-                 [_W + "test_exact_duplicates_merge_into_the_first_draft",
-                  _W + "test_advisory_with_the_cna_set_of_a_finding_is_dropped"]),
+                 "        tagged.setdefault(_key(f, by_id), (f, produced_by))\n",
+                 "        tagged[(len(tagged), _key(f, by_id)[1])] = (f, produced_by)\n",
+                 [_W + "test_exact_duplicates_merge_into_the_first_draft"]),
     "stored_not_frozen": ("sentinel/output_schema.py", "sentinel.output_schema",
                           'class _Stored(BaseModel):\n    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)',
                           'class _Stored(BaseModel):\n    model_config = ConfigDict(strict=True, extra="forbid")',

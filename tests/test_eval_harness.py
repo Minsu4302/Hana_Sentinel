@@ -70,11 +70,11 @@ def _finding(n: int, category: str, *evidence: tuple[str, dict], produced_by: st
                           "anomaly_flags": [], "review_required": True} for ref, ptr in evidence]}
 
 
-def _result(findings: list[dict]) -> dict:
+def _result(findings: list[dict], outcome: str = "ok") -> dict:
     return {"schema_version": "1.0", "analyzed_refs": sorted({e["transaction_ref"] for f in findings for e in f["evidence"]}),
             "findings": findings, "advisory_signals": [],
             "analysis_meta": {"model_id": "fixture", "policy_version": "p", "prompt_version": "v0", "ruleset_version": "r0",
-                              "elapsed_ms": 0, "pipeline_mode": "rule_llm", "manifest_snapshot": {}}}
+                              "elapsed_ms": 0, "pipeline_mode": "rule_llm", "llm_outcome": outcome, "manifest_snapshot": {}}}
 
 
 def _run(findings: list[dict], rejected: tuple[str, ...] = (), extra: dict | None = None) -> PredictionRun:

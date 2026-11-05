@@ -37,7 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REF = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
 OTHER_REF = uuid.UUID("00000000-0000-4000-8000-0000000000b2")
 META = AnalysisMeta(model_id="dummy-model", policy_version="p1", prompt_version="v1", ruleset_version="r0",
-                    elapsed_ms=12, pipeline_mode="rule_llm", manifest_snapshot={})
+                    elapsed_ms=12, pipeline_mode="rule_llm", llm_outcome="ok", manifest_snapshot={})
 
 
 def _masked(label: str, kind: str) -> dict:
@@ -644,7 +644,7 @@ MUTATIONS = {
                       [_T + "test_rejects_transaction_ref_outside_analyzed_refs"]),
     # 부분 수용 금지 해제: 위반 항목만 빼고 나머지를 결과로 반환
     "partial_accept": ("src/sentinel/pipeline/output_gate.py", "sentinel.pipeline.output_gate",
-                       '    if outside:\n        return _reject(("evidence_ref_outside_analyzed",))\n',
+                       '    if outside:\n        return _reject(("evidence_ref_outside_analyzed",), event)\n',
                        "    if outside:\n        parsed = parsed.model_copy(update={k: [x for i, x in "
                        "enumerate(getattr(parsed, k)) if (k, i) not in outside] for k in "
                        "('findings', 'advisory_signals')})\n",

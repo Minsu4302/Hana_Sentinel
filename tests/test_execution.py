@@ -104,9 +104,9 @@ def test_alternate_manifest_path_is_honored(tmp_path, monkeypatch, token):
 
 
 @pytest.mark.parametrize("bad", [
-    {"analysis_status": "done", "skipped_reasons": ["x"], "manifest_snapshot": {}, "result": None},
+    {"analysis_status": "done", "skipped_reasons": ["llm_analysis_not_implemented"], "manifest_snapshot": {}, "result": None},
     {"analysis_status": "not_implemented", "skipped_reasons": [], "manifest_snapshot": {}, "result": None},
-    {"analysis_status": "not_implemented", "skipped_reasons": ["x"], "manifest_snapshot": {}, "result": None,
+    {"analysis_status": "not_implemented", "skipped_reasons": ["llm_analysis_not_implemented"], "manifest_snapshot": {}, "result": None,
      "findings": []},
 ])
 def test_execution_response_type_cannot_claim_analysis_or_carry_findings(bad):
