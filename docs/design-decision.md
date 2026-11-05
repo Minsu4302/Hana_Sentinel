@@ -144,13 +144,13 @@
 
 | N | 금지선 | (A) 정의처 | 강제 키 | 비고 |
 |---|---|---|---|---|
-| N1 | 외부 egress | §1.3 ⓑ | `egress_static_check`, `egress_runtime_block`, `egress_enforcement_owner`, `local_llm_vs_egress`, `no_autonomous_send`, `tools_no_external_send`, `masker_no_send`, `llm_adapter_loopback_only`, `inference_server_binding`, `llm_input_from_sanitized` | ⓑ 해석 강제 매핑 포함. `egress_enforcement_owner`·`inference_server_binding`은 unverifiable |
+| N1 | 외부 egress | §1.3 ⓑ | `egress_static_check`, `egress_runtime_block`, `egress_enforcement_owner`, `local_llm_vs_egress`, `no_autonomous_send`, `tools_no_external_send`, `masker_no_send`, `llm_adapter_loopback_only`, `inference_server_binding` | ⓑ 해석 강제 매핑 포함. `egress_enforcement_owner`·`inference_server_binding`은 unverifiable |
 | N2 | 자율 전송 | §1.3 ⓐ | `no_autonomous_send`, `tools_no_external_send`, `masker_no_send`, `llm_adapter_no_target_resend` | |
 | N3 | Java 로직 금지 | §3.2 | `java_logic_isolation` | not_implemented |
 | N4 | 엔진은 Burp를 모른다 / 입력은 정규화 JSON만 | §3.2 | `engine_burp_isolation`, `engine_tools_isolation`, `engine_no_rawtransaction`, `input_schema_gate` | 앞 셋 = 엔진이 무엇을 보지 않는가, `input_schema_gate` = 입력이 정규화 통과분만인가 |
 | N5 | 실데이터 금지 | §1.3 ⓒ | (없음) | 기계 강제 불가 — 정책·리뷰로 지킨다. N5 더미 표지 검사(`dataset_version_freeze` 내부)는 실데이터 부재를 증명하지 않으므로 넣지 않는다 |
 | N6 | main 직접 병합 금지 | §3.4 | `branch_protection` | unverifiable(레포 설정) |
-| N7 | 민감정보·원본 커밋·저장 금지 | §1.3 ⓕ, §3.3 | `secret_scan_hook`, `no_raw_persistence`, `sanitization_trust`, `maskedref_typing` | `masked_span_integrity`는 마스킹 표기 정합성(보조)이라 제외 |
+| N7 | 민감정보·원본 커밋·저장 금지 | §1.3 ⓕ, §3.3 | `secret_scan_hook`, `no_raw_persistence`, `sanitization_trust`, `maskedref_typing`, `llm_input_from_sanitized` | `masked_span_integrity`는 마스킹 표기 정합성(보조)이라 제외 |
 | N8 | AI 수정코드 자동 반영 금지 | §1.3 ⓓ | `no_autopatch_apply` | |
 | N9 | 실데이터 파인튜닝 금지 | §1.3 ⓔ | `no_finetune_path` | |
 | N10 | 멀티에이전트/사내 사례 RAG | §1.3 ⓖ | `no_multiagent_rag` | not_implemented → P2 |
@@ -423,7 +423,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | egress 차단 실주체(OS/네트워크) | — | unverifiable(추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함) | `egress_enforcement_owner` |
 | 로컬 LLM ≠ 외부 egress 분리 | 테스트 | enforced(허용목록 빔 검사) | `local_llm_vs_egress` |
 | 자율 전송 0(송신·소켓 심볼 import 0 — 예외: 어댑터 1파일(sentinel/pipeline 아래)의 http.client만) | 아키텍처 테스트 | enforced(현재 예외 없음 — 예외의 구현·테스트는 어댑터 구현 PR) | `no_autonomous_send` |
-| 어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인) | 아키텍처 테스트 | not_implemented → 어댑터 구현 PR | `llm_adapter_loopback_only` |
+| 어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단) | 아키텍처 테스트 | not_implemented → 어댑터 구현 PR | `llm_adapter_loopback_only` |
 | 어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 — 현존 경로 한정, 결선 PR에서 재증명 / LLM 출력은 게이트로만) | 아키텍처 테스트 | not_implemented → 어댑터 구현 PR | `llm_adapter_no_target_resend` |
 | 어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정. 타입은 2부 입력 뷰) | 아키텍처 테스트 | not_implemented → 어댑터 구현 PR | `llm_input_from_sanitized` |
 | 어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드 | 테스트 | not_implemented → 어댑터 구현 PR | `llm_adapter_bounds` |
@@ -650,7 +650,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - Extension: Java 17+ / Montoya API / Gradle (레거시 Jython/Extender 미사용)
 - 분석 서버: Python 3.11+ / FastAPI / Pydantic
 - 구조화 출력: LLM 클라이언트 라이브러리 0 — 표준 라이브러리 http.client + 추론 서버의 JSON 스키마 제약 디코딩 + 출력 게이트(유일 검증자). 상세는 2부.
-- 추론 서버 선정 기준: 오프라인 반입 가능(단일 실행 파일 또는 wheel) / 실행 중 외부 연결 기능(업데이트 확인·원격 모델 다운로드·텔레메트리)이 없거나 끌 수 있음 / JSON 스키마 제약 디코딩 / CPU 추론 / 127.0.0.1에만 바인딩 가능.
+- 추론 서버 선정 기준: 오프라인 반입 가능(단일 실행 파일 또는 wheel) / 실행 중 외부 연결 기능(업데이트 확인·원격 모델 다운로드·텔레메트리)이 없거나 끌 수 있음 / JSON 스키마 제약 디코딩 / CPU 추론 / 127.0.0.1에만 바인딩 가능. 기동 조건: 텍스트 전용 모델(멀티모달 투영 파일 없음), --offline 기동.
 - RAG(나중): sentence-transformers + sqlite-vec/FAISS (전부 로컬)
 - 저장소: SQLite
 - 평가: pytest 하네스 + 라벨 데이터셋 (선택적 promptfoo)
