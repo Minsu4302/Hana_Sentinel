@@ -79,7 +79,25 @@ def test_unreadable_main_file_fails(store, monkeypatch):
 def test_vanished_sidecar_is_tolerated_and_the_main_file_is_still_read(store, monkeypatch):
     (store.parent / (store.name + "-journal")).write_bytes(b"x")
     _failing_read(monkeypatch, store.name + "-journal", FileNotFoundError())
-    assert audit_store_bytes(store) == b"main"
+    assert b"main" in audit_store_bytes(store)
+
+
+@pytest.mark.parametrize("suffix", ["-wal", "-journal"])
+def test_value_moved_into_the_main_file_when_a_sidecar_vanishes_is_found(store, monkeypatch, suffix):
+    """WAL 체크포인트 흉내: 곁 파일을 읽는 순간 내용이 본 파일로 옮겨 가고 곁 파일이 사라진다. 처음 읽은 본 파일에는 값이 없다."""
+    wal = store.parent / (store.name + suffix)
+    wal.write_bytes(b"leaked")
+    real = Path.read_bytes
+
+    def read_bytes(self):
+        if self == wal:
+            store.write_bytes(b"main" + real(wal))
+            wal.unlink()
+            raise FileNotFoundError
+        return real(self)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    assert b"leaked" in audit_store_bytes(store)
 
 
 def test_sidecar_locked_for_a_moment_is_read_after_the_retry(store, monkeypatch):
@@ -104,16 +122,17 @@ def test_vanished_file_that_is_not_a_sidecar_fails(store, monkeypatch):
 
 
 TEST_MUTATIONS = {
-    "sidecars_skipped": ("        chunks.append(_sidecar_bytes(path) if sidecar else path.read_bytes())\n",
-                         "        chunks.append(b\"\" if sidecar else path.read_bytes())\n",
+    "sidecars_skipped": ("        data = _sidecar_bytes(path)\n", "        data = b\"\"\n",
                          [_A + "test_value_in_a_readable_sidecar_is_found[-journal]",
                           _A + "test_sidecar_locked_for_a_moment_is_read_after_the_retry"]),
     "lock_swallowed": ("            if attempt == ATTEMPTS - 1:\n                raise\n",
                        "            if attempt == ATTEMPTS - 1:\n                return b\"\"\n",
                        [_A + "test_sidecar_that_stays_locked_fails"]),
-    "every_file_tolerated": ("        sidecar = path.name[len(store.name):] in SIDECAR_SUFFIXES\n", "        sidecar = True\n",
+    "every_file_tolerated": ("        if path.name[len(store.name):] not in SIDECAR_SUFFIXES:\n", "        if False:\n",
                              [_A + "test_vanished_file_that_is_not_a_sidecar_fails"]),
-    "main_file_not_required": ("    chunks = [store.read_bytes()]\n", "    chunks = [_sidecar_bytes(store)]\n",
+    "main_not_reread": ("    if vanished:\n        chunks.append(store.read_bytes())\n", "",
+                        [_A + "test_value_moved_into_the_main_file_when_a_sidecar_vanishes_is_found[-wal]"]),
+    "main_file_not_required": ("    chunks = [store.read_bytes()]\n", "    chunks = [_sidecar_bytes(store) or b\"\"]\n",
                                [_A + "test_missing_main_file_fails"]),
 }
 
