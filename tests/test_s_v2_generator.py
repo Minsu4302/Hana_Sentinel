@@ -301,6 +301,30 @@ def test_origin_case_breaking_the_construction_condition_is_refused(origin):
     assert catalog_problems(_catalog(doc)) == ["construction@SM-P2"]
 
 
+def _hsts_case(label: dict, scheme: str) -> dict:
+    return _case("test-hsts", "/test/hsts", "sm-hsts", "test", [label], scheme=scheme, resp_json={"status": "ok"},
+                 resp_headers=[{"name": "Strict-Transport-Security", "value": "max-age=0"}])
+
+
+HSTS_LABELS = {"SM-P4": _positive(MISCONFIG, [_header("Strict-Transport-Security")], "SM-P4"),
+               "SM-N3": {"label_status": "verified_clean", "categories": [MISCONFIG], "anchors": [], "hard_negative": True,
+                         "clause": "SM-N3"}}
+
+
+@pytest.mark.parametrize("clause", sorted(HSTS_LABELS))
+def test_hsts_case_over_https_passes(clause):
+    doc = _doc()
+    doc["cases"].append(_hsts_case(HSTS_LABELS[clause], "https"))
+    assert catalog_problems(_catalog(doc)) == []
+
+
+@pytest.mark.parametrize("clause", sorted(HSTS_LABELS))
+def test_hsts_case_over_http_is_refused(clause):
+    doc = _doc()
+    doc["cases"].append(_hsts_case(HSTS_LABELS[clause], "http"))
+    assert catalog_problems(_catalog(doc)) == [f"construction@{clause}"]
+
+
 def test_hard_negative_on_a_positive_transaction_is_refused(tmp_path):
     doc = _doc()
     _case_of(doc, "test-ri-1")["labels"][0]["hard_negative"] = True
@@ -518,6 +542,9 @@ MUTATIONS = {
                    [_G + "test_unknown_clause_is_refused", _G + "test_hard_negative_without_a_clause_is_refused"]),
     "construction_off": (*GEN, "            if check is not None and not check(c):\n", "            if False:\n",
                          [_G + "test_origin_case_breaking_the_construction_condition_is_refused[same_host]"]),
+    "https_condition_off": (*GEN, 'CONSTRUCTION_CHECKS: Final = {"SM-P2": _origin_is_foreign, "SM-P4": _is_https, "SM-N3": _is_https}',
+                            'CONSTRUCTION_CHECKS: Final = {"SM-P2": _origin_is_foreign}',
+                            [_G + "test_hsts_case_over_http_is_refused[SM-P4]", _G + "test_hsts_case_over_http_is_refused[SM-N3]"]),
     "overwrite_allowed": (*GEN, "    if out_dir.exists():\n        return [\"dataset_exists\"]\n", "",
                           [_G + "test_existing_dataset_is_never_overwritten"]),
     "split_may_be_missing": (*LAB, "        if self.split_scheme is not None and any(label.split is None for label in self.labels):\n",

@@ -1,0 +1,2199 @@
+{
+  "schema_version": "1.1",
+  "dataset_id": "S-v2",
+  "frozen_at": "2026-11-05T00:49:30+00:00",
+  "split_scheme": "endpoint",
+  "frozen_against": {
+    "envelope_schema": "1.0",
+    "raw_schema": "1.0",
+    "labelfile_schema": "1.1",
+    "ruleset_version": "rules-2",
+    "ruleset_hash": "ef8d3ce2deb941bde40c6fd69836578926a0d52410bfa8f08e107fb4404fde2f",
+    "masking_modes": {
+      "f1679141-aaaa-4447-9d72-c3976f4bfa1d": "relation_preserving",
+      "77d67fcf-b45a-424b-8743-731377f7f6b0": "relation_preserving",
+      "cf894b12-eb74-4b6b-aecb-e079f8558ce6": "relation_preserving",
+      "12ee3b75-55fe-4599-ad7d-6092f2f7d3db": "relation_preserving",
+      "19ba75d0-8638-4e86-a025-dfe6e9bc1d48": "relation_preserving",
+      "96f4d34d-d540-4170-94a5-1e31fdb44ed7": "relation_preserving",
+      "03ca037a-997d-4fa6-82ec-9dc422c21ffc": "relation_preserving",
+      "f95183f0-0511-415a-bf91-759a24b2485b": "relation_preserving",
+      "525ef080-6da4-4504-8b8d-e4ad5417f040": "relation_preserving",
+      "f0e44b44-45a5-4c7b-b144-7a0fa5871d91": "relation_preserving",
+      "41eb91d1-92d9-4307-b91d-9a19acac881c": "relation_preserving",
+      "3229d415-7a8e-4759-af2c-cfe7e4dc0d36": "relation_preserving",
+      "067e8c47-2674-46f4-87dc-2cadb173c9e6": "relation_preserving",
+      "d75afb80-45f8-43fc-86c0-ad8b9dd56c0b": "relation_preserving",
+      "76555a0c-b859-48ec-aedb-a6e09b05eea7": "relation_preserving",
+      "47f3b7b4-83ec-42b7-a888-9a252a4302be": "strict_redaction",
+      "a9ebd657-79a7-4ac8-9b93-fbe2ccdae03d": "strict_redaction",
+      "78c0c70d-da74-403e-a200-a4caf05bfb3a": "strict_redaction",
+      "a0641436-2b5c-41d1-bcf1-705322064ad6": "strict_redaction",
+      "1c9c1616-a5b9-4ceb-8880-ee6a847d13b1": "strict_redaction",
+      "0b015b1d-6828-4455-9eff-32f7a5123569": "strict_redaction",
+      "46f67924-38f8-4e02-b71a-b2b2d6b1740f": "strict_redaction",
+      "bf669e6b-7d07-4126-bf11-3185b217a602": "strict_redaction",
+      "e4f3d479-91d4-4f65-b49a-946aad92ee65": "strict_redaction",
+      "027973df-2bb4-4959-a3b2-f06c30b8afd8": "strict_redaction",
+      "ff77de21-13f7-439d-a108-d5ca850df707": "strict_redaction",
+      "58dd4d99-6aa3-4d7f-a758-59dc9edefa11": "strict_redaction",
+      "1d357b84-236f-487e-aa94-93757bdbbb35": "strict_redaction",
+      "0a7223aa-6b77-4ed0-a410-d73fbc24e5a3": "strict_redaction",
+      "11eab151-ceb9-4a66-bf45-c2c76e8c5043": "strict_redaction",
+      "380a552a-8763-4362-8665-f1a355035104": "strict_redaction",
+      "0fb6db08-f4fc-48d9-91fe-6187e0ed24cb": "strict_redaction",
+      "544aaa16-1a82-46f6-96f9-cd9ba10bf6d7": "strict_redaction",
+      "0acb0271-d2cc-48dd-b34d-7736c9c84a7e": "strict_redaction",
+      "10e2110a-3f28-4e91-8ffa-e73194a24bbd": "strict_redaction",
+      "d62319b6-2b91-4494-85bc-1b136216674b": "strict_redaction",
+      "d80ad1aa-acd1-4f5c-91d6-6fcb94deaa9b": "strict_redaction",
+      "5f456ed2-60ae-443e-b464-33466143c368": "strict_redaction",
+      "3255e9d2-f72f-4a57-aee1-a79b01e76308": "strict_redaction",
+      "cd0a2574-c819-49ba-b02c-0c96a71a16e0": "strict_redaction",
+      "f9efb524-3788-42f2-ba13-006cebae2c7f": "strict_redaction",
+      "29af4dc0-9b30-4aa3-8966-7c4ac23c9793": "strict_redaction",
+      "5129f555-381d-47e0-8e48-376df38afbb0": "strict_redaction",
+      "ea02ad7b-1c16-42a6-9c47-3e2122bddd0b": "strict_redaction",
+      "1989117f-299a-40fb-929e-f5c292c76b00": "strict_redaction",
+      "25bf54cf-03a6-4274-bdb7-a973b3e1ef0c": "strict_redaction",
+      "4779450c-9c94-42be-8d2e-63ec6c4157d1": "strict_redaction",
+      "63c42f67-029c-4d64-a103-e1744af23cea": "strict_redaction",
+      "8eabf432-cc3c-4edd-933b-1680bed4774a": "strict_redaction",
+      "ae6cc81b-a82e-4bc8-ba1d-81efa754f6da": "strict_redaction",
+      "e6336851-dded-4e52-9dd5-ac1f8b4e8024": "strict_redaction",
+      "157f1c2c-3f9c-47ef-bc73-46e6f4cc6da6": "strict_redaction",
+      "5fc3c559-2ac5-49dc-9a9f-c71e0d9e3f7d": "strict_redaction",
+      "c180d069-04ed-4be9-bc60-10db9668848f": "strict_redaction",
+      "1bcf85d5-fcee-4ee9-a546-149329c9acff": "strict_redaction",
+      "5f61080f-bd91-46ec-b461-9fc565e6e922": "strict_redaction",
+      "3c55219e-2fdb-4e8a-b5fd-b511b52774eb": "strict_redaction",
+      "7b03f7e4-69d1-47fc-9d38-bf10899eb04d": "strict_redaction",
+      "20cf6664-da8f-462e-b906-853cefa1b5cb": "strict_redaction",
+      "9be5ab47-e421-4946-b2fb-6699f6874bd6": "strict_redaction",
+      "3e2aacb9-2a1d-42ef-a533-728d5239a915": "strict_redaction",
+      "26ff940e-72d5-47a7-bdf4-1d4d186ebbad": "strict_redaction",
+      "9d99e0a9-f80e-40d9-9796-9dc545b3b2f3": "strict_redaction",
+      "966be656-0601-43c4-a302-e8fe66d0fbc4": "strict_redaction",
+      "44123b42-051c-4a2b-84fc-0c5737e8c278": "strict_redaction",
+      "26d0ae09-d79f-4b12-aeb0-f081f05d0dfb": "strict_redaction",
+      "ad551832-b45e-4a37-9d89-19f7224e2df3": "strict_redaction",
+      "fa468b8a-924f-40be-a168-abb09446197a": "strict_redaction",
+      "ff63002c-e3c8-4a16-a934-d5656811b3fa": "strict_redaction",
+      "9bf8f412-b46b-4657-b70f-b835552d99f7": "strict_redaction",
+      "2c505a74-b74e-4b30-84dd-cd8fd54a6243": "strict_redaction",
+      "35d1d318-4049-44e3-81db-791b25fd7ae8": "strict_redaction",
+      "f7dc83f6-5f1f-4913-96b0-d56ed5514a0f": "strict_redaction",
+      "055e590e-54b6-4a03-9dba-7d5d5e75de54": "strict_redaction",
+      "ed0a020d-3241-4985-96b3-768cc949db9e": "strict_redaction",
+      "95da454e-6b24-450f-904c-8880a77b2524": "strict_redaction",
+      "8711e3b3-7a94-4b6e-bc98-b40584602348": "strict_redaction",
+      "32211867-5f8b-4a59-bbfb-dcb3ddcab1a2": "strict_redaction",
+      "8c3c0361-bd3a-4c43-9a61-c0c7b4255c70": "strict_redaction",
+      "9a19acda-4ca1-4067-8448-193b9f94eb74": "strict_redaction",
+      "c97c8c5c-fef6-4d64-a368-c021bc0c4148": "relation_preserving",
+      "232e3ae5-7859-4bb1-81e8-77b63c65d237": "relation_preserving",
+      "0e00a357-e7f0-4878-933c-b52be714c694": "relation_preserving",
+      "f232faa8-2051-4ceb-8792-e560beed6be9": "relation_preserving",
+      "bed4cd38-99b7-4a8f-8230-a264378c6532": "relation_preserving",
+      "2c781bf1-5f09-4ca5-8998-f59750e617ae": "relation_preserving",
+      "6951b08c-a30f-4fc9-a854-ff6d7f252a16": "relation_preserving",
+      "796a550f-e779-4dbe-9e08-0413cc46b0ed": "strict_redaction",
+      "11ebd6ff-a89e-4cfb-8652-ef778a9d71b7": "strict_redaction",
+      "c0bfde38-222f-498c-97d5-b69c5e501cd8": "strict_redaction",
+      "501f9ebe-98fe-4aba-a780-9ae7a746e4a6": "strict_redaction",
+      "44e2c558-8cef-4a9e-9700-975e00f394c8": "strict_redaction",
+      "37c2d8c5-b6d4-415e-bd2e-18b9e8c31f41": "strict_redaction",
+      "4133af90-1490-4c2b-bb04-865939966fc6": "strict_redaction",
+      "0b711f6b-c834-4145-b116-d04d356e2be3": "strict_redaction",
+      "18902665-0808-48f3-9b59-782d7dc7bbf7": "strict_redaction",
+      "f3224458-862a-4ccb-8d60-9182ade8bfea": "strict_redaction",
+      "064d6e42-37c9-4229-8357-862d7f31a095": "strict_redaction",
+      "9f5f4685-0a47-425c-be77-2e87acb3953b": "strict_redaction",
+      "b4267b68-f421-427f-973f-e3a2ff85d12e": "strict_redaction",
+      "f14c2b3e-c9e4-453e-9722-5888f96b7482": "strict_redaction",
+      "c54ee46d-0493-494d-a73e-c191dfef5949": "strict_redaction",
+      "2d67768a-59f2-4f0d-bc97-fae5e666fdc4": "strict_redaction",
+      "b2b25e5e-81d8-4795-906b-05eaf172196c": "strict_redaction",
+      "4be1f4f7-c7db-4a58-af17-e13679dc189e": "strict_redaction",
+      "4dca3132-b1d0-4485-b81d-293f84a43899": "strict_redaction",
+      "b51b41d3-f785-464f-aaf8-cce46998ef03": "strict_redaction",
+      "d4f24b12-da28-4c80-abdf-e6dcb04dc907": "strict_redaction",
+      "cbb66ee1-3960-4d7e-b3d0-c625dcd53152": "strict_redaction",
+      "08555543-d994-4a18-9891-5042ebb09435": "strict_redaction",
+      "2b179f7c-fdb8-43b0-96bc-79dfefffc78d": "strict_redaction",
+      "cf378ae1-d49d-4655-bc21-e093fff24278": "strict_redaction",
+      "60db60cc-70e8-4a2f-80c8-a5012d34b13a": "strict_redaction",
+      "1fa95759-813b-47ee-ac30-82d7551eab8b": "strict_redaction",
+      "461d847c-b647-44a0-9672-56a0b439c2e4": "strict_redaction",
+      "cbee464f-d64c-45ab-a375-c3eb376a5675": "strict_redaction",
+      "13fc7292-770f-482b-a4ef-e2704a2a0a06": "strict_redaction",
+      "202c15d1-5a00-47e2-af05-da173ffa54e8": "strict_redaction",
+      "d1586af4-5f31-4207-88c4-01ceb2b39b27": "strict_redaction",
+      "dde61274-d643-4b84-bdb8-efdf0d38e2e8": "strict_redaction"
+    }
+  },
+  "labels": [
+    {
+      "transaction_ref": "f1679141-aaaa-4447-9d72-c3976f4bfa1d",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "77d67fcf-b45a-424b-8743-731377f7f6b0",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "cf894b12-eb74-4b6b-aecb-e079f8558ce6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "12ee3b75-55fe-4599-ad7d-6092f2f7d3db",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "19ba75d0-8638-4e86-a025-dfe6e9bc1d48",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "96f4d34d-d540-4170-94a5-1e31fdb44ed7",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "03ca037a-997d-4fa6-82ec-9dc422c21ffc",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "f95183f0-0511-415a-bf91-759a24b2485b",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "525ef080-6da4-4504-8b8d-e4ad5417f040",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "f0e44b44-45a5-4c7b-b144-7a0fa5871d91",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "41eb91d1-92d9-4307-b91d-9a19acac881c",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "3229d415-7a8e-4759-af2c-cfe7e4dc0d36",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "067e8c47-2674-46f4-87dc-2cadb173c9e6",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "d75afb80-45f8-43fc-86c0-ad8b9dd56c0b",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "76555a0c-b859-48ec-aedb-a6e09b05eea7",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "47f3b7b4-83ec-42b7-a888-9a252a4302be",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/debug/backtrace"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "a9ebd657-79a7-4ac8-9b93-fbe2ccdae03d",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/stack"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "78c0c70d-da74-403e-a200-a4caf05bfb3a",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/detail"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "a0641436-2b5c-41d1-bcf1-705322064ad6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/exception/stackTrace"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "1c9c1616-a5b9-4ceb-8880-ee6a847d13b1",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "0b015b1d-6828-4455-9eff-32f7a5123569",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "46f67924-38f8-4e02-b71a-b2b2d6b1740f",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "bf669e6b-7d07-4126-bf11-3185b217a602",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "e4f3d479-91d4-4f65-b49a-946aad92ee65",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "027973df-2bb4-4959-a3b2-f06c30b8afd8",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ff77de21-13f7-439d-a108-d5ca850df707",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "58dd4d99-6aa3-4d7f-a758-59dc9edefa11",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "1d357b84-236f-487e-aa94-93757bdbbb35",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "0a7223aa-6b77-4ed0-a410-d73fbc24e5a3",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "11eab151-ceb9-4a66-bf45-c2c76e8c5043",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "380a552a-8763-4362-8665-f1a355035104",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "0fb6db08-f4fc-48d9-91fe-6187e0ed24cb",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "544aaa16-1a82-46f6-96f9-cd9ba10bf6d7",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "0acb0271-d2cc-48dd-b34d-7736c9c84a7e",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "10e2110a-3f28-4e91-8ffa-e73194a24bbd",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "strict-transport-security",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "d62319b6-2b91-4494-85bc-1b136216674b",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "strict-transport-security",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "d80ad1aa-acd1-4f5c-91d6-6fcb94deaa9b",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "5f456ed2-60ae-443e-b464-33466143c368",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "3255e9d2-f72f-4a57-aee1-a79b01e76308",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "cd0a2574-c819-49ba-b02c-0c96a71a16e0",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "f9efb524-3788-42f2-ba13-006cebae2c7f",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "29af4dc0-9b30-4aa3-8966-7c4ac23c9793",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "5129f555-381d-47e0-8e48-376df38afbb0",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "text"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ea02ad7b-1c16-42a6-9c47-3e2122bddd0b",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "text"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "1989117f-299a-40fb-929e-f5c292c76b00",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "25bf54cf-03a6-4274-bdb7-a973b3e1ef0c",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "4779450c-9c94-42be-8d2e-63ec6c4157d1",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "allow",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "63c42f67-029c-4d64-a103-e1744af23cea",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "allow",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "8eabf432-cc3c-4edd-933b-1680bed4774a",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ae6cc81b-a82e-4bc8-ba1d-81efa754f6da",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "e6336851-dded-4e52-9dd5-ac1f8b4e8024",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "q",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "text"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "157f1c2c-3f9c-47ef-bc73-46e6f4cc6da6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "q",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "5fc3c559-2ac5-49dc-9a9f-c71e0d9e3f7d",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "form",
+          "name": "q",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "c180d069-04ed-4be9-bc60-10db9668848f",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "user-agent",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "1bcf85d5-fcee-4ee9-a546-149329c9acff",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_line",
+          "part": "path"
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "5f61080f-bd91-46ec-b461-9fc565e6e922",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "5f61080f-bd91-46ec-b461-9fc565e6e922",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "id",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "3c55219e-2fdb-4e8a-b5fd-b511b52774eb",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "3c55219e-2fdb-4e8a-b5fd-b511b52774eb",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "form",
+          "name": "id",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "7b03f7e4-69d1-47fc-9d38-bf10899eb04d",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "7b03f7e4-69d1-47fc-9d38-bf10899eb04d",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "form",
+          "name": "id",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "20cf6664-da8f-462e-b906-853cefa1b5cb",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "20cf6664-da8f-462e-b906-853cefa1b5cb",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-tenant",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "9be5ab47-e421-4946-b2fb-6699f6874bd6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "9be5ab47-e421-4946-b2fb-6699f6874bd6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_line",
+          "part": "path"
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "3e2aacb9-2a1d-42ef-a533-728d5239a915",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "26ff940e-72d5-47a7-bdf4-1d4d186ebbad",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "9d99e0a9-f80e-40d9-9796-9dc545b3b2f3",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "966be656-0601-43c4-a302-e8fe66d0fbc4",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "44123b42-051c-4a2b-84fc-0c5737e8c278",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "26d0ae09-d79f-4b12-aeb0-f081f05d0dfb",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ad551832-b45e-4a37-9d89-19f7224e2df3",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "fa468b8a-924f-40be-a168-abb09446197a",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ff63002c-e3c8-4a16-a934-d5656811b3fa",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "9bf8f412-b46b-4657-b70f-b835552d99f7",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "2c505a74-b74e-4b30-84dd-cd8fd54a6243",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "35d1d318-4049-44e3-81db-791b25fd7ae8",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "f7dc83f6-5f1f-4913-96b0-d56ed5514a0f",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "055e590e-54b6-4a03-9dba-7d5d5e75de54",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "ed0a020d-3241-4985-96b3-768cc949db9e",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "95da454e-6b24-450f-904c-8880a77b2524",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "8711e3b3-7a94-4b6e-bc98-b40584602348",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "32211867-5f8b-4a59-bbfb-dcb3ddcab1a2",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "8c3c0361-bd3a-4c43-9a61-c0c7b4255c70",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "9a19acda-4ca1-4067-8448-193b9f94eb74",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "test"
+    },
+    {
+      "transaction_ref": "c97c8c5c-fef6-4d64-a368-c021bc0c4148",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "232e3ae5-7859-4bb1-81e8-77b63c65d237",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "0e00a357-e7f0-4878-933c-b52be714c694",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "f232faa8-2051-4ceb-8792-e560beed6be9",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "bed4cd38-99b7-4a8f-8230-a264378c6532",
+      "label_status": "labeled_positive",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "x-auth-token",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/data/owner_token"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "2c781bf1-5f09-4ca5-8998-f59750e617ae",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "6951b08c-a30f-4fc9-a854-ff6d7f252a16",
+      "label_status": "verified_clean",
+      "categories": [
+        "access_control"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "796a550f-e779-4dbe-9e08-0413cc46b0ed",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/stack"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "11ebd6ff-a89e-4cfb-8652-ef778a9d71b7",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/trace"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "c0bfde38-222f-498c-97d5-b69c5e501cd8",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "501f9ebe-98fe-4aba-a780-9ae7a746e4a6",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "44e2c558-8cef-4a9e-9700-975e00f394c8",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/file"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "37c2d8c5-b6d4-415e-bd2e-18b9e8c31f41",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "4133af90-1490-4c2b-bb04-865939966fc6",
+      "label_status": "verified_clean",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "0b711f6b-c834-4145-b116-d04d356e2be3",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "18902665-0808-48f3-9b59-782d7dc7bbf7",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-origin",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_header",
+          "name": "access-control-allow-credentials",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "f3224458-862a-4ccb-8d60-9182ade8bfea",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "strict-transport-security",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "064d6e42-37c9-4229-8357-862d7f31a095",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "9f5f4685-0a47-425c-be77-2e87acb3953b",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "b4267b68-f421-427f-973f-e3a2ff85d12e",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "f14c2b3e-c9e4-453e-9722-5888f96b7482",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "text"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "c54ee46d-0493-494d-a73e-c191dfef5949",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "2d67768a-59f2-4f0d-bc97-fae5e666fdc4",
+      "label_status": "labeled_positive",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_header",
+          "name": "allow",
+          "occurrence": 0
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "b2b25e5e-81d8-4795-906b-05eaf172196c",
+      "label_status": "verified_clean",
+      "categories": [
+        "security_misconfig"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "4be1f4f7-c7db-4a58-af17-e13679dc189e",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "q",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "4dca3132-b1d0-4485-b81d-293f84a43899",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "form",
+          "name": "q",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "b51b41d3-f785-464f-aaf8-cce46998ef03",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_header",
+          "name": "user-agent",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/echo/value"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "d4f24b12-da28-4c80-abdf-e6dcb04dc907",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "d4f24b12-da28-4c80-abdf-e6dcb04dc907",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_param",
+          "location": "query",
+          "name": "id",
+          "occurrence": 0
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "cbb66ee1-3960-4d7e-b3d0-c625dcd53152",
+      "label_status": "labeled_positive",
+      "categories": [
+        "info_exposure"
+      ],
+      "anchors": [
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "cbb66ee1-3960-4d7e-b3d0-c625dcd53152",
+      "label_status": "labeled_positive",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [
+        {
+          "locus": "req_line",
+          "part": "path"
+        },
+        {
+          "locus": "resp_body",
+          "body": {
+            "kind": "json",
+            "path": "/error/message"
+          }
+        }
+      ],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "08555543-d994-4a18-9891-5042ebb09435",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "2b179f7c-fdb8-43b0-96bc-79dfefffc78d",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "cf378ae1-d49d-4655-bc21-e093fff24278",
+      "label_status": "verified_clean",
+      "categories": [
+        "reflected_injection_indicator"
+      ],
+      "anchors": [],
+      "hard_negative": true,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "60db60cc-70e8-4a2f-80c8-a5012d34b13a",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "1fa95759-813b-47ee-ac30-82d7551eab8b",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "461d847c-b647-44a0-9672-56a0b439c2e4",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "cbee464f-d64c-45ab-a375-c3eb376a5675",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "13fc7292-770f-482b-a4ef-e2704a2a0a06",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "202c15d1-5a00-47e2-af05-da173ffa54e8",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "d1586af4-5f31-4207-88c4-01ceb2b39b27",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    },
+    {
+      "transaction_ref": "dde61274-d643-4b84-bdb8-efdf0d38e2e8",
+      "label_status": "verified_clean",
+      "categories": [],
+      "anchors": [],
+      "hard_negative": false,
+      "source": "construction",
+      "split": "dev"
+    }
+  ]
+}

@@ -171,7 +171,11 @@ def _origin_is_foreign(case: Case) -> bool:
     return len(origins) == 1 and urlsplit(origins[0]).hostname not in (None, "", REQUEST_HOST)
 
 
-CONSTRUCTION_CHECKS: Final = {"SM-P2": _origin_is_foreign}
+def _is_https(case: Case) -> bool:
+    return case.tx.scheme == "https"
+
+
+CONSTRUCTION_CHECKS: Final = {"SM-P2": _origin_is_foreign, "SM-P4": _is_https, "SM-N3": _is_https}
 
 
 def construction_problems(catalog: Catalog) -> list[str]:

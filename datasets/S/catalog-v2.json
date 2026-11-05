@@ -1,0 +1,5333 @@
+{
+ "dataset_id": "S-v2",
+ "guideline": {
+  "version": "v1",
+  "hash": "abd4c6896a179f209466b35fd1b55406dec91bd8788d7948bffa00093846aae7"
+ },
+ "cases": [
+  {
+   "case_id": "test-AC-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1000",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_addresses}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "addresses",
+      "state": "active",
+      "owner_token": "${tok:o_test_addresses}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1001",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_shipments}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "shipments",
+      "state": "active",
+      "owner_token": "${tok:o_test_shipments}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/wishlists/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/wishlists/1002",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_wishlists}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "wishlists",
+      "state": "active",
+      "owner_token": "${tok:o_test_wishlists}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/reviews/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/reviews/1003",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_reviews}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "reviews",
+      "state": "active",
+      "owner_token": "${tok:o_test_reviews}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/messages/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/messages/1004",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_messages}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "messages",
+      "state": "active",
+      "owner_token": "${tok:o_test_messages}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-06",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/baskets/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/baskets/1005",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_baskets}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "baskets",
+      "state": "active",
+      "owner_token": "${tok:o_test_baskets}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-07",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/coupons/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/coupons/1006",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_coupons}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "coupons",
+      "state": "active",
+      "owner_token": "${tok:o_test_coupons}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-08",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/orders/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders/1007",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_orders}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "orders",
+      "state": "active",
+      "owner_token": "${tok:o_test_orders}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-09",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/invoices/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/invoices/1008",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_invoices}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "invoices",
+      "state": "active",
+      "owner_token": "${tok:o_test_invoices}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-P1-10",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/payments/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/payments/1009",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_payments}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "payments",
+      "state": "active",
+      "owner_token": "${tok:o_test_payments}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/baskets/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/baskets/1010",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_baskets}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "baskets",
+      "state": "active",
+      "owner_token": "${tok:u_test_baskets}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-N1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/coupons/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/coupons/1011",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_coupons}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "coupons",
+      "state": "active",
+      "owner_token": "${tok:u_test_coupons}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-N1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/orders/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders/1012",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_orders}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "orders",
+      "state": "active",
+      "owner_token": "${tok:u_test_orders}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-N1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/invoices/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/invoices/1013",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_invoices}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "invoices",
+      "state": "active",
+      "owner_token": "${tok:u_test_invoices}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-AC-N1-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/payments/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "test",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/payments/1014",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_test_payments}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "payments",
+      "state": "active",
+      "owner_token": "${tok:u_test_payments}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/debug/backtrace"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1015",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p1_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "debug": {
+      "backtrace": "NoMethodError (undefined method `name' for nil:NilClass):\n  app/controllers/records_controller.rb:19:in `show'\n  actionpack (7.0.4) lib/action_controller/metal.rb:227:in `dispatch'"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/stack"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1016",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p1_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "stack": "TypeError: Cannot read properties of undefined (reading 'id')\n    at getRecord (/srv/app/routes/records.js:88:17)\n    at Layer.handle (/srv/app/node_modules/express/lib/router/layer.js:95:5)"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/wishlists/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/detail"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/wishlists/1017",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p1_03}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "detail": "panic: runtime error: invalid memory address or nil pointer dereference\ngoroutine 42 [running]:\nmain.getRecord(0xc0000a2000)\n\t/srv/app/record.go:61 +0x1d"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/reviews/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/exception/stackTrace"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/reviews/1018",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p1_04}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "exception": {
+      "stackTrace": "Traceback (most recent call last):\n  File \"/srv/app/views.py\", line 44, in detail\n    return repo.get(pk)\nKeyError: 12"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-C1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/messages/{id}"
+   },
+   "pattern_id": "RI-C1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/messages/1019",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_c1_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "SQLSTATE[42000]: Syntax error or access violation: 1064"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-C1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/baskets/{id}"
+   },
+   "pattern_id": "RI-C1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/baskets/1020",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_c1_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "Microsoft OLE DB Provider for SQL Server error 80040e14: Unclosed quotation mark after the character string"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/coupons/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/coupons/1021",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p3_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "/opt/shop/releases/current/app/settings.py"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P3-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/orders/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders/1022",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p3_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "/home/deploy/shop/shared/config.ini"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P3-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/invoices/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/invoices/1023",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p3_03}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "/var/www/shop/config/database.yml"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-P3-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/payments/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/payments/1024",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_p3_04}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "C:\\inetpub\\wwwroot\\shop\\web.config"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1025",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_n1_01}"
+     }
+    ],
+    "status": 404,
+    "resp_json": {
+     "error": {
+      "message": "not found"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-N1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1026",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_n1_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "internal server error"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-N1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/wishlists/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/wishlists/1027",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_n1_03}"
+     }
+    ],
+    "status": 403,
+    "resp_json": {
+     "error": {
+      "message": "forbidden"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-N1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/reviews/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/reviews/1028",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_n1_04}"
+     }
+    ],
+    "status": 400,
+    "resp_json": {
+     "error": {
+      "message": "invalid request"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-IE-N1-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/messages/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/messages/1029",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ie_n1_05}"
+     }
+    ],
+    "status": 503,
+    "resp_json": {
+     "error": {
+      "message": "try again later"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-SM-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "SM-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1030",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p1_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "SM-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1031",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p1_02}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/wishlists/{id}"
+   },
+   "pattern_id": "SM-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/wishlists/1032",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app1.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p2_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://app1.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P2-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/reviews/{id}"
+   },
+   "pattern_id": "SM-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/reviews/1033",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app2.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p2_02}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://app2.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P4-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/messages/{id}"
+   },
+   "pattern_id": "SM-P4",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "strict-transport-security"
+      }
+     ],
+     "clause": "SM-P4"
+    }
+   ],
+   "tx": {
+    "path": "/api/messages/1034",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p4_01}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=0"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P4-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/baskets/{id}"
+   },
+   "pattern_id": "SM-P4",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "strict-transport-security"
+      }
+     ],
+     "clause": "SM-P4"
+    }
+   ],
+   "tx": {
+    "path": "/api/baskets/1035",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p4_02}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=0"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/coupons/{id}"
+   },
+   "pattern_id": "SM-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/coupons/1036",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n1_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/orders/{id}"
+   },
+   "pattern_id": "SM-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders/1037",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n1_02}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "false"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/invoices/{id}"
+   },
+   "pattern_id": "SM-N2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/invoices/1038",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app3.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n2_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://console.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N2-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/payments/{id}"
+   },
+   "pattern_id": "SM-N2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/payments/1039",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app4.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n2_02}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://console.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "SM-N3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1040",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n3_01}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=31536000"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N3-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "SM-N3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1041",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n3_02}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=31536000"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/downloads/{dir}"
+   },
+   "pattern_id": "SM-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "text"
+       }
+      }
+     ],
+     "clause": "SM-P3"
+    }
+   ],
+   "tx": {
+    "path": "/downloads/public",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p3_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Index of /downloads/public</title></head><body><h1>Index of /downloads/public</h1>\n<a href=\"../\">Parent Directory</a>\n<a href=\"a.txt\">a.txt</a>\n<a href=\"b.zip\">b.zip</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "test-SM-P3-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/static/{dir}"
+   },
+   "pattern_id": "SM-P3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "text"
+       }
+      }
+     ],
+     "clause": "SM-P3"
+    }
+   ],
+   "tx": {
+    "path": "/static/public",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p3_02}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Index of /</title></head><body><h1>Index of /</h1>\n<a href=\"a.txt\">a.txt</a>\n<a href=\"b.zip\">b.zip</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "test-SM-N5-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/downloads/{dir}"
+   },
+   "pattern_id": "SM-N5",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N5"
+    }
+   ],
+   "tx": {
+    "path": "/downloads/guides",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n5_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Downloads</title></head><body><h1>Guides</h1>\n<a href=\"a.pdf\">Setup</a>\n<a href=\"b.pdf\">Returns</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "test-SM-N5-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/static/{dir}"
+   },
+   "pattern_id": "SM-N5",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N5"
+    }
+   ],
+   "tx": {
+    "path": "/static/guides",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n5_02}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Downloads</title></head><body><h1>Guides</h1>\n<a href=\"a.pdf\">Setup</a>\n<a href=\"b.pdf\">Returns</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "test-SM-P5-01",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/reports"
+   },
+   "pattern_id": "SM-P5",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "allow"
+      }
+     ],
+     "clause": "SM-P5"
+    }
+   ],
+   "tx": {
+    "path": "/api/reports",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p5_01}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS, TRACE"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-P5-02",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/orders"
+   },
+   "pattern_id": "SM-P5",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "allow"
+      }
+     ],
+     "clause": "SM-P5"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_p5_02}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS, TRACE"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N4-01",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/reports"
+   },
+   "pattern_id": "SM-N4",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N4"
+    }
+   ],
+   "tx": {
+    "path": "/api/reports",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n4_01}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-SM-N4-02",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/orders"
+   },
+   "pattern_id": "SM-N4",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N4"
+    }
+   ],
+   "tx": {
+    "path": "/api/orders",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_sm_n4_02}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/search"
+   },
+   "pattern_id": "RI-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "query",
+       "name": "q"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "text"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p1_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><body><p>Results for <script>alert(1)</script></p></body></html>",
+    "params": [
+     {
+      "name": "q",
+      "value": "<script>alert(1)</script>",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/search"
+   },
+   "pattern_id": "RI-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "query",
+       "name": "q"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p1_02}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "'-alert(1)-'"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "'-alert(1)-'",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P1-03",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/login"
+   },
+   "pattern_id": "RI-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "form",
+       "name": "q"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/login",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p1_03}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "O'Reilly"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "O'Reilly",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/catalog"
+   },
+   "pattern_id": "RI-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "user-agent"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/catalog",
+    "headers": [
+     {
+      "name": "User-Agent",
+      "value": "`id`"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p1_04}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "`id`"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-P1-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "RI-P1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_line",
+       "part": "path"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/\"quoted\"",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p1_05}"
+     }
+    ],
+    "status": 404,
+    "resp_json": {
+     "error": "Cannot GET /api/addresses/\"quoted\""
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-P2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/search"
+   },
+   "pattern_id": "RI-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "query",
+       "name": "id"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p2_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "django.db.utils.OperationalError: no such column: items.sku"
+     }
+    },
+    "params": [
+     {
+      "name": "id",
+      "value": "x' OR '1'='1",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P2-02",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/login"
+   },
+   "pattern_id": "RI-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "form",
+       "name": "id"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/login",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p2_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "SequelizeDatabaseError: column \"uid\" does not exist"
+     }
+    },
+    "params": [
+     {
+      "name": "id",
+      "value": "1'",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P2-03",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/newsletter"
+   },
+   "pattern_id": "RI-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "form",
+       "name": "id"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/newsletter",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p2_03}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version"
+     }
+    },
+    "params": [
+     {
+      "name": "id",
+      "value": "a';--",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-P2-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/faq"
+   },
+   "pattern_id": "RI-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-tenant"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/faq",
+    "headers": [
+     {
+      "name": "X-Tenant",
+      "value": "1\";--"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p2_04}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "org.hibernate.exception.SQLGrammarException: could not extract ResultSet"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-P2-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "RI-P2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_line",
+       "part": "path"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/' UNION SELECT 1--",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_p2_05}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "SQLITE_ERROR: near \"FROM\": syntax error"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "test-RI-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/search"
+   },
+   "pattern_id": "RI-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N1"
+    }
+   ],
+   "tx": {
+    "path": "/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n1_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><body><p>Results for &lt;script&gt;alert(1)&lt;/script&gt;</p></body></html>",
+    "params": [
+     {
+      "name": "q",
+      "value": "<script>alert(1)</script>",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-N1-02",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/login"
+   },
+   "pattern_id": "RI-N1",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/login",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n1_02}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "O&#39;Reilly"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "O'Reilly",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-N2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/catalog"
+   },
+   "pattern_id": "RI-N2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/catalog",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n2_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "isale/i"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "<i>sale</i>",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-N2-02",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/newsletter"
+   },
+   "pattern_id": "RI-N2",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/newsletter",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n2_02}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "Toms"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "Tom's",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-N3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/faq"
+   },
+   "pattern_id": "RI-N3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/faq",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n3_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "apple juice"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "apple juice",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-RI-N3-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/search"
+   },
+   "pattern_id": "RI-N3",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_ri_n3_02}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "size42"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "size42",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "test-clean-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/addresses/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/addresses/1066",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_01}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/shipments/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/shipments/1067",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_02}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/wishlists/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/wishlists/1068",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_03}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/reviews/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/reviews/1069",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_04}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/messages/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/messages/1070",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_05}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-06",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/baskets/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/baskets/1071",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_06}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-07",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/coupons/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/coupons/1072",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_07}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-08",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/orders/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/orders/1073",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_08}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-09",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/invoices/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/invoices/1074",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_09}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-10",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/payments/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/payments/1075",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_10}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-11",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/search"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_11}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><body><p>Welcome</p></body></html>"
+   }
+  },
+  {
+   "case_id": "test-clean-12",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/search"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/search",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_12}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-13",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/catalog"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/catalog",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_13}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "test-clean-14",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/faq"
+   },
+   "pattern_id": "clean",
+   "split": "test",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/faq",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_test_clean_14}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1080",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_documents}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "documents",
+      "state": "active",
+      "owner_token": "${tok:o_dev_documents}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/tickets/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/tickets/1081",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_tickets}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "tickets",
+      "state": "active",
+      "owner_token": "${tok:o_dev_tickets}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-P1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/subscriptions/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/subscriptions/1082",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_subscriptions}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "subscriptions",
+      "state": "active",
+      "owner_token": "${tok:o_dev_subscriptions}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-P1-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/cards/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/cards/1083",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_cards}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "cards",
+      "state": "active",
+      "owner_token": "${tok:o_dev_cards}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-P1-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/profiles/{id}"
+   },
+   "pattern_id": "AC-P1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "x-auth-token"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/data/owner_token"
+       }
+      }
+     ],
+     "clause": "AC-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/profiles/1084",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_profiles}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "profiles",
+      "state": "active",
+      "owner_token": "${tok:o_dev_profiles}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/subscriptions/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/subscriptions/1085",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_subscriptions}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "subscriptions",
+      "state": "active",
+      "owner_token": "${tok:u_dev_subscriptions}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-AC-N1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/cards/{id}"
+   },
+   "pattern_id": "AC-N1",
+   "split": "dev",
+   "masking_mode": "relation_preserving",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "access_control"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "AC-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/cards/1086",
+    "headers": [
+     {
+      "name": "X-Auth-Token",
+      "value": "${tok:u_dev_cards}"
+     }
+    ],
+    "resp_json": {
+     "data": {
+      "resource": "cards",
+      "state": "active",
+      "owner_token": "${tok:u_dev_cards}"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/stack"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1087",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_p1_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "stack": "System.NullReferenceException: Object reference not set to an instance of an object.\n   at Shop.Api.RecordsController.Get(Int32 id) in C:\\src\\Shop\\RecordsController.cs:line 27"
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-P1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/tickets/{id}"
+   },
+   "pattern_id": "IE-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/trace"
+       }
+      }
+     ],
+     "clause": "IE-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/tickets/1088",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_p1_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "trace": "java.lang.NullPointerException: null\n\tat com.shop.api.RecordService.find(RecordService.java:52)\n\tat com.shop.api.RecordController.get(RecordController.java:31)"
+    }
+   }
+  },
+  {
+   "case_id": "dev-RI-C1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/subscriptions/{id}"
+   },
+   "pattern_id": "RI-C1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/subscriptions/1089",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_c1_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "ERROR: syntax error at or near \"WHERE\" at character 41"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-P3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/cards/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/cards/1090",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_p3_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "D:\\apps\\shop\\bin\\Shop.Api.dll"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-P3-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/profiles/{id}"
+   },
+   "pattern_id": "IE-P3",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/file"
+       }
+      }
+     ],
+     "clause": "IE-P3"
+    }
+   ],
+   "tx": {
+    "path": "/api/profiles/1091",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_p3_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "code": "E_OPEN",
+      "file": "/srv/app/storage/logs/app.log"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1092",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_n1_01}"
+     }
+    ],
+    "status": 404,
+    "resp_json": {
+     "error": {
+      "message": "no such record"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-IE-N1-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/tickets/{id}"
+   },
+   "pattern_id": "IE-N1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "IE-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/tickets/1093",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ie_n1_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "something went wrong"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-SM-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "SM-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1094",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_p1_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-P2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/tickets/{id}"
+   },
+   "pattern_id": "SM-P2",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-origin"
+      },
+      {
+       "locus": "resp_header",
+       "name": "access-control-allow-credentials"
+      }
+     ],
+     "clause": "SM-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/tickets/1095",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app5.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_p2_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://app5.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-P4-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/subscriptions/{id}"
+   },
+   "pattern_id": "SM-P4",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "strict-transport-security"
+      }
+     ],
+     "clause": "SM-P4"
+    }
+   ],
+   "tx": {
+    "path": "/api/subscriptions/1096",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_p4_01}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=0"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/cards/{id}"
+   },
+   "pattern_id": "SM-N1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/cards/1097",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_n1_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "*"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-N2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/profiles/{id}"
+   },
+   "pattern_id": "SM-N2",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/profiles/1098",
+    "headers": [
+     {
+      "name": "Origin",
+      "value": "https://app6.partner.example"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_n2_01}"
+     }
+    ],
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Access-Control-Allow-Origin",
+      "value": "https://console.partner.example"
+     },
+     {
+      "name": "Access-Control-Allow-Credentials",
+      "value": "true"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-N3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "SM-N3",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1099",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_n3_01}"
+     }
+    ],
+    "scheme": "https",
+    "resp_json": {
+     "status": "ok"
+    },
+    "resp_headers": [
+     {
+      "name": "Strict-Transport-Security",
+      "value": "max-age=31536000"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-P3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/files/{dir}"
+   },
+   "pattern_id": "SM-P3",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "text"
+       }
+      }
+     ],
+     "clause": "SM-P3"
+    }
+   ],
+   "tx": {
+    "path": "/files/public",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_p3_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Index of /files/public</title></head><body><h1>Index of /files/public</h1>\n<a href=\"../\">Parent Directory</a>\n<a href=\"a.txt\">a.txt</a>\n<a href=\"b.zip\">b.zip</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "dev-SM-N5-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/files/{dir}"
+   },
+   "pattern_id": "SM-N5",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N5"
+    }
+   ],
+   "tx": {
+    "path": "/files/guides",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_n5_01}"
+     }
+    ],
+    "resp_content_type": "text/html",
+    "resp_text": "<html><head><title>Downloads</title></head><body><h1>Guides</h1>\n<a href=\"a.pdf\">Setup</a>\n<a href=\"b.pdf\">Returns</a>\n</body></html>"
+   }
+  },
+  {
+   "case_id": "dev-SM-P5-01",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/products"
+   },
+   "pattern_id": "SM-P5",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_header",
+       "name": "allow"
+      }
+     ],
+     "clause": "SM-P5"
+    }
+   ],
+   "tx": {
+    "path": "/api/products",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_p5_01}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS, TRACE"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-SM-N4-01",
+   "endpoint": {
+    "method": "OPTIONS",
+    "path_template": "/api/products"
+   },
+   "pattern_id": "SM-N4",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "security_misconfig"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "SM-N4"
+    }
+   ],
+   "tx": {
+    "path": "/api/products",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_sm_n4_01}"
+     }
+    ],
+    "status": 204,
+    "resp_content_type": "text/plain",
+    "resp_text": "",
+    "resp_headers": [
+     {
+      "name": "Allow",
+      "value": "GET, HEAD, OPTIONS"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-P1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/products"
+   },
+   "pattern_id": "RI-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "query",
+       "name": "q"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/products",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_p1_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "<i>sale<i>"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "<i>sale<i>",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-P1-02",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/feedback"
+   },
+   "pattern_id": "RI-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "form",
+       "name": "q"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/feedback",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_p1_02}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "<svg onload=alert(1)>"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "<svg onload=alert(1)>",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-P1-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/stores"
+   },
+   "pattern_id": "RI-P1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_header",
+       "name": "user-agent"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/echo/value"
+       }
+      }
+     ],
+     "clause": "RI-P1"
+    }
+   ],
+   "tx": {
+    "path": "/api/stores",
+    "headers": [
+     {
+      "name": "User-Agent",
+      "value": "\"><img src=x onerror=alert(1)>"
+     },
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_p1_03}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "\"><img src=x onerror=alert(1)>"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-RI-P2-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/stores"
+   },
+   "pattern_id": "RI-P2",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_param",
+       "location": "query",
+       "name": "id"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/stores",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_p2_01}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "PG::SyntaxError: ERROR: unterminated quoted string"
+     }
+    },
+    "params": [
+     {
+      "name": "id",
+      "value": "9'--",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-P2-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "RI-P2",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "info_exposure"
+     ],
+     "anchors": [
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "IE-P2"
+    },
+    {
+     "label_status": "labeled_positive",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [
+      {
+       "locus": "req_line",
+       "part": "path"
+      },
+      {
+       "locus": "resp_body",
+       "body": {
+        "kind": "json",
+        "path": "/error/message"
+       }
+      }
+     ],
+     "clause": "RI-P2"
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/admin'--",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_p2_02}"
+     }
+    ],
+    "status": 500,
+    "resp_json": {
+     "error": {
+      "message": "ORA-00933: SQL command not properly ended"
+     }
+    }
+   }
+  },
+  {
+   "case_id": "dev-RI-N1-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/products"
+   },
+   "pattern_id": "RI-N1",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N1"
+    }
+   ],
+   "tx": {
+    "path": "/api/products",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_n1_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "&quot;quoted&quot;"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "\"quoted\"",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-N2-01",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/feedback"
+   },
+   "pattern_id": "RI-N2",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N2"
+    }
+   ],
+   "tx": {
+    "path": "/api/feedback",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_n2_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "svg"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "\"><svg>",
+      "location": "form"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-RI-N3-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/stores"
+   },
+   "pattern_id": "RI-N3",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [
+      "reflected_injection_indicator"
+     ],
+     "anchors": [],
+     "hard_negative": true,
+     "clause": "RI-N3"
+    }
+   ],
+   "tx": {
+    "path": "/api/stores",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_ri_n3_01}"
+     }
+    ],
+    "resp_json": {
+     "echo": {
+      "value": "blue-shirt"
+     }
+    },
+    "params": [
+     {
+      "name": "q",
+      "value": "blue-shirt",
+      "location": "query"
+     }
+    ]
+   }
+  },
+  {
+   "case_id": "dev-clean-01",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/documents/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/documents/1112",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_01}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-02",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/tickets/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/tickets/1113",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_02}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-03",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/subscriptions/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/subscriptions/1114",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_03}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-04",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/cards/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/cards/1115",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_04}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-05",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/profiles/{id}"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/profiles/1116",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_05}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-06",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/products"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/products",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_06}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-07",
+   "endpoint": {
+    "method": "GET",
+    "path_template": "/api/stores"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/stores",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_07}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  },
+  {
+   "case_id": "dev-clean-08",
+   "endpoint": {
+    "method": "POST",
+    "path_template": "/api/feedback"
+   },
+   "pattern_id": "clean",
+   "split": "dev",
+   "masking_mode": "strict_redaction",
+   "source": "construction",
+   "labels": [
+    {
+     "label_status": "verified_clean",
+     "categories": [],
+     "anchors": []
+    }
+   ],
+   "tx": {
+    "path": "/api/feedback",
+    "headers": [
+     {
+      "name": "Cookie",
+      "value": "sid=${tok:s_dev_clean_08}"
+     }
+    ],
+    "resp_json": {
+     "data": [
+      {
+       "id": 1,
+       "state": "active"
+      }
+     ],
+     "total": 1
+    }
+   }
+  }
+ ]
+}
