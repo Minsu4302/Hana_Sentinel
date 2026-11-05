@@ -1143,3 +1143,19 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 결과
 - `tests/support/audit_files.py`: 본 파일과 곁 파일을 모두 읽고, 실제로 사라진 곁 파일만 견딘다. 본 파일·곁 파일이 아닌 파일·계속 잠긴 곁 파일은 실패한다. 검사 범위는 줄지 않았다.
 - **곁 파일 소멸을 견뎌도 범위가 줄지 않는 근거**: rollback journal은 변경 전 페이지라 새 데이터는 본 파일에 있다. WAL이면 재읽기로 대비한다.
+
+---
+
+## (A) v1.31 — 어댑터 계약 1부: 송신 경로 (Issue #93)
+
+### 0단계 결과
+- (A) v1.30 / 매핑표 v1.26 → 문서 v1.31, 매핑표 v1.27.
+- `http.client.connect` 감사 이벤트: Python 3.11 공식 문서의 감사 이벤트 표에 있고(인자 self·host·port), 3.11.9 소스에도 있다.
+- 추론 서버 후보 조사: llama.cpp `llama-server` / Ollama / llama-cpp-python. 선정은 민수 판정이고 이 PR에는 기준만 기록했다.
+
+### 결과
+- 코드·테스트 변경 0. 키 5개 신규(4개 not_implemented, 1개 unverifiable). `no_autonomous_send`는 현재 예외 없음(enforced 유지).
+
+### 미해결
+- **`llama-server`는 요청의 `image_url`이 원격 URL이면 서버가 직접 가져온다**(문서 확인, 끄는 플래그는 못 찾음). 프롬프트 구조가 외부 연결을 일으키는 경로다 → 이월처: 2부(메시지 content는 문자열만) + 기동 절차.
+- **Windows 10 LTSC 1809 동작**: Ollama는 공식 최소 요건(22H2)에 못 미친다. llama.cpp는 문서에 최소 버전이 없다 → 이월처: 민수 판정 뒤 실측.

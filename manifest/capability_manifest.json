@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.26",
+  "spec": "docs/design-decision.md §3 매핑표 v1.27",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -37,6 +37,7 @@
     "egress_enforcement_owner": {
       "status": "unverifiable",
       "effective_status": "unverifiable",
+      "note": "추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함",
       "verification_tests": []
     },
     "local_llm_vs_egress": {
@@ -53,6 +54,7 @@
     "no_autonomous_send": {
       "status": "enforced",
       "effective_status": "enforced",
+      "note": "현재 예외 없음 — 예외의 구현·테스트는 어댑터 구현 PR",
       "verification_tests": [
         "tests/test_architecture.py::test_engine_package_has_no_send_or_socket_imports",
         "tests/test_architecture.py::test_rejects_planted_send_or_socket_import",
@@ -61,6 +63,35 @@
         "tests/test_architecture.py::test_allowed_imports_pass_as_control",
         "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
       ]
+    },
+    "llm_adapter_loopback_only": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "어댑터 구현 PR",
+      "verification_tests": []
+    },
+    "llm_adapter_no_target_resend": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "어댑터 구현 PR",
+      "verification_tests": []
+    },
+    "llm_input_from_sanitized": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "어댑터 구현 PR",
+      "verification_tests": []
+    },
+    "llm_adapter_bounds": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "어댑터 구현 PR",
+      "verification_tests": []
+    },
+    "inference_server_binding": {
+      "status": "unverifiable",
+      "effective_status": "unverifiable",
+      "verification_tests": []
     },
     "loopback_binding": {
       "status": "enforced",
