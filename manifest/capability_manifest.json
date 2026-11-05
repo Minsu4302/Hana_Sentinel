@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.28",
+  "spec": "docs/design-decision.md §3 매핑표 v1.29",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -117,6 +117,23 @@
         "tests/test_llm_adapter.py::test_server_dripping_the_headers_ends_at_the_deadline",
         "tests/test_llm_adapter.py::test_failure_carries_no_prompt_or_response_content"
       ]
+    },
+    "llm_view_budget": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
+      "verification_tests": []
+    },
+    "llm_concurrency": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
+      "verification_tests": []
+    },
+    "llm_model_identity": {
+      "status": "unverifiable",
+      "effective_status": "unverifiable",
+      "verification_tests": []
     },
     "inference_server_binding": {
       "status": "unverifiable",
@@ -478,7 +495,13 @@
     "audit_write_failure": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "수용 요청 감사(B-6) 범위 확정 시",
+      "target": "결선 PR(범위 — LLM 감사)",
+      "verification_tests": []
+    },
+    "llm_io_audit": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
       "verification_tests": []
     },
     "masked_span_integrity": {
@@ -625,6 +648,24 @@
       ],
       "verification_tests": []
     },
+    "producer_gate_merge": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
+      "verification_tests": []
+    },
+    "clean_requires_no_failure": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
+      "verification_tests": []
+    },
+    "prompt_model_freeze": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "결선 PR",
+      "verification_tests": []
+    },
     "completed_via_gate": {
       "status": "enforced",
       "effective_status": "enforced",
@@ -681,7 +722,7 @@
     "anomaly_aggregation": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "LLM 결선 시",
+      "target": "세션 개념 도입 시",
       "verification_tests": []
     },
     "eval_harness": {
