@@ -2439,7 +2439,7 @@
        "locus": "resp_body",
        "body": {
         "kind": "json",
-        "path": "/echo/value"
+        "path": "/error"
        }
       }
      ],
@@ -2454,10 +2454,9 @@
       "value": "sid=${tok:s_test_ri_p1_05}"
      }
     ],
+    "status": 404,
     "resp_json": {
-     "echo": {
-      "value": "\"quoted\""
-     }
+     "error": "Cannot GET /api/addresses/\"quoted\""
     }
    }
   },
