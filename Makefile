@@ -13,10 +13,20 @@ endif
 export PYTHONUTF8 := 1
 export PYTHONIOENCODING := utf-8
 
-.PHONY: verify secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve eval
+.PHONY: verify verify-start verify-hooks verify-test secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve eval
 
-## verify: 시크릿 전수 스캔 → 가드레일 정합(guardrails.yaml↔(A) §3, manifest↔재파생) → pytest(+ enforced 검증 노드 수집·통과 자기검증)
-verify: secret-scan guardrails-check test
+## verify: 스탬프 삭제 → 시크릿 전수 스캔 → 가드레일 정합(guardrails.yaml↔(A) §3, manifest↔재파생) → pre-push 훅 확인
+##         → pytest(+ enforced 검증 노드 수집·통과 자기검증) → 통과하면 .verify-stamp 기록(pre-push 훅이 대조)
+verify: verify-start secret-scan guardrails-check verify-hooks verify-test
+
+verify-start:
+	$(PYTHON) tools/verify_stamp.py start
+
+verify-hooks:
+	$(PYTHON) tools/verify_stamp.py check-hooks
+
+verify-test:
+	$(PYTHON) tools/verify_stamp.py test
 
 secret-scan:
 	$(PYTHON) tools/secret_scan.py --all
@@ -49,4 +59,4 @@ eval:
 	$(PYTHON) -m tools.eval.runner $(EVAL_ARGS)
 
 install-hooks:
-	$(PYTHON) -m pre_commit install
+	$(PYTHON) -m pre_commit install --hook-type pre-commit --hook-type pre-push
