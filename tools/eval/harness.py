@@ -31,12 +31,12 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from sentinel.canonical_address import CNA, canonical_address, cna_sort_key
-from sentinel.output_schema import AnalysisMeta, AnalysisResult, PipelineMode, producer_versions_consistent
+from sentinel.output_schema import LLM_FAILURE_REASONS, AnalysisMeta, AnalysisResult, PipelineMode, producer_versions_consistent
 from sentinel.pipeline import schema_gate
 from sentinel.schema import Transaction
 from tools.dataset.freeze import engine_regression_problems, mode_problems, version_freeze_problems
 from tools.dataset.labelfile import Label, LabelFile, anchor_problems
-from tools.eval.frozen_rulesets import FROZEN_RULESETS
+from tools.eval.frozen_rulesets import FROZEN_MODELS, FROZEN_PROMPTS, FROZEN_RULESETS
 
 CATEGORIES = ("access_control", "info_exposure", "reflected_injection_indicator", "security_misconfig")
 WILSON_Z = 1.959963984540054  # 95%
@@ -188,6 +188,21 @@ def _pr(tp: int, fp: int, fn: int) -> dict[str, Any]:
     return {"tp": tp, "fp": fp, "fn": fn, "precision": wilson(tp, tp + fp), "recall": wilson(tp, tp + fn)}
 
 
+def _llm_rates(outcomes: dict[UUID, str | None]) -> dict[str, Any]:
+    """J2: LLM 거부율·실패율(사유별)."""
+    counts = Counter(outcomes.values())
+    return {"rejected": wilson(counts["rejected"], len(outcomes)),
+            "failed": {reason: wilson(counts[f"failed:{reason}"], len(outcomes)) for reason in LLM_FAILURE_REASONS}}
+
+
+def _clean_rates(clean: list[Label], hard: list[Label], flagged: set, success: set) -> dict[str, Any]:
+    """J3의 LLM 성공 부분집합."""
+    clean_ok = [x for x in clean if x.transaction_ref in success]
+    hard_ok = [x for x in hard if x.transaction_ref in success]
+    return {"verified_clean": wilson(sum(1 for x in clean_ok if x.transaction_ref in flagged), len(clean_ok)),
+            "hard_negative": wilson(sum(1 for x in hard_ok if x.transaction_ref in flagged), len(hard_ok))}
+
+
 def _scored_labels(label_file: LabelFile, run: PredictionRun) -> list[Label]:
     """split_scheme이 있으면 split 인자가 필수이고 그 split만 채점한다. 결과도 그 split의 트랜잭션과 같아야 한다."""
     if label_file.split_scheme is None:
@@ -207,7 +222,9 @@ def freeze_order(label_file: LabelFile, run_meta: RunMeta) -> str | None:
         return None
     same = (run_meta.ruleset_version == recorded.ruleset_version
             and FROZEN_RULESETS.get(run_meta.ruleset_version) == recorded.ruleset_hash)
-    return None if same else OUT_OF_FREEZE_ORDER
+    llm_frozen = (run_meta.pipeline_mode != "rule_llm"
+                  or (run_meta.prompt_version in FROZEN_PROMPTS and run_meta.model_id in FROZEN_MODELS))
+    return None if same and llm_frozen else OUT_OF_FREEZE_ORDER
 
 
 def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
@@ -246,6 +263,9 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
 
     clean = [label for label in labels if label.label_status == "verified_clean"]
     label_counts = Counter(v.label.transaction_ref for v in truths)
+    outcomes = {ref: None if r == "output_rejected" else r.analysis_meta.llm_outcome for ref, r in run.results.items()}
+    rule_llm = run.run_meta.pipeline_mode == "rule_llm"
+    success = {ref for ref, outcome in outcomes.items() if outcome == "ok"}
     flagged = {c.transaction_ref for p in preds for c in p.cnas}
     hard = [label for label in clean if label.hard_negative]
     produced = sorted({p.produced_by for p in preds})
@@ -270,16 +290,21 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
         "undetermined": len(undetermined),
         "J2": {"output_rejected": [str(r) for r in rejected],
                "fn_from_rejected": sum(1 for v in fns if v.label.transaction_ref in set(rejected)),
-               "rejection_rate": wilson(len(rejected), len(run.results))},
+               "rejection_rate": wilson(len(rejected), len(run.results)),
+               "llm": _llm_rates(outcomes) if rule_llm else None},
         "J3": {"verified_clean": wilson(sum(1 for x in clean if x.transaction_ref in flagged), len(clean)),
-               "hard_negative": wilson(sum(1 for x in hard if x.transaction_ref in flagged), len(hard))},
+               "hard_negative": wilson(sum(1 for x in hard if x.transaction_ref in flagged), len(hard)),
+               "llm_success": _clean_rates(clean, hard, flagged, success) if rule_llm else None},
         "J4": "not_run",                        # corroboration_check 미구현 — 숫자 없음
         "J5": "보류(unverifiable — 1인 단계)",   # 정답을 아는 사람이 잰 시간은 거짓 보장
         "J6": {"by_produced_by": {pb: _pr(sum(1 for p in strict if p.produced_by == pb),
                                           sum(1 for p in fps if p.produced_by == pb),
                                           len(truths) - sum(1 for p in strict if p.produced_by == pb))
                                   for pb in produced},
-               "llm_only_tp": len(llm_only)},
+               "llm_only_tp": len(llm_only),
+               "llm_success": _pr(sum(1 for v in strict.values() if v.label.transaction_ref in success),
+                                  sum(1 for p in fps if {c.transaction_ref for c in p.cnas} & success),
+                                  sum(1 for v in fns if v.label.transaction_ref in success)) if rule_llm else None},
         "J7": {"method": "wilson95", "version_comparison": "비교할 실행 없음(단일 실행)"},
         "matches": sorted([str(p.finding_id), str(v.label.transaction_ref)] for p, v in strict.items()),
     }

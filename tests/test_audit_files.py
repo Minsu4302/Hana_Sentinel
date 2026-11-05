@@ -149,9 +149,9 @@ def test_value_leaking_into_the_audit_still_fails_the_original_check(tmp_path):
     """원래 적대: 게이트가 입력 값을 감사에 남기면 값 미기록 검사가 실패한다."""
     root = tmp_path / "mut" / "src"
     mutant = copy_with_mutation(REPO_ROOT / "src", ["sentinel"], root, "sentinel/pipeline/output_gate.py",
-                                "    by_id = _checked_server_args(transactions, produced_by, analysis_meta)\n",
-                                "    by_id = _checked_server_args(transactions, produced_by, analysis_meta)\n"
-                                "    audit_log.warning(\"output_rejected draft=%s\", draft)\n")
+                                "        parsed = AnalysisDraft.model_validate_json(draft)  # ①②③\n",
+                                "        audit_log.warning(\"output_rejected draft=%s\", draft)\n"
+                                "        parsed = AnalysisDraft.model_validate_json(draft)  # ①②③\n")
     _run_mutant([root, REPO_ROOT], "sentinel.pipeline.output_gate", [_GATE_NODE], mutant)
 
 

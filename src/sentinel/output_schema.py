@@ -27,6 +27,9 @@ FindingStatus = Literal["unverified", "verifying", "confirmed", "false_positive"
 ProducedBy = Literal["rule", "llm", "hybrid"]
 Corroboration = Literal["matched", "unmatched", "not_checkable", "not_run"]
 PipelineMode = Literal["rule_only", "rule_llm"]
+LLM_FAILURE_REASONS: Final = ("unavailable", "timeout", "oversize", "truncated", "unparseable", "audit_write")  # (A) §2.5 닫힌 목록
+LlmOutcome = Literal["ok", "rejected", "failed:unavailable", "failed:timeout", "failed:oversize", "failed:truncated",
+                     "failed:unparseable", "failed:audit_write"]
 NonNegative = Annotated[int, Field(ge=0)]
 ProducerVersion = Annotated[str, Field(min_length=1)]
 
@@ -151,12 +154,15 @@ class AnalysisMeta(_Stored):
     elapsed_ms: NonNegative
     token_usage: Annotated[dict[str, NonNegative], *_FrozenMap] | None = None
     pipeline_mode: PipelineMode
+    llm_outcome: LlmOutcome | None = None  # rule_only에서 null, rule_llm에서 필수
     manifest_snapshot: Annotated[dict[str, Any], *_FrozenMap]
 
     @model_validator(mode="after")
     def _versions_match_mode(self) -> Self:
         if not producer_versions_consistent(self.pipeline_mode, self.model_id, self.prompt_version):
             raise ValueError("rule_only ⇔ model_id·prompt_version null")
+        if (self.pipeline_mode == "rule_only") != (self.llm_outcome is None):
+            raise ValueError("rule_only ⇔ llm_outcome null")
         return self
 
 

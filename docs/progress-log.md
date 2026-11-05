@@ -1203,3 +1203,25 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 해소
 - **G1 미해결 '전부 거부 실행의 보고'**: LLM 거부는 `completed`로 메타가 남아 해소된다. 러너의 `all_output_rejected`는 규칙 버그 경로로만 남는다.
 - **`skipped_reasons` 최소 1개**(v1.24 이월) → 계약 해소, 구현은 결선 PR.
+
+---
+
+## 결선 0단계 실측 + L1 (Issue #99)
+
+### 0단계 실측 (코드 커밋 없음, S v2 dev만, 방화벽 규칙 22개·차단 로그 확인 뒤)
+- 평탄화 스키마 2,591바이트(`$ref` 0, `oneOf` 2, `format` 1, range 제거). dev 10건: 파싱 실패 0, 스키마 위반 0, 길이 초과 0. 다만 8건이 빈 findings라 표본이 약하다(finding 2건, evidence 2개). 서버 로그에 스키마 경고 없음(지원하지 않는 기능은 조용히 건너뛴다는 문서 기준으로 지원의 증거는 아니다).
+- finding 1건 약 320토큰(326·337토큰, 약 23초).
+- 긴 입력: 2KB 841토큰 182/15.9토큰/초 · 4KB 1,619토큰 169/15.5 · 8KB 3,181토큰 156/14.0 · 16KB 6,302토큰 130/11.9(프롬프트/생성). 8KB에서 128·256·512토큰 생성 29.8·38.8·56.9초.
+- 인증: 키 없으면 `/v1/chat/completions`·`/v1/models`·`/models`·`/props`·`/slots`·`/metrics` 401, `/health`·`/v1/health` 200. 키가 있으면 `/slots`·`/metrics` 501.
+- 방화벽 로그 아웃바운드 DROP 0(프로세스 이름 없음, 마지막 기록이 측정 종료보다 약 30초 이름). 서버 로그에 키·입력 내용 0건.
+- 승인된 설정값: 뷰 8KB, max_tokens 1024, 전체 기한 120초, io_timeout 120초, `-c 8192`, `--parallel 1`. 도출 모델 `qwen2.5-1.5b-instruct-q4_k_m@sha256:6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`(모델이 바뀌면 재실측).
+
+### L1 결과
+- `output_gate.validate_producers`: 생산자별 검증 → 병합(규칙 문구, hybrid) → `_assign` 1회. `validate_draft`는 생산자가 하나인 경로다.
+- `llm_outcome`, `skipped_reasons` 닫힌 목록과 일치 검사, `ExecutionResponse.is_clean`.
+- 하네스: J2 LLM 거부·실패(사유별), J3·J6 LLM 성공 부분집합, `FROZEN_PROMPTS`·`FROZEN_MODELS`(비어 있음).
+- `build_execution_response`는 `LlmRun`을 받을 수 있지만 호출자는 아직 없다(L3).
+
+### 미해결
+- L2: 어댑터 기본값(io_timeout·deadline 120초), API 키 헤더, 감사, 스레드풀, 환각 리터럴은 L3 범위와 함께 — 발주 분할을 따른다.
+- `docs/inference-server.md`의 `-c`·`--parallel 1` 기록 → L2.

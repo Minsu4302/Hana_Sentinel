@@ -558,7 +558,7 @@ MUTATIONS = {
                                 [_G + "test_1_0_stays_one_label_per_transaction_without_new_fields[two_labels]"]),
     "score_ignores_split": (*HAR, "    labels = [label for label in label_file.labels if label.split == run.run_meta.split]\n",
                             "    labels = label_file.labels\n", [_G + "test_only_the_chosen_split_is_scored"]),
-    "freeze_order_off": (*HAR, "    return None if same else OUT_OF_FREEZE_ORDER\n", "    return None\n",
+    "freeze_order_off": (*HAR, "    return None if same and llm_frozen else OUT_OF_FREEZE_ORDER\n", "    return None\n",
                          [_G + "test_test_split_on_another_ruleset_is_marked_out_of_freeze_order",
                           _G + "test_recorded_hash_that_differs_from_the_frozen_table_is_marked"]),
     "freeze_order_on_dev_too": (*HAR, '    if run_meta.split != "test":\n        return None\n', "",

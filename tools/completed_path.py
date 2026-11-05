@@ -10,7 +10,8 @@
   ① 두 이름의 그 밖의 값 참조 전부: 다른 곳의 생성자, `.model_validate*`, `TypeAdapter(...)`, 별칭 대입, 상속, 문자열 표기.
      타입 표기(인자·반환·필드 주석)와 별칭 없는 import는 값 참조가 아니라 허용한다.
   ② 받는 쪽을 가리지 않는 우회 생성: `model_construct`·`construct`·`parse_obj`·`parse_raw`·`parse_file`·`from_orm`.
-  ③ 게이트 건너뛰기: `_assign` 참조는 `validate_draft` 안에서만(검사 ①~⑤ 없이 AnalysisResult에 닿는 유일한 함수).
+  ③ 게이트 건너뛰기: `_build` 참조는 `validate_producers` 안에서만, `_assign` 참조는 `_build` 안에서만(검사 ①~⑤ 없이 AnalysisResult에
+     닿는 함수들).
   ④ 저장 필드 직접 쓰기: `__setattr__`·`__delattr__`·`__dict__` 참조(문자열 표기 포함)와 `vars(...)` — frozen을 우회하는 경로.
      읽기도 함께 막는다(src/sentinel에 쓸 일이 없고, 읽기와 쓰기를 정적으로 가르면 구멍이 남는다).
   ⑤ 인스턴스에서 새 값을 찍는 경로: `.model_copy(...)`(헤더 이름 정규화 `_normalized` 한 곳만 예외 — 대상이 Locator),
@@ -32,8 +33,8 @@ ISINSTANCE_SITES: Final = {"SanitizedEnvelope": ("pipeline/llm_adapter.py", "llm
 BYPASS_ATTRS: Final = frozenset({"model_construct", "construct", "parse_obj", "parse_raw", "parse_file", "from_orm"})
 MODEL_COPY_SITE: Final = ("pipeline/output_gate.py", "_normalized")
 RAW_WRITE_NAMES: Final = frozenset({"__setattr__", "__delattr__", "__dict__"})
-ASSIGN_NAME: Final = "_assign"
-ASSIGN_SITE: Final = ("pipeline/output_gate.py", "validate_draft")
+GATE_INTERNALS: Final = {"_assign": ("pipeline/output_gate.py", "_build"),
+                         "_build": ("pipeline/output_gate.py", "validate_producers")}
 
 
 class _Scan(ast.NodeVisitor):
@@ -91,7 +92,7 @@ class _Scan(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _check_assign(self, name: str, node: ast.AST) -> None:
-        if name == ASSIGN_NAME and (self.rel, self.function) != ASSIGN_SITE:
+        if name in GATE_INTERNALS and (self.rel, self.function) != GATE_INTERNALS[name]:
             self._flag("gate_skipped", node)
 
     def visit_Name(self, node: ast.Name) -> None:

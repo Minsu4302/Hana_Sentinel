@@ -11,13 +11,13 @@ Body.masked_spans는 형태만 여기서 보고, Body 불변식 1~6은 ③(`mask
 """
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Final, Literal, Self
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from sentinel.common_types import MaskedRef, MaskedSpan
-from sentinel.output_schema import AnalysisResult
+from sentinel.output_schema import LLM_FAILURE_REASONS, AnalysisResult
 
 Port = Annotated[int, Field(ge=0, le=65535)]
 NonNegative = Annotated[int, Field(ge=0)]
@@ -118,10 +118,20 @@ class Envelope(_Strict):
 
 # ── 출력: (A) §2.5 ExecutionResponse — 분석 실행 상태(AnalysisResult와 구분) ──────────────
 
+MODE_SKIPPED: Final = "llm_analysis_not_implemented"  # 모드상 미수행
+FAILURE_SKIPPED: Final = frozenset({"llm_rejected", *(f"llm_failed:{r}" for r in LLM_FAILURE_REASONS)})  # 실패
+
+
+def _expected_failures(llm_outcome: str | None) -> list[str]:
+    if llm_outcome == "rejected":
+        return ["llm_rejected"]
+    return [f"llm_{llm_outcome}"] if llm_outcome is not None and llm_outcome.startswith("failed:") else []
+
+
 class ExecutionResponse(_Strict):
     """④는 이 타입만 반환한다. findings는 result 안에만 있다 — "분석 안 함 ≠ 분석 후 취약점 없음"."""
     analysis_status: Literal["not_implemented", "completed", "output_rejected"]
-    skipped_reasons: Annotated[list[str], Field(min_length=1)]
+    skipped_reasons: list[str]
     manifest_snapshot: dict[str, Any]
     result: AnalysisResult | None
 
@@ -129,4 +139,18 @@ class ExecutionResponse(_Strict):
     def _result_only_when_completed(self) -> Self:
         if (self.analysis_status == "completed") != (self.result is not None):
             raise ValueError("completed ⇔ result ≠ null")
+        if not set(self.skipped_reasons) <= {MODE_SKIPPED, *FAILURE_SKIPPED}:
+            raise ValueError("skipped_reasons는 닫힌 목록 값이어야 함")
+        if self.analysis_status == "not_implemented" and not self.skipped_reasons:
+            raise ValueError("not_implemented에는 미수행 사유가 있어야 함")
+        if self.result is not None and self._failures() != _expected_failures(self.result.analysis_meta.llm_outcome):
+            raise ValueError("skipped_reasons의 실패 사유와 llm_outcome이 다름")
         return self
+
+    def _failures(self) -> list[str]:
+        return [r for r in self.skipped_reasons if r in FAILURE_SKIPPED]
+
+    @property
+    def is_clean(self) -> bool:
+        """깨끗함 = completed ∧ findings [] ∧ 실패 사유 없음. LLM 실패 + 빈 findings는 깨끗함이 아니다((A) §2.5)."""
+        return self.analysis_status == "completed" and not self.result.findings and not self._failures()
