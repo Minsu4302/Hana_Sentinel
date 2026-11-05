@@ -1129,3 +1129,5 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 
 - 조항별 일치(일치 트랜잭션 라벨 수/사례 수): test AC-P1 0/10 · IE-P1 2/4 · IE-P3 0/4 · RI-C1 0/2 · RI-P1 3/5 · RI-P2 0/5 · SM-P1 2/2 · SM-P2 2/2 · SM-P3 0/2 · SM-P4 0/2 · SM-P5 0/2 / dev AC-P1 0/5 · IE-P1 2/2 · IE-P3 0/2 · RI-C1 0/1 · RI-P1 2/3 · RI-P2 0/2 · SM-P1 1/1 · SM-P2 1/1 · SM-P3 0/1 · SM-P4 0/1 · SM-P5 0/1. RI-P2는 사례 하나에 라벨이 2개다.
 - 읽는 법: J3 전체 비율은 실제 빈도가 아니다. Precision 1.0(n=9)의 구간은 p=1이라 좁게 나온 것이고, 게이트(n ≥ 39)가 보장한 값이 아니다.
+- **간헐 실패**: `tests/test_output_gate.py::test_unresolvable_pointer_audit_has_no_header_name_path_or_range_values`(SQLite `-journal` 목록·읽기 경합). enforced 노드의 거짓 실패는 '재실행 습관'을 만들어 진짜 실패를 가린다 → 다음 PR에서 수정.
+- **교훈**: 측정 전 해석 기준을 손으로 적어 미탐 범위를 빠뜨렸다(IE-P1 일부·IE-P3·DB 오류·SM-P3~P5). 다음 측정부터 '조항 × 규칙 커버리지' 표로 기계 도출한다.
