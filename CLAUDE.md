@@ -20,13 +20,13 @@
 > 요청이 이 중 하나를 건드리면, 코드를 내놓기 전에 **먼저 위험을 설명하고 멈춘다.**
 > 이 색인은 (A) §1.4에서 파생된다. 색인 ↔ §1.4 일치는 `claude_md_sync_check`가 검사한다. §1.4 자체의 완전성은 리뷰 몫이다.
 
-- **N1 외부 egress 금지** — 외부 인터넷/상용 AI API 전송 코드 금지. LLM은 로컬·사내 승인만. 외부 통신 라이브러리 추가 시 먼저 경고. → 정의처: §1.3 ⓑ · 키: `egress_static_check`(§3.1), `egress_runtime_block`(§3.1), `egress_enforcement_owner`(§3.1), `local_llm_vs_egress`(§3.1), `no_autonomous_send`(§3.1), `tools_no_external_send`(§3.1), `masker_no_send`(§3.1)
-- **N2 자율 전송 금지** — 도구가 대상 서버로 HTTP 요청을 보내는 코드 금지. "나중에 켤" 비활성 코드조차 0. → 정의처: §1.3 ⓐ · 키: `no_autonomous_send`(§3.1), `tools_no_external_send`(§3.1), `masker_no_send`(§3.1)
+- **N1 외부 egress 금지** — 외부 인터넷/상용 AI API 전송 코드 금지. LLM은 로컬·사내 승인만. 외부 통신 라이브러리 추가 시 먼저 경고. → 정의처: §1.3 ⓑ · 키: `egress_static_check`(§3.1), `egress_runtime_block`(§3.1), `egress_enforcement_owner`(§3.1), `local_llm_vs_egress`(§3.1), `no_autonomous_send`(§3.1), `tools_no_external_send`(§3.1), `masker_no_send`(§3.1), `llm_adapter_loopback_only`(§3.1), `inference_server_binding`(§3.1)
+- **N2 자율 전송 금지** — 도구가 대상 서버로 HTTP 요청을 보내는 코드 금지. "나중에 켤" 비활성 코드조차 0. → 정의처: §1.3 ⓐ · 키: `no_autonomous_send`(§3.1), `tools_no_external_send`(§3.1), `masker_no_send`(§3.1), `llm_adapter_no_target_resend`(§3.1)
 - **N3 Java에 로직 금지** — Java는 capture / transport / ui만. 분석·판정·프롬프트·취약점 로직 금지. → 정의처: §3.2 · 키: `java_logic_isolation`(§3.2)
 - **N4 엔진은 Burp를 모른다** — Python 엔진에 `burp`/`montoya` import 0. 입력은 정규화 JSON만. → 정의처: §3.2 · 키: `engine_burp_isolation`(§3.2), `engine_tools_isolation`(§3.2), `engine_no_rawtransaction`(§3.2), `input_schema_gate`(§3.2)
 - **N5 실데이터 금지** — 실보고서·실트래픽·인증정보·내부 URL·토큰을 코드·테스트·저장소·프롬프트에 금지. 테스트는 Juice Shop + 더미. → 정의처: §1.3 ⓒ · 키: 없음(기계 강제 불가 — 정책·리뷰)
 - **N6 main 직접 병합 금지** — Issue → feature 브랜치 → PR → merge. → 정의처: §3.4 · 키: `branch_protection`(§3.4)
-- **N7 민감정보 커밋 금지** — 키·토큰·쿠키·비밀번호 커밋 금지. 저장·전송 전 마스킹. 원본(마스킹 전) 트래픽 커밋 금지. → 정의처: §1.3 ⓕ, §3.3 · 키: `secret_scan_hook`(§3.3), `no_raw_persistence`(§3.3), `sanitization_trust`(§3.3), `maskedref_typing`(§3.3)
+- **N7 민감정보 커밋 금지** — 키·토큰·쿠키·비밀번호 커밋 금지. 저장·전송 전 마스킹. 원본(마스킹 전) 트래픽 커밋 금지. → 정의처: §1.3 ⓕ, §3.3 · 키: `secret_scan_hook`(§3.3), `no_raw_persistence`(§3.3), `sanitization_trust`(§3.3), `maskedref_typing`(§3.3), `llm_input_from_sanitized`(§3.1)
 - **N8 AI 수정코드 자동 반영 금지** — AI 생성 수정코드의 자동 반영 금지. 수정 '권고 초안'까지만 허용(반영은 사람 검토). → 정의처: §1.3 ⓓ · 키: `no_autopatch_apply`(§3.1) (재론: 권고 초안 허용)
 - **N9 실데이터 파인튜닝 금지** — 실데이터 기반 파인튜닝 금지. → 정의처: §1.3 ⓔ · 키: `no_finetune_path`(§3.1) (재론: RAG 검증 후)
 - **N10 멀티에이전트/사내 사례 RAG** — P2 범위. 단 (A) §1.3 ⓖ에 영구 제외로 등재 — MVP 검증 + 데이터 승인 전 도입 금지. → 정의처: §1.3 ⓖ · 키: `no_multiagent_rag`(§3.1)
