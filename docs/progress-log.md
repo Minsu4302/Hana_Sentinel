@@ -1057,3 +1057,24 @@ severity 3건(등급 값 목록·category 기본값 표·신호 보정 규칙)�
   - → 이월처 G2: 주체 운반자를 값 전체가 토큰인 헤더로 구성하는 안을 0단계에서 검토한다.
   - → S v1 한계: ① positive의 라벨 차이가 형식 차이일 수 있다.
   - → 이월처 J 집합·LLM 결선: 실사용에서 형식 차이로 ① 신호가 상시 발생할 가능성이 있다.
+
+---
+
+## G2 — S v2 카탈로그 (Issue #88)
+
+### 0단계 결과
+- 커버리지: test 80(positive 40, verified_clean 40 — hard negative 26, 일반 14) / dev 40(positive 20, clean 20). category별 test positive ①②③④ = 10·15·10·10, hard negative 5·5·10·6.
+- 엔드포인트 30개, split은 그룹 안 `sha256("S-v2-split-1|method|경로 템플릿")` 순 앞 2/3을 test로(사례 전에 고정, 결과를 보고 조정하지 않음).
+- ① 운반자: 값 전체가 토큰인 `X-Auth-Token` + 응답 `owner_token`. 합성 확인에서 같은 토큰 = 같은 라벨.
+- IE-P2 단독과 RI-C1은 관측이 같아 통합했다(`pattern_id=RI-C1`, `clause=IE-P2`).
+- RI positive 요청 값 위치를 사례 전에 고정: test 쿼리 3·폼 3·헤더 2·경로 2 / dev 쿼리 2·폼 1·헤더 1·경로 1.
+
+### 절차 준수
+- 카탈로그 작업 중 `rule_engine.py`를 열지 않았다. 동결 전 ④를 돌리지 않았다(②③만).
+- 스택 트레이스·DB 오류·경로·값의 예시는 해시 순서로 split에 배정했다(`S-v2-values-1`). 작성 보조 스크립트는 레포 밖이고, SSOT는 `datasets/S/catalog-v2.json`이다.
+
+### 한계
+- **J3 전체 비율은 실제 빈도 추정이 아니다(hard negative 과대 대표)** — hard negative·일반 clean 부분집합을 따로 읽는다.
+- **요청 본문 값은 구성하지 않았다**: 생성기의 요청 본문이 비어 있어 RI-D3의 '본문 값'은 v1 커버리지 밖이고, 폼은 파라미터로만 표현한다.
+- **템플릿 유사성**: 사례가 템플릿으로 생성되어 유사하다(Wilson 독립 가정은 근사). ① 사례의 소유자 필드가 `owner_token` 하나로 모이는 것도 여기 포함한다.
+- **② 라벨의 조항별 수가 고르지 않다**: test P1 4, P2 7(RI-P2 5 포함), P3 4.
