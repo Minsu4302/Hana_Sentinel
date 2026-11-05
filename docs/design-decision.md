@@ -307,7 +307,8 @@ AdvisorySignal = { type:"out_of_scope_advisory", topic, basis:[Evidence], sugges
 - **인젝션 피해 범위:** LLM에게는 도구·송신이 없으므로 인젝션의 최대 피해는 틀린 초안이며, 게이트와 사람이 거른다.
 - **status 승격:** ReviewEvent(사람 판정 + 시각 + 사유) append → current_status는 파생·재계산 가능. 초안에서 status **필드 자체를 제외**하고 서버가 unverified 부여.
 - **evidence 무결성:** transaction_ref ∈ analyzed_refs + pointer가 마스킹 후 데이터에서 해석됨 + pointer/observation이 **마스킹 후 데이터로 검증 가능** + observation 핵심 주장이 실제 발견되는지 재대조.
-- **환각 리터럴 격리:** LLM 자유 문자열(observation·hypothesis·limitations·next_steps)에 정책 패턴 리터럴이 있으면 ③이 데이터에 없음을 보장하므로 데이터 밖 값이다. 치환하고 `hallucinated_literal_suspected`를 붙인다(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 원문은 저장·로그하지 않는다. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
+- **환각 리터럴 격리:** LLM 자유 문자열(observation·hypothesis·limitations·next_steps)에 정책 패턴 리터럴이 있으면, 같은 정책 패턴 집합 안에서 ③이 데이터에 없음을 보장하므로 데이터 밖 값이다. 치환하고 `hallucinated_literal_suspected`를 붙인다(서버 생성, '날조 확정' 아니라 '경계 이상 의심'). 원문은 저장·로그하지 않는다. 플래그 달린 evidence는 유효근거 카운트 제외 → 유효 evidence 0이면 finding 자동 needs_review/폐기.
+  - 한계: 정책 패턴에 걸리지 않는 환각(지어낸 이름·값)은 잡지 못한다 — `corroboration_check`(미구현)의 몫이다.
 - **중복 처리:** Finding끼리는 (category, Evidence CNA 집합)이 정확히 같을 때만 병합한다(CNA → §2.6). CNA가 일부 겹치는 것만으로는 병합하지 않는다. advisory의 CNA 집합이 어떤 finding과 정확히 같으면 advisory를 버린다(finding 우선). 평가 채점은 이 중복 처리를 거친 출력을 대상으로 한다.
   - 근거: 겹침으로 병합하면 사슬 병합이 생기고, 거친 노드(body_text)가 서로 다른 결함을 끌어모은다. 보안 도구에서 과병합은 결함을 숨기고, 과소병합은 중복을 보여 줄 뿐이다(fail-safe 방향). 남은 중복은 평가에서 측정된다.
 
@@ -440,7 +441,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 ④ [현재] 규칙엔진 → 출력 게이트 → ExecutionResponse(analysis_status="completed" | "output_rejected") 반환(rule_only, 저장 없음)
    [이후]  규칙엔진 + LLM(§2.8) → 생산자별 게이트·병합(§2.4) → 저장
 ```
-**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부). 범위는 LLM 감사다(§2.8 — LLM 결과 폐기, 규칙 결과 유지).
+**감사 기록 실패 시에도 fail-closed**(기록 못 하면 통과시키지 말고 거부)는 모든 감사 기록의 원칙이다. 현재 강제 범위(`audit_write_failure`)는 LLM 감사이고(§2.8 — LLM 결과 폐기, 규칙 결과 유지), 수용 요청 감사 등 나머지는 미구현이다.
 
 ### 3.1 D. 실행경계
 | 규칙 | 목표층위 | 상태 | manifest 키 |
