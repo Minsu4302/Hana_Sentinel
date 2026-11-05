@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.arch_boundary import BURP, DYNAMIC, SEND, BoundaryScanError, scan_package, scan_source
+from tools.arch_boundary import BURP, DYNAMIC, SEND, BoundaryScanError, engine_send_violations, scan_package, scan_source
 from tools.guardrails import REPO_ROOT
 
 ENGINE_ROOT = REPO_ROOT / "src" / "sentinel"
@@ -89,7 +89,7 @@ def test_engine_package_has_no_burp_or_montoya_imports():
 
 
 def test_engine_package_has_no_send_or_socket_imports():
-    assert [v for v in scan_package(ENGINE_ROOT) if v.kind in (SEND, DYNAMIC)] == []
+    assert engine_send_violations(ENGINE_ROOT) == []  # 파일 예외(어댑터의 http.client)는 tests/test_llm_adapter.py가 고정
 
 
 def test_allowed_imports_pass_as_control(tmp_path):
