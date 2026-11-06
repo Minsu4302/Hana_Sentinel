@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.36 — Sentinel Harness
+# (A) 설계확정서 v1.37 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.36 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트 + v1.32 결선 L2 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.37 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트 + v1.32 결선 L2 승격 + v1.33 L3 선행 계약)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -66,7 +66,8 @@
 > **v1.34 (매핑표 v1.30):** 결선 L1 — 게이트·결과 표현(코드 PR, 계약 변경 없음). §3.5 `producer_gate_merge`·`clean_requires_no_failure`·`prompt_model_freeze` 승격 + `completed_via_gate` 노트(생산자별 게이트 경로 재증명). 합성 초안으로 증명했고 어댑터 호출은 없다.
 > **v1.35 (매핑표 v1.31):** 도구 — verify 스탬프와 pre-push 훅. §3.4 신규 `push_requires_verify`(enforced, 클라이언트 훅 범위). 사람이 지키던 '실패 시 멈추는 체인' 규칙을 장치로 대체한다.
 > **v1.36 (매핑표 v1.32):** 결선 L2 — 어댑터 주변 안전장치(코드 PR, 파이프라인 결선 없음). `llm_concurrency`·`llm_io_audit`·`audit_write_failure` 승격(not_implemented → enforced, 범위는 상태 칸). `llm_adapter_loopback_only` 고정 목록에 메시지 역할·본문 키·response_format·헤더 키·API 키 비노출 추가. §2.8 지문 outcome 정의. `no_raw_persistence` 부재 검사가 감사 저장소 API를 호출 대상으로 판별.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06)
+> **v1.37 (매핑표 v1.33):** L3 선행 계약(문서 + 키 등재, 코드 0). §2.8 생산자 설정 동결(`prompt_version` = 템플릿 + 생성 설정 묶음 해시, `prompt_model_freeze` 노트 갱신) + 대기 상한(신규 `llm_queue_bound`, not_implemented → L3)과 Burp 쪽 읽기 타임아웃 요구(Java 연결 시 이월) + 어댑터 사유 대응표. §6.3 FROZEN_PROMPTS 값 명시 + J9 보고 머리에 서빙 조건 추가.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06, v1.37 개정: 2026-11-06)
 
 ---
 
@@ -411,7 +412,8 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - 뷰가 잘리면 서버가 limitations에 "LLM 입력 뷰가 일부만 포함"을 붙인다(LLM이 쓰지 않는다).
   - Evidence는 뷰가 아니라 마스킹된 Transaction 전체에 대해 해석한다. 게이트는 전체 Transaction을 본다.
   - 예산 관계식: 뷰 토큰 / 프롬프트 처리 속도 + max_tokens / 생성 속도 + 여유 ≤ 전체 기한(`llm_adapter_bounds`). 값은 설정값이다(정본이 아니며 결선 PR에서 실측한다).
-- **프롬프트:** 고정 지시문 + 구획된 데이터 블록이다. 트랜잭션은 JSON 문자열로 넣고 신뢰 불가 데이터로 표시한다. `prompt_version` = 템플릿 파일 해시다.
+- **프롬프트:** 고정 지시문 + 구획된 데이터 블록이다. 트랜잭션은 JSON 문자열로 넣고 신뢰 불가 데이터로 표시한다.
+- **생산자 설정 동결:** `prompt_version` = 템플릿 파일 + 생성 설정(temperature·max_tokens·뷰 상한·전체 기한·전송 스키마(평탄화본))의 묶음 해시다. test를 측정한 뒤 생성 설정만 바꿔도 같은 프롬프트 버전으로 기록되는 구멍을 막는다. 기한은 출력 내용이 아니라 timeout 실패 빈도를 바꾸며, timeout이면 규칙 결과만 남으므로 J2·J6에 영향을 준다. FROZEN_PROMPTS는 이 묶음 해시를 기록하고, `prompt_model_freeze`가 이 해시로 판정한다.
 - **구조화 출력:** 정의처는 Pydantic FindingDraft 목록이다. 전송은 `$ref`를 풀어 넣은 평탄화 스키마(response_format)다.
   - LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋).
   - 파싱 실패 → `llm_failed:unparseable`. 재시도는 없다(v1 — 다시 생성하면 J2를 가린다).
@@ -421,10 +423,23 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **model_id:** `이름@sha256:<가중치 해시>`다. 기동 절차에서 기록한 값을 설정으로 받는다. 서버가 보고하는 경로와 대조하는 데까지만 가능하다(`llm_model_identity` — unverifiable).
 - **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사가 메시지 역할·요청 본문 키·response_format·인증 헤더를 고정한다(`llm_adapter_loopback_only`).
 - **동시성:** LLM 호출은 스레드풀에서 하고 동시 처리는 1건이다. 이벤트 루프를 막지 않는다 — LLM 처리 중에도 토큰 검증이 응답해야 한다(`llm_concurrency`).
+  - **대기 상한:** 설정값이다(기본 2). 넘으면 토큰 검증 뒤·스레드풀 진입 전에 즉시 503 + 감사 사유 `busy`로 응답하고 분석하지 않는다(`llm_queue_bound`).
+  - **클라이언트 요구(Java 연결 시 이월 — Java 쪽 설정 항목):** Burp 쪽 읽기 타임아웃 ≥ (대기 상한 + 1) × 전체 기한 + 여유. 기본값 기준 360초 + 여유다.
+- **사유 대응표:** 어댑터 사유 코드는 아래 표로 `llm_failed:<사유>`(§2.5 닫힌 목록)에 대응한다. `truncated`·`unparseable`·`audit_write`는 어댑터 밖에서 정해진다.
+
+| 어댑터 사유 코드 | `llm_failed:<사유>` |
+|---|---|
+| `api_key_missing` | `unavailable` |
+| `connect_failed` | `unavailable` |
+| `bad_status` | `unavailable` |
+| `transport_error` | `unavailable` |
+| `io_timeout` | `timeout` |
+| `deadline_exceeded` | `timeout` |
+| `response_too_large` | `oversize` |
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.32 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.33 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -461,6 +476,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드 | 테스트 | enforced | `llm_adapter_bounds` |
 | LLM 입력 뷰는 순서·머리꼬리 보존 규칙을 따르고 예산 관계식 안에 있다. 잘리면 서버가 limitations를 붙인다 | 테스트 | not_implemented → 결선 PR | `llm_view_budget` |
 | LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다 | 테스트 | enforced(분석 호출 전체 단위 — LLM 호출이 이 안에 결선되는 것은 L3) | `llm_concurrency` |
+| 분석 대기 상한(설정값, 기본 2). 넘으면 토큰 검증 뒤·스레드풀 진입 전에 즉시 503 + 감사 사유 busy, 분석 안 함 | 테스트 | not_implemented → L3 | `llm_queue_bound` |
 | model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능 | — | unverifiable | `llm_model_identity` |
 | 추론 서버의 바인딩 주소, 그리고 루프백 포트에서 듣는 프로세스의 정체성(포워더 여부·포트 선점)은 우리 테스트 밖 — OS·운영 절차가 실주체. 기동 절차 문서로 보완 | — | unverifiable | `inference_server_binding` |
 | 127.0.0.1 바인딩 | 테스트+설정 | enforced | `loopback_binding` |
@@ -527,7 +543,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 출력 스키마 전체(파생 롤업) | 파생(하위 4키 AND) | derived † | `output_schema_gate` |
 | 생산자별 초안을 각각 검증한 뒤 (category, CNA 집합) 일치를 병합하고 _assign 1회로 만든다. 규칙 초안 거부는 output_rejected, LLM 초안 거부·실패는 completed + 규칙 결과 + 실패 사유 | 테스트 | enforced(합성 초안으로 증명 — 어댑터 결선은 L3) | `producer_gate_merge` |
 | 깨끗함 = completed ∧ findings [] ∧ 실패 사유 없음. LLM 실패 + 빈 findings는 깨끗함이 아니다 | 테스트 | enforced | `clean_requires_no_failure` |
-| rule_llm의 test split은 FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정(아니면 동결 순서 밖 표기) | 테스트 | enforced(동결 표는 비어 있다 — 등록은 프롬프트 동결 때) | `prompt_model_freeze` |
+| rule_llm의 test split은 FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정(아니면 동결 순서 밖 표기) | 테스트 | enforced(판정 값은 묶음 해시(§2.8) — 산출은 L3. 동결 표는 비어 있다 — 등록은 프롬프트 동결 때) | `prompt_model_freeze` |
 | ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 생산자별 게이트 경로까지 재증명, 어댑터 결선은 L3에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)) | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |
@@ -663,7 +679,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - **CORS 허용 목록 일치 사례:** 관측상 SM-P2와 같으므로 그렇게 라벨하고, 그 배경의 사례를 따로 구성하지 않는다.
   - **작성 순서:** ruleset 동결(rules-2, 완료) → 지침 동결 → 카탈로그 → 생성·동결 → 생산자 첫 실행. LLM은 dev에서만 조정한다(기계로 증명 불가 — 한계).
   - **채점 단위:** split_scheme이 있는 데이터셋은 split 인자가 필수이고 그 split만 채점한다. 인자가 없으면 거부한다.
-  - **rule_llm의 test split:** FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정이다. 아니면 "동결 순서 밖 — 측정 아님"으로 표기한다(`prompt_model_freeze`). test 측정마다 progress-log 커밋이 의무다(대상은 S v2. 억지력이며 증명이 아니다).
+  - **rule_llm의 test split:** FROZEN_PROMPTS(묶음 해시 — §2.8)·FROZEN_MODELS에 있는 버전만 측정이다. 아니면 "동결 순서 밖 — 측정 아님"으로 표기한다(`prompt_model_freeze`). test 측정마다 progress-log 커밋이 의무다(대상은 S v2. 억지력이며 증명이 아니다).
   - **동결 순서:** 생성기는 현재 규칙 해시가 FROZEN_RULESETS에 없으면 생성을 거부한다. 하네스는 test split 보고에서 데이터셋 기록과 다른 ruleset이면 "동결 순서 밖 — 측정 아님"으로 표기한다(`producer_freeze_order`). 해시 범위는 rule_engine.py·strict_json.py·canonical_address.py이고, 타입 파일(common_types·output_schema·schema)은 제외한다(한계 — 타입 변경은 잡지 못한다).
 - **S v2 동결:** 마스킹된 Envelope 120건 + 라벨 파일(LabelFile 1.1) + 사례 카탈로그(`datasets/S/catalog-v2.json`). 엔드포인트 30개. test 80건(labeled_positive 40, verified_clean 40 — hard negative 26, 일반 14), dev 40건(labeled_positive 20, verified_clean 20). 복수 라벨 트랜잭션 test 5건, dev 2건. 라벨링 지침 v1, ruleset rules-2, 데이터 커밋 `d85b0fb`. 원본은 커밋하지 않는다(§1.3 ⓕ).
   - 한계: J3 전체 비율은 실제 빈도 추정이 아니다(hard negative 과대 대표 — hard negative·일반 clean 부분집합을 따로 읽는다). 요청 본문 값은 구성하지 않았다. 사례는 템플릿으로 생성되어 유사하고(① 소유자 필드 포함), dev/test는 엔드포인트 단위로만 분리되어 패턴 템플릿을 공유한다 — dev 튜닝 효과가 test로 실제보다 잘 옮겨 갈 수 있다. 경로 사례는 실제 요청에서는 인코딩될 문자를 원문으로 구성했다.
@@ -684,6 +700,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **J7 불확실성:** 비율은 Wilson 95% 구간. 버전 간 비교는 트랜잭션 단위 쌍체 bootstrap. 대표 지표에서 차이 구간이 통째로 0 아래면 회귀이고, 개선 주장도 같은 기준을 쓴다.
 - **J8 최소 표본:** Wilson 구간 반폭 ≤ 0.15일 때만 점추정값을 낸다. 그보다 넓으면 "표본 부족(n=k)" + 구간. 0.15는 초기 임계값이다(설정값 — `DEFAULT_PORT`와 같은 성격(실측으로 조정 가능, 정본이되 불변식 아님)).
 - **J9 보고 머리:** 데이터셋 버전·집합(S/J)·분할(dev/test, 없으면 null)·pipeline_mode·model_id·prompt_version·ruleset_version. rule_only에서 model_id·prompt_version은 null로 적는다(대체 문자열 금지).
+  - **서빙 조건(rule_llm):** 추론 서버 버전·-t·-c·--parallel·CPU 요약을 적는다. 동결 대상이 아니라 측정 조건 기록이다 — 하드웨어에 따라 정해지는 값이라 해시에 묶지 않지만, 속도 차이로 생긴 timeout 차이를 모델 차이로 오독하지 않게 한다.
 
 ---
 

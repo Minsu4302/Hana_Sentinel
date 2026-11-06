@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.32. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.33. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.32"
+derived_from: "docs/design-decision.md §3 매핑표 v1.33"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -148,6 +148,14 @@ guardrails:
       - "tests/test_llm_safeguards.py::test_only_one_analysis_runs_at_a_time"
       - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_concurrency
+  - id: llm_queue_bound
+    description: "분석 대기 상한(설정값, 기본 2). 넘으면 토큰 검증 뒤·스레드풀 진입 전에 즉시 503 + 감사 사유 busy, 분석 안 함"
+    target_layer: "테스트"
+    status:
+      state: not_implemented
+      target: "L3"
+    verification_tests: []
+    manifest_key: llm_queue_bound
   - id: llm_model_identity
     description: "model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능"
     target_layer: "외부"
@@ -772,7 +780,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "동결 표는 비어 있다 — 등록은 프롬프트 동결 때"
+      note: "판정 값은 묶음 해시(§2.8) — 산출은 L3. 동결 표는 비어 있다 — 등록은 프롬프트 동결 때"
     verification_tests:
       - "tests/test_producer_gate.py::test_frozen_tables_start_empty"
       - "tests/test_producer_gate.py::test_rule_llm_test_split_is_out_of_order_until_prompt_and_model_are_frozen"
