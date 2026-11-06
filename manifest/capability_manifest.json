@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.32",
+  "spec": "docs/design-decision.md §3 매핑표 v1.33",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -133,6 +133,12 @@
         "tests/test_llm_safeguards.py::test_only_one_analysis_runs_at_a_time",
         "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
       ]
+    },
+    "llm_queue_bound": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "L3",
+      "verification_tests": []
     },
     "llm_model_identity": {
       "status": "unverifiable",
@@ -709,7 +715,7 @@
     "prompt_model_freeze": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "동결 표는 비어 있다 — 등록은 프롬프트 동결 때",
+      "note": "판정 값은 묶음 해시(§2.8) — 산출은 L3. 동결 표는 비어 있다 — 등록은 프롬프트 동결 때",
       "verification_tests": [
         "tests/test_producer_gate.py::test_frozen_tables_start_empty",
         "tests/test_producer_gate.py::test_rule_llm_test_split_is_out_of_order_until_prompt_and_model_are_frozen",
