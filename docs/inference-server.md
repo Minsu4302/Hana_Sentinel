@@ -46,6 +46,17 @@ llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-web
 2. LISTEN 프로세스의 PID가 방금 띄운 서버인가. 포트에서 듣는 프로세스의 정체는 어댑터가 확인하지 못한다(포워더·포트 선점).
 3. 방화벽 로그 `pfirewall.log`에 아웃바운드 DROP이 없는가. 이 로그에는 프로세스 이름이 없으므로 시간대로 대조한다.
 
-## 5. 끝낸 뒤
+## 5. rule_llm으로 돌리기
+
+기본은 rule_only다. 아래 셋이 모두 있어야 rule_llm이고, 모자라면 기동·평가를 거부한다(조용히 rule_only로 내려가지 않는다).
+
+- `SENTINEL_PIPELINE_MODE=rule_llm`
+- `SENTINEL_LLM_PORT=<N>`
+- `SENTINEL_LLM_MODEL_ID=<이름@sha256:가중치 해시>`
+- `LLAMA_API_KEY`: 서버 기동 때 만든 키
+
+평가는 `make eval EVAL_ARGS="--dataset datasets/S/v2 --split dev --serving-conditions <파일>"`다. 서빙 조건 파일은 `server_version`·`threads`·`context`·`parallel`·`cpu`를 담은 JSON이고 rule_llm에서 필수다(§6.3 J9). 동결 대상이 아니라 측정 조건 기록이다.
+
+## 6. 끝낸 뒤
 
 서버를 종료한다. 기동 때 기록한 `model_id`(`이름@sha256:<가중치 해시>`)를 설정에 넣는다. 서버 로그에 요청 내용이 남지 않는지는 쓰는 버전에서 확인한다.

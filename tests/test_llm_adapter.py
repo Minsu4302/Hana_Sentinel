@@ -57,7 +57,7 @@ def _sanitized() -> SanitizedEnvelope:
 
 
 def _payload() -> LlmInput:
-    return llm_input(_sanitized())
+    return llm_input(_sanitized())[0]
 
 
 # ── 정상 ───────────────────────────────────────────────────────────
@@ -100,22 +100,23 @@ def test_input_type_has_only_the_content_field():
 
 def test_adapter_api_takes_no_host_or_target():
     assert list(inspect.signature(complete).parameters) == ["payload", "port", "response_schema", "limits"]
-    assert list(inspect.signature(llm_input).parameters) == ["sanitized"]
+    assert list(inspect.signature(llm_input).parameters) == ["sanitized", "limits"]
 
 
 def test_method_and_path_are_the_inference_api_constants():
     assert (llm_adapter.COMPLETIONS_METHOD, llm_adapter.COMPLETIONS_PATH) == ("POST", "/v1/chat/completions")
 
 
-def test_nothing_calls_the_adapter_yet():
-    assert adapter_call_sites(PACKAGE) == []
+def test_only_the_llm_path_calls_the_adapter():
+    sites = adapter_call_sites(PACKAGE)
+    assert len(sites) == 1 and sites[0].startswith("pipeline/llm_path.py:")
 
 
 def test_planted_call_site_is_found(tmp_path):
     root = tmp_path / "sentinel"
     shutil.copytree(PACKAGE, root, ignore=shutil.ignore_patterns("__pycache__"))
     (root / "pipeline" / "planted.py").write_text("from sentinel.pipeline import llm_adapter\n", encoding="utf-8")
-    assert adapter_call_sites(root) == ["pipeline/planted.py:1"]
+    assert "pipeline/planted.py:1" in adapter_call_sites(root) and len(adapter_call_sites(root)) == 2
 
 
 # ── 정적: 루프백 ───────────────────────────────────────────────────
@@ -137,14 +138,14 @@ EDITS = {
     "non_string_content": ('"content": payload.content', '"content": [{"url": "http://x"}]', "content_not_the_input_string"),
     "other_system": ('"content": SYSTEM_PROMPT', '"content": payload.content', "system_not_the_constant"),
     "third_role": ('{"role": "user", "content": payload.content}]', '{"role": "user", "content": payload.content}, {"role": "tool"}]', "roles_changed"),
-    "extra_body_key": ('"temperature": 0,', '"temperature": 0, "tools": [],', "body_keys_changed"),
+    "extra_body_key": ('"temperature": limits.temperature,', '"temperature": limits.temperature, "tools": [],', "body_keys_changed"),
     "extra_header": ('"Authorization": f"Bearer {key}"}', '"Authorization": f"Bearer {key}", "X-Target": "x"}', "headers_changed"),
     "other_response_format": ('{"type": "json_schema",', '{"type": "text",', "response_format_changed"),
     "key_in_log": ('    audit_log.warning("llm_adapter_failed reason=%s", reason)\n', '    key = 1\n    audit_log.warning("llm_adapter_failed reason=%s", key)\n', "secret_in_log"),
     "other_path": ("conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH,", 'conn.request(COMPLETIONS_METHOD, "/x",', "request_not_constant"),
     "other_method": ("conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH,", 'conn.request("GET", COMPLETIONS_PATH,', "request_not_constant"),
     "host_parameter": ("def complete(payload: LlmInput, port: int,", "def complete(payload: LlmInput, port: int, host: str,", "forbidden_param:host"),
-    "url_parameter": ("def llm_input(sanitized: SanitizedEnvelope)", "def llm_input(sanitized: SanitizedEnvelope, url: str)", "forbidden_param:url"),
+    "url_parameter": ("def llm_input(sanitized: SanitizedEnvelope,", "def llm_input(sanitized: SanitizedEnvelope, url: str,", "forbidden_param:url"),
     "alias_import": ("import http.client\n", "import http.client as h\nimport http.client\n", "aliased_import:http.client"),
     "from_import": ("import http.client\n", "from http.client import HTTPConnection\nimport http.client\n", "from_http_import"),
 }
@@ -211,8 +212,8 @@ def test_scan_still_sees_http_client_as_a_send_import():
 
 def test_input_comes_from_the_sanitized_snapshot():
     env = schema_gate.parse_envelope(_raw(_env()))
-    payload = llm_input(verify_sanitization(env))
-    assert json.loads(payload.content)["transactions"][0]["meta"]["transaction_id"] == str(env.transactions[0].meta.transaction_id)
+    payload, _truncated = llm_input(verify_sanitization(env))
+    assert str(env.transactions[0].meta.transaction_id) in payload.content
 
 
 @pytest.mark.parametrize("value", ["raw string", {"transactions": []}, None], ids=["string", "dict", "none"])
@@ -239,7 +240,7 @@ def test_change_to_the_envelope_after_stage_three_does_not_reach_the_input():
     env = schema_gate.parse_envelope(_raw(_env()))
     sanitized = verify_sanitization(env)
     env.transactions[0].request.headers.append(Header(name="X-Late", value=secret))
-    assert secret not in llm_input(sanitized).content
+    assert secret not in llm_input(sanitized)[0].content
 
 
 def test_sanitized_value_and_input_cannot_be_changed():
@@ -247,7 +248,7 @@ def test_sanitized_value_and_input_cannot_be_changed():
     with pytest.raises(dataclasses.FrozenInstanceError):
         sanitized.transactions_json = "x"
     with pytest.raises(dataclasses.FrozenInstanceError):
-        llm_input(sanitized).content = "x"
+        llm_input(sanitized)[0].content = "x"
 
 
 def test_sanitized_and_input_are_built_at_one_place_each():
@@ -381,8 +382,8 @@ SRC_MUTATIONS = {
                          "        transactions_json = property(lambda self: _snapshot(envelope))\n    return _Live()\n",
                          [_T + "test_change_to_the_envelope_after_stage_three_does_not_reach_the_input"]),
     "input_type_not_checked": (*ADP, "    if not isinstance(sanitized, SanitizedEnvelope):\n        raise TypeError(\"어댑터 입력은 ③을 통과한 값에서만 만든다\")\n"
-                               "    return LlmInput(content=sanitized.transactions_json)\n",
-                               "    return LlmInput(content=getattr(sanitized, 'transactions_json', str(sanitized)))\n",
+                               "    view, truncated = render_view(sanitized.transactions_json, limits.view_bytes)\n",
+                               "    view, truncated = render_view(getattr(sanitized, 'transactions_json', '{\"transactions\": []}'), limits.view_bytes)\n",
                                [_T + "test_value_that_did_not_pass_stage_three_is_refused[string]",
                                 _T + "test_envelope_itself_is_refused"]),
     "size_limit_off": (*ADP, "        if size > limits.max_response_bytes:\n", "        if False:\n",

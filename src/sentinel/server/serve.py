@@ -12,6 +12,7 @@ from typing import Any
 import uvicorn
 
 from sentinel.audit import attach_audit_store, audit_db_path, install_egress_audit_hook
+from sentinel.pipeline import llm_path
 from sentinel.server.app import create_app
 from sentinel.server.auth import load_shared_token
 from sentinel.server.config import BIND_HOST, LoopbackBindError, ServerConfig, require_loopback_host, require_port
@@ -22,7 +23,8 @@ def build_uvicorn_config(cfg: ServerConfig, environ: Mapping[str, str] | None = 
     port = require_port(cfg.port)
     token = load_shared_token(environ)  # 미설정·빈값 → TokenConfigError, uvicorn 미생성(기동 거부)
     # access_log 끔: 요청 줄(경로·쿼리)을 기록하지 않는다 — 감사는 sentinel.audit만.
-    return uvicorn.Config(create_app(token), host=host, port=port, proxy_headers=False,
+    llm_config = llm_path.config_from_env()  # 기본 rule_only. rule_llm인데 설정이 모자라면 LlmConfigError(기동 거부)
+    return uvicorn.Config(create_app(token, llm_config=llm_config, queue_limit=cfg.queue_limit), host=host, port=port, proxy_headers=False,
                           server_header=False, access_log=False, log_level="warning")
 
 
@@ -60,6 +62,6 @@ class LoopbackOnlyServer(uvicorn.Server):
 
 def serve(cfg: ServerConfig) -> None:
     config = build_uvicorn_config(cfg)  # 토큰·manifest·바인드 주소 검증이 모두 끝난 뒤에만
-    attach_audit_store(audit_db_path())  # 감사 → SQLite (기록 실패 시 fail-closed는 수용 요청 감사(B-6) 범위 확정 시)
+    attach_audit_store(audit_db_path())  # 감사 → SQLite (LLM 감사 기록 실패는 LLM 결과를 폐기한다. 나머지 감사의 fail-closed는 수용 요청 감사(B-6) 범위 확정 시)
     install_egress_audit_hook()  # egress 시도 관측·기록(차단 아님)
     LoopbackOnlyServer(config).run()

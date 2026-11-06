@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from typing import Any, Final
 from urllib.parse import unquote_plus
 
+from pydantic import BaseModel
+
 from sentinel.pipeline import masked_span_check
 # 패턴은 정책 데이터다(pipeline 밖, 마스커와 공유) — 이 모듈은 스캔·판정 로직만 갖는다. 기존 import 호환을 위해 재노출.
 from sentinel.sanitization_policy import DEFAULT_POLICY, PATTERNS, SanitizationPolicy
@@ -121,6 +123,14 @@ class SanitizedEnvelope:
     """③을 통과했다는 표지. 검증한 값의 불변 스냅샷을 담는다 — Envelope은 frozen이어도 목록이 가변이라 원본을 참조하지 않는다.
     `verify_sanitization`만 만든다(`llm_input_from_sanitized`)."""
     transactions_json: str
+
+    def transactions(self) -> list[Transaction]:
+        """스냅샷에서 복원한 새 사본 — ④의 규칙과 게이트는 어댑터와 같은 값을 본다."""
+        return _TransactionList.model_validate_json(self.transactions_json).transactions
+
+
+class _TransactionList(BaseModel):
+    transactions: list[Transaction]
 
 
 def _snapshot(envelope: Envelope) -> str:

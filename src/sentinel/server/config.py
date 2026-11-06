@@ -11,6 +11,7 @@ from typing import Final
 
 BIND_HOST: Final = "127.0.0.1"
 DEFAULT_PORT: Final = 8765
+DEFAULT_QUEUE_LIMIT: Final = 2
 
 
 class LoopbackBindError(ValueError):
@@ -33,7 +34,10 @@ def require_port(port: object) -> int:
 class ServerConfig:
     host: str = BIND_HOST
     port: int = DEFAULT_PORT
+    queue_limit: int = DEFAULT_QUEUE_LIMIT
 
     def __post_init__(self) -> None:
         require_loopback_host(self.host)
         require_port(self.port)
+        if type(self.queue_limit) is not int or self.queue_limit < 0:
+            raise ValueError("대기 상한은 0 이상 정수여야 함")

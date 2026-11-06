@@ -23,7 +23,7 @@ from sentinel.server.app import create_app
 from tools.mutation_guard import copy_with_mutation
 from tests.support.audit_files import audit_store_bytes
 from tests.test_auth import HEADER, _drive, _scope, _status
-from tests.test_rule_wiring import TX, _envelope_with, _run_mutant
+from tests.test_rule_wiring import TX, _sanitized_with, _run_mutant
 from tests.test_schema import _env, _raw
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +44,7 @@ def _run(output, view="view", elapsed_ms=7) -> LlmRun:
 
 
 def _respond(run: LlmRun):
-    return execution.build_execution_response(_envelope_with(TX), {}, run)
+    return execution.build_execution_response(_sanitized_with(TX), {}, run)
 
 
 def _calls(store: Path) -> list[str]:
@@ -61,7 +61,7 @@ def test_llm_call_leaves_a_fingerprint(store):
     assert "elapsed_ms=7" in message and "outcome=ok" in message and "prompt_version=p1" in message and f"model_id={MODEL}" in message
 
 
-@pytest.mark.parametrize("output, expected", [("not json", "rejected"), (LlmFailure("timeout"), "failed:timeout")], ids=["rejected", "failed"])
+@pytest.mark.parametrize("output, expected", [('{"findings": 1}', "rejected"), (LlmFailure("timeout"), "failed:timeout")], ids=["rejected", "failed"])
 def test_fingerprint_records_the_outcome(store, output, expected):
     _respond(_run(output))
     assert f"outcome={expected}" in _calls(store)[0]
@@ -74,7 +74,7 @@ def test_fingerprint_keeps_no_content(store):
 
 
 def test_rule_only_path_leaves_no_llm_fingerprint(store):
-    execution.build_execution_response(_envelope_with(TX), {})
+    execution.build_execution_response(_sanitized_with(TX), {})
     assert _calls(store) == []
 
 
@@ -116,7 +116,7 @@ def test_audit_failure_with_no_findings_is_not_clean(monkeypatch):
 
 
 def test_rule_only_path_does_not_need_the_audit_store():
-    assert execution.build_execution_response(_envelope_with(TX), {}).analysis_status == "completed"
+    assert execution.build_execution_response(_sanitized_with(TX), {}).analysis_status == "completed"
 
 
 # ── 동시성 ─────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ async def _call(app, token: bytes) -> list[dict]:
 
 def test_token_check_answers_while_an_analysis_is_running(token, monkeypatch):
     real = entry.analyze
-    monkeypatch.setattr(entry, "analyze", lambda raw, snapshot: time.sleep(1.0) or real(raw, snapshot))
+    monkeypatch.setattr(entry, "analyze", lambda raw, snapshot, llm_config=None: time.sleep(1.0) or real(raw, snapshot))
     app = create_app(token)
 
     async def scenario() -> tuple[int, float, bool]:
@@ -158,7 +158,7 @@ def test_only_one_analysis_runs_at_a_time(token, monkeypatch):
     lock = threading.Lock()
     active = [0, 0]
 
-    def analyze(raw, snapshot):
+    def analyze(raw, snapshot, llm_config=None):
         with lock:
             active[0] += 1
             active[1] = max(active)
@@ -199,7 +199,7 @@ MUTATIONS = {
                               [_S + "test_write_required_says_when_the_store_is_broken"]),
     "content_in_the_fingerprint": (*LOG, '    return audit.write_required(f"llm_call view_sha256={view_hash} ', '    return audit.write_required(f"llm_call view={view} view_sha256={view_hash} ',
                                    [_S + "test_fingerprint_keeps_no_content"]),
-    "analysis_on_the_event_loop": (*APP, "result = await run_in_threadpool(lambda: entry.analyze(raw, manifest_snapshot))", "result = entry.analyze(raw, manifest_snapshot)",
+    "analysis_on_the_event_loop": (*APP, "result = await run_in_threadpool(lambda: entry.analyze(raw, manifest_snapshot, llm_config))", "result = entry.analyze(raw, manifest_snapshot, llm_config)",
                                    [_S + "test_token_check_answers_while_an_analysis_is_running"]),
     "two_at_a_time": (*APP, "ANALYSIS_CONCURRENCY: Final = 1\n", "ANALYSIS_CONCURRENCY: Final = 2\n", [_S + "test_only_one_analysis_runs_at_a_time"]),
 }

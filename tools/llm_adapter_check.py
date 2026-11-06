@@ -3,7 +3,7 @@
 `loopback_violations`: 연결 생성자 1개, 인자 고정(상수 127.0.0.1, 포트 이름, timeout만) / HTTPSConnection·set_tunnel·source_address·
 .host·.port 대입·host= 키워드·상속·별칭 import·getattr 금지 / 요청 메서드·경로는 상수 / 메시지는 system(상수)·user(입력의 문자열
 필드) 둘 / 요청 본문·헤더·response_format의 키 고정 / API 키는 로그·예외에 없음 / 어댑터 API 인자에 대상 요청을 다시 만들 이름이 없음.
-`adapter_call_sites`: src/sentinel에서 어댑터를 부르는 곳. 지금은 0곳이다(결선 전 — 결선 PR에서 재증명).
+`adapter_call_sites`: src/sentinel에서 어댑터를 부르는 곳. `pipeline/llm_path.py` 한 곳이다.
 
 범위(정직 표기): 정적 범위다. 런타임 조립은 금지 이름 검사로만 막는다. 포트에서 듣는 프로세스의 정체는 범위 밖이다
 (`inference_server_binding`).

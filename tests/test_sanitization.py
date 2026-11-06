@@ -245,7 +245,8 @@ def test_rejection_audit_has_reason_codes_only_no_values_or_input_names(caplog):
 
 def test_recheck_is_never_reached_without_token_or_valid_schema(token, monkeypatch):
     calls = []
-    monkeypatch.setattr(sanitization_check, "verify_sanitization", lambda *a, **k: calls.append(a))
+    real = sanitization_check.verify_sanitization  # ④가 ③의 반환값을 쓰므로 대조군이 통과하려면 실제 값을 돌려줘야 한다
+    monkeypatch.setattr(sanitization_check, "verify_sanitization", lambda *a, **k: calls.append(a) or real(*a, **k))
     _drive(create_app(token), _scope([]), _raw(_plant("request_body", FAKES["jwt"])))  # ① 실패
     _drive(create_app(token), _scope([(HEADER, token)]), b"{}")  # ② 실패
     assert calls == []

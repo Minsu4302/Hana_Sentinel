@@ -23,7 +23,7 @@ from tools.eval.harness import OUT_OF_FREEZE_ORDER, PredictionRun, RunMeta, free
 from tools.dataset.labelfile import LabelFile
 from tools.mutation_guard import copy_with_mutation
 from tests.test_eval_harness import DATASET, L, _anchor, _correct, _result, _run, _strict
-from tests.test_rule_wiring import HEADER_PTR, TX, _envelope_with, _finding, _meta, _run_mutant
+from tests.test_rule_wiring import HEADER_PTR, TX, _sanitized_with, _finding, _meta, _run_mutant
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATUS = {"locus": "resp_status"}
@@ -51,7 +51,7 @@ def _gate(rule: str, llm):
 
 
 def _respond(llm_output) -> ExecutionResponse:
-    return execution.build_execution_response(_envelope_with(TX), {}, LlmRun("m@sha256:x", "p", llm_output, "view", 1))
+    return execution.build_execution_response(_sanitized_with(TX), {}, LlmRun("m@sha256:x", "p", llm_output, "view", 1))
 
 
 # ── 생산자 단위 폐기 ───────────────────────────────────────────────
@@ -159,7 +159,7 @@ def test_llm_advisory_with_the_cna_set_of_a_rule_finding_is_dropped():
 # ── ④의 표현 ───────────────────────────────────────────────────────
 
 def test_rule_only_response_is_unchanged():
-    response = execution.build_execution_response(_envelope_with(TX), {})
+    response = execution.build_execution_response(_sanitized_with(TX), {})
     meta = response.result.analysis_meta
     assert response.skipped_reasons == ["llm_analysis_not_implemented"]
     assert (meta.pipeline_mode, meta.model_id, meta.llm_outcome) == ("rule_only", None, None)
@@ -202,7 +202,7 @@ def _no_rule_findings(monkeypatch) -> None:
 
 def test_rule_only_with_no_findings_is_clean(monkeypatch):
     _no_rule_findings(monkeypatch)
-    assert execution.build_execution_response(_envelope_with(TX), {}).is_clean
+    assert execution.build_execution_response(_sanitized_with(TX), {}).is_clean
 
 
 def test_rule_llm_success_with_no_findings_is_clean(monkeypatch):

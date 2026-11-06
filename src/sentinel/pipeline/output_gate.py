@@ -12,11 +12,14 @@
   ④ 모든 Evidence(finding·advisory)의 transaction_ref ∈ analyzed_refs(`evidence_ref_integrity`)
   ⑤ 모든 Evidence의 pointer(Locator)가 그 transaction(마스킹 후 데이터)에서 해석됨(`evidence_pointer_resolves`)
 LLM 초안에는 Locator의 range가 없어야 한다(뷰 오프셋 ≠ 원본 오프셋).
+환각 리터럴 격리((A) §2.4): 검사를 통과한 LLM 초안의 자유 문자열에서 정책 패턴 리터럴을 치환한다. ③이 데이터에 없음을 보장하므로
+데이터 밖 값이다. 원문은 어디에도 남기지 않고 감사에는 패턴 이름만 남긴다. observation이면 그 evidence에, 그 밖의 문자열이면 그 항목의
+evidence 전부에 `hallucinated_literal_suspected`를 붙인다. 플래그 달린 evidence는 유효 근거가 아니다 — 유효 근거가 0이면 needs_review다.
 모든 검사가 끝난 뒤 중복을 처리한다(§2.4): (category, Evidence CNA 집합)이 정확히 같은 Finding은 하나로 합친다. 생산자가 다르면
 규칙 문구를 남기고 produced_by=hybrid다. CNA 집합이 어떤 Finding과 정확히 같은 advisory는 버린다. 검증보다 뒤에 두는 이유: 먼저
 병합하면 무효 초안이 병합으로 사라져 전체 폐기가 부분 수용이 된다.
-통과하면 서버가 부여한다(`server_assigned_status` 외): status=unverified, finding_id=UUID, corroboration=not_run,
-anomaly_flags=[], review_required=true, severity_if_true=null, produced_by=생산 경로, analysis_meta=호출자가 만든 값,
+통과하면 서버가 부여한다(`server_assigned_status` 외): status=unverified(유효 근거 0이면 needs_review), finding_id=UUID,
+corroboration=not_run, anomaly_flags=위 격리 결과, review_required=true, severity_if_true=null, produced_by=생산 경로, analysis_meta=호출자가 만든 값,
 analyzed_refs=transactions의 ID 목록, schema_version="1.0". 헤더 Locator의 name은 소문자로 정규화해 저장한다.
 
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
@@ -46,8 +49,9 @@ from sentinel import strict_json
 from sentinel.canonical_address import canonical_address
 from sentinel.common_types import BodyLocator, HeaderLocator, ParamLocator, Range, ReqLineLocator, StatusLocator
 from sentinel.output_schema import (
-    SERVER_ASSIGNED_FIELDS, AdvisorySignal, AnalysisDraft, AnalysisMeta, AnalysisResult, Evidence, EvidenceDraft,
-    Finding, FindingDraft, ProducedBy, LLM_FAILURE_REASONS)
+    SERVER_ASSIGNED_FIELDS, AdvisorySignal, AdvisorySignalDraft, AnalysisDraft, AnalysisMeta, AnalysisResult, Evidence,
+    EvidenceDraft, Finding, FindingDraft, NextStep, ProducedBy, LLM_FAILURE_REASONS)
+from sentinel.sanitization_policy import PATTERNS
 from sentinel.schema import Body, Transaction
 
 audit_log = logging.getLogger("sentinel.audit")
@@ -66,7 +70,9 @@ REASON_CODES: Final = (
 )
 LLM_PATH: Final = "llm"
 HYBRID: Final = "hybrid"
-
+LITERAL_FLAG: Final = "hallucinated_literal_suspected"
+LITERAL_REPLACEMENT: Final = "[hallucinated_literal_removed]"
+VIEW_LIMITATION: Final = "LLM 입력 뷰가 일부만 포함"
 
 
 @dataclass(frozen=True)
@@ -99,13 +105,14 @@ def validate_draft(draft: str | bytes, *, transactions: Sequence[Transaction], p
 
 
 def validate_producers(rule_draft: str | bytes, llm: str | bytes | LlmFailure | None, *, transactions: Sequence[Transaction],
-                       produced_by: str, make_meta: Callable[[str | None], AnalysisMeta]) -> AnalysisResult | OutputRejection:
+                       produced_by: str, make_meta: Callable[[str | None], AnalysisMeta],
+                       llm_view_truncated: bool = False) -> AnalysisResult | OutputRejection:
     """규칙 초안과 LLM 초안을 각각 검증한 뒤 병합한다. llm이 None이면 LLM이 없는 경로다."""
     by_id = _checked_server_args(transactions, produced_by)
     rule = _checked_draft(rule_draft, by_id)
     if isinstance(rule, OutputRejection):
         return rule
-    parsed, llm_outcome = _llm_result(llm, by_id)
+    parsed, llm_outcome = _llm_result(llm, by_id, llm_view_truncated)
     findings, advisories = _combined(rule, parsed, by_id, produced_by)
     return _build(findings, advisories, tuple(by_id), make_meta(llm_outcome))
 
@@ -132,7 +139,58 @@ def _has_range(parsed: AnalysisDraft) -> bool:
     return False
 
 
-def _llm_result(llm: str | bytes | LlmFailure | None, by_id: dict[UUID, Transaction]) -> tuple[AnalysisDraft | None, str | None]:
+class _FlaggedEvidence(EvidenceDraft):
+    """격리가 표시한 근거. 초안 타입이 아니라 게이트 안의 표시다 — 입력으로 만들 수 없다."""
+
+
+def _replaced(text: str, found: set[str]) -> str:
+    for name, pattern in PATTERNS.items():
+        text, count = pattern.subn(LITERAL_REPLACEMENT, text)
+        if count:
+            found.add(name)
+    return text
+
+
+def _isolated_evidence(evidence: list[EvidenceDraft], flag_all: bool, found: set[str]) -> list[EvidenceDraft]:
+    isolated: list[EvidenceDraft] = []
+    for e in evidence:
+        mine: set[str] = set()
+        observation = _replaced(e.observation, mine)
+        found |= mine
+        flagged = flag_all or bool(mine)
+        isolated.append(_FlaggedEvidence(transaction_ref=e.transaction_ref, pointer=e.pointer, observation=observation) if flagged else e)
+    return isolated
+
+
+def _isolated_finding(f: FindingDraft, view_truncated: bool, found: set[str]) -> FindingDraft:
+    mine: set[str] = set()
+    hypothesis = _replaced(f.hypothesis, mine)
+    limitations = [_replaced(text, mine) for text in f.limitations]
+    next_steps = [NextStep(type=s.type, action=_replaced(s.action, mine), rationale=_replaced(s.rationale, mine)) for s in f.next_steps]
+    found |= mine
+    return FindingDraft(category=f.category, hypothesis=hypothesis, evidence=_isolated_evidence(f.evidence, bool(mine), found),
+                        claim_basis=f.claim_basis, limitations=[*limitations, *((VIEW_LIMITATION,) if view_truncated else ())],
+                        next_steps=next_steps)
+
+
+def _isolated_advisory(a: AdvisorySignalDraft, found: set[str]) -> AdvisorySignalDraft:
+    mine: set[str] = set()
+    topic, suggestion = _replaced(a.topic, mine), _replaced(a.suggestion, mine)
+    found |= mine
+    return AdvisorySignalDraft(type=a.type, topic=topic, basis=_isolated_evidence(a.basis, bool(mine), found), suggestion=suggestion)
+
+
+def _isolated(parsed: AnalysisDraft, view_truncated: bool) -> AnalysisDraft:
+    found: set[str] = set()
+    isolated = AnalysisDraft(findings=[_isolated_finding(f, view_truncated, found) for f in parsed.findings],
+                             advisory_signals=[_isolated_advisory(a, found) for a in parsed.advisory_signals])
+    if found:
+        audit_log.warning("llm_literal_isolated count=%d patterns=%s", len(found), ",".join(sorted(found)))
+    return isolated
+
+
+def _llm_result(llm: str | bytes | LlmFailure | None, by_id: dict[UUID, Transaction],
+                view_truncated: bool) -> tuple[AnalysisDraft | None, str | None]:
     if llm is None:
         return None, None
     if isinstance(llm, LlmFailure):
@@ -143,7 +201,7 @@ def _llm_result(llm: str | bytes | LlmFailure | None, by_id: dict[UUID, Transact
     if _has_range(parsed):
         _reject(("llm_range_present",), "llm_draft_rejected")
         return None, "rejected"
-    return parsed, "ok"
+    return _isolated(parsed, view_truncated), "ok"
 
 
 def _key(f: FindingDraft, by_id: dict[UUID, Transaction]) -> tuple[str, frozenset]:
@@ -296,14 +354,19 @@ def _reject(codes: tuple[str, ...], event: str = "output_rejected") -> OutputRej
 
 def _evidence(d: EvidenceDraft) -> Evidence:
     return Evidence(transaction_ref=d.transaction_ref, pointer=_normalized(d.pointer), observation=d.observation,
-                    corroboration="not_run", anomaly_flags=(), review_required=True)
+                    corroboration="not_run", anomaly_flags=(LITERAL_FLAG,) if isinstance(d, _FlaggedEvidence) else (),
+                    review_required=True)
+
+
+def _status(f: FindingDraft) -> str:
+    return "needs_review" if all(isinstance(e, _FlaggedEvidence) for e in f.evidence) else "unverified"
 
 
 def _assign(tagged: list[tuple[FindingDraft, str]], advisory_drafts: list, refs: tuple[UUID, ...],
             meta: AnalysisMeta) -> AnalysisResult:
     findings = tuple(Finding(finding_id=uuid4(), category=f.category, hypothesis=f.hypothesis,
                              evidence=tuple(_evidence(e) for e in f.evidence), claim_basis=f.claim_basis,
-                             severity_if_true=None, status="unverified", produced_by=source,
+                             severity_if_true=None, status=_status(f), produced_by=source,
                              limitations=tuple(f.limitations), next_steps=tuple(f.next_steps))
                      for f, source in tagged)
     advisories = tuple(AdvisorySignal(type=a.type, topic=a.topic, basis=tuple(_evidence(e) for e in a.basis),
