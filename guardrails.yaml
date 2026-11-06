@@ -511,6 +511,8 @@ guardrails:
       state: enforced
     verification_tests:
       - "tests/test_absence.py::test_engine_has_no_raw_persistence_path_except_allowlisted_audit_store"
+      - "tests/test_absence.py::test_store_method_is_allowed_only_on_the_store_receivers_of_the_store_file"
+      - "tests/test_absence.py::test_audit_api_target_check_is_load_bearing_under_verified_mutation"
       - "tests/test_absence.py::test_planted_forbidden_path_is_caught"
       - "tests/test_absence.py::test_allowlist_is_file_specific"
       - "tests/test_absence.py::test_runtime_request_processing_persists_no_raw_traffic"

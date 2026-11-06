@@ -4,9 +4,13 @@
 심볼 이름)을 찾는다. 기능이 '없다'는 것은 직접 증명할 수 없으므로, 그 기능에 필요한 통로가 코드에 없음을
 보이는 방식이다. 허용 예외는 ALLOWED에 파일 단위로만 둔다(현재: 감사 저장소의 sqlite3 하나).
 검사 대상이 비었거나 파싱 불가하면 '위반 없음'이 아니라 오류(fail-closed).
+감사 저장소 API(`insert_event`·`write_required`)는 이름이 아니라 호출 대상으로 판별한다: import를 해석한 결과가 허용 대상일 때만
+통과하고, 다시 대입됐거나 해석되지 않는 이름은 위반이다(fail-closed).
 
 한계(정직 표기): 목록 기반 정적 검사다 — 목록 밖 라이브러리, 런타임 조립 문자열·getattr 우회, 제3자 패키지
 내부 동작은 잡지 못한다. 원본 저장(ⓕ)은 런타임 관측 테스트(tests/test_absence.py)로 한 겹 더 확인한다.
+호출 대상 판별은 파일 단위 이름 해석이다 — 타입 추론이 아니므로 audit.py 안 `insert_event`의 수신자는 이름 목록으로만 고정한다.
+허용 대상으로 넘기는 메시지의 내용은 판별하지 않는다(로깅 경로와 같고, 각 감사 지점의 위생 테스트 몫이다).
 """
 from __future__ import annotations
 
@@ -42,6 +46,11 @@ RAW_WRITE_ATTRS = {"write_text", "write_bytes", "write", "writelines", "dump", "
 RAW_WRITE_CALLS = {"print", "open"}  # 이름 호출(builtins)·os.open/io.open 등 속성 호출 둘 다
 _WRITE_MODE = re.compile(r"[wax+]")
 
+# 감사 저장소 API. 모듈 함수는 해석 결과로, 저장소 객체의 메서드는 저장소 파일 안의 수신자로 판별한다.
+AUDIT_STORE_API = {"insert_event", "write_required"}
+AUDIT_API_TARGETS = {"sentinel.audit.write_required"}
+AUDIT_STORE_RECEIVERS = {"audit.py": {"self", "store"}}
+
 # 파일 단위 허용(경로는 패키지 루트 기준). 감사 저장소는 위생 처리된 메시지만 쓴다(W1-07·런타임 관측 테스트).
 ALLOWED: dict[str, set[str]] = {
     "audit.py": {"module:sqlite3"},
@@ -71,9 +80,42 @@ def _module_hits(module: str) -> list[tuple[str, str]]:
     return hits
 
 
+def _import_bindings(tree: ast.AST) -> dict[str, str]:
+    """이름 → import 대상. 대상이 둘 이상이거나 다시 묶인 이름은 해석하지 않는다(파일 단위, fail-closed)."""
+    bound: dict[str, set[str]] = {}
+    rebound: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                target = alias.name if alias.asname else alias.name.split(".")[0]
+                bound.setdefault(alias.asname or target, set()).add(target)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                module = node.module if node.level == 0 and node.module else "<relative>"
+                bound.setdefault(alias.asname or alias.name, set()).add(f"{module}.{alias.name}")
+        elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            rebound.add(node.id)
+        elif isinstance(node, ast.arg):
+            rebound.add(node.arg)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            rebound.add(node.name)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            rebound.add(node.name)
+    return {name: next(iter(targets)) for name, targets in bound.items() if len(targets) == 1 and name not in rebound}
+
+
+def _dotted(node: ast.expr) -> str | None:
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    return ".".join([node.id, *reversed(parts)]) if isinstance(node, ast.Name) else None
+
+
 class _Visitor(ast.NodeVisitor):
-    def __init__(self, rel: str):
+    def __init__(self, rel: str, imports: dict[str, str]):
         self.rel = rel
+        self.imports = imports
         self.found: list[Finding] = []
 
     def _add(self, node: ast.AST, key: str, what: str) -> None:
@@ -119,9 +161,31 @@ class _Visitor(ast.NodeVisitor):
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if node.attr in FINETUNE_SYMBOLS:
             self._add(node, FINETUNE, f"symbol:{node.attr}")
+        if node.attr in AUDIT_STORE_API and not isinstance(node.ctx, ast.Load):
+            self._add(node, RAW_PERSIST, f"store:.{node.attr}")
         self.generic_visit(node)
 
+    def _call_target(self, func: ast.expr) -> str | None:
+        dotted = _dotted(func)
+        head, _, rest = (dotted or "").partition(".")
+        target = self.imports.get(head)
+        return None if target is None else f"{target}.{rest}" if rest else target
+
+    def _check_audit_api(self, node: ast.Call) -> None:
+        func = node.func
+        name = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else ""
+        target = self._call_target(func)
+        if name not in AUDIT_STORE_API and (target or "").rsplit(".", 1)[-1] not in AUDIT_STORE_API:
+            return
+        if target in AUDIT_API_TARGETS:
+            return
+        receiver = func.value.id if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) else ""
+        if name == "insert_event" and receiver in AUDIT_STORE_RECEIVERS.get(self.rel, set()):
+            return
+        self._add(node, RAW_PERSIST, f"call:audit_api:{name}")
+
     def visit_Call(self, node: ast.Call) -> None:
+        self._check_audit_api(node)
         func = node.func
         if isinstance(func, ast.Name):
             name = func.id
@@ -162,7 +226,7 @@ def scan_source(rel: str, source: str) -> list[Finding]:
         tree = ast.parse(source, filename=rel)
     except SyntaxError as exc:
         raise AbsenceScanError(f"{rel}: 파싱 불가 — 통과로 취급하지 않음 ({exc.msg})") from exc
-    visitor = _Visitor(rel)
+    visitor = _Visitor(rel, _import_bindings(tree))
     visitor.visit(tree)
     allowed = ALLOWED.get(rel, set())
     return [f for f in visitor.found if f.what not in allowed]

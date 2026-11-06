@@ -65,7 +65,7 @@
   - `analysis_meta.llm_outcome` = 가산, 소비자 없음(결선 전). `schema_version` 유지.
 > **v1.34 (매핑표 v1.30):** 결선 L1 — 게이트·결과 표현(코드 PR, 계약 변경 없음). §3.5 `producer_gate_merge`·`clean_requires_no_failure`·`prompt_model_freeze` 승격 + `completed_via_gate` 노트(생산자별 게이트 경로 재증명). 합성 초안으로 증명했고 어댑터 호출은 없다.
 > **v1.35 (매핑표 v1.31):** 도구 — verify 스탬프와 pre-push 훅. §3.4 신규 `push_requires_verify`(enforced, 클라이언트 훅 범위). 사람이 지키던 '실패 시 멈추는 체인' 규칙을 장치로 대체한다.
-> **v1.36 (매핑표 v1.32):** 결선 L2 — 어댑터 주변 안전장치(코드 PR, 파이프라인 결선 없음). `llm_concurrency`·`llm_io_audit`·`audit_write_failure` 승격(not_implemented → enforced, 범위는 상태 칸). `llm_adapter_loopback_only` 고정 목록에 메시지 역할·본문 키·response_format·헤더 키·API 키 비노출 추가.
+> **v1.36 (매핑표 v1.32):** 결선 L2 — 어댑터 주변 안전장치(코드 PR, 파이프라인 결선 없음). `llm_concurrency`·`llm_io_audit`·`audit_write_failure` 승격(not_implemented → enforced, 범위는 상태 칸). `llm_adapter_loopback_only` 고정 목록에 메시지 역할·본문 키·response_format·헤더 키·API 키 비노출 추가. §2.8 지문 outcome 정의. `no_raw_persistence` 부재 검사가 감사 저장소 API를 호출 대상으로 판별.
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06)
 
 ---
@@ -416,6 +416,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋).
   - 파싱 실패 → `llm_failed:unparseable`. 재시도는 없다(v1 — 다시 생성하면 J2를 가린다).
 - **감사(B-6):** LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, `llm_outcome`, `prompt_version`, `model_id`를 남긴다. 내용은 남기지 않는다(`llm_io_audit`). 내용 보존은 저장 설계(D5)로 넘긴다.
+  - LLM 지문의 outcome = llm_outcome ∪ {rule_rejected}(규칙 초안 거부 시에도 LLM 호출의 지문을 남긴다).
   - LLM 감사 기록에 실패하면 LLM 결과를 폐기하고(`llm_failed:audit_write`) 규칙 결과는 유지한다.
 - **model_id:** `이름@sha256:<가중치 해시>`다. 기동 절차에서 기록한 값을 설정으로 받는다. 서버가 보고하는 경로와 대조하는 데까지만 가능하다(`llm_model_identity` — unverifiable).
 - **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사가 메시지 역할·요청 본문 키·response_format·인증 헤더를 고정한다(`llm_adapter_loopback_only`).
