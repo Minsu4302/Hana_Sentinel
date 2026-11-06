@@ -82,17 +82,22 @@ def _module_hits(module: str) -> list[tuple[str, str]]:
 
 def _import_bindings(tree: ast.AST) -> dict[str, str]:
     """이름 → import 대상. 대상이 둘 이상이거나 다시 묶인 이름은 해석하지 않는다(파일 단위, fail-closed)."""
-    bound: dict[str, set[str]] = {}
+    bound: dict[str, str] = {}
     rebound: set[str] = set()
+
+    def bind(name: str, target: str) -> None:
+        if bound.setdefault(name, target) != target:
+            rebound.add(name)
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 target = alias.name if alias.asname else alias.name.split(".")[0]
-                bound.setdefault(alias.asname or target, set()).add(target)
+                bind(alias.asname or target, target)
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 module = node.module if node.level == 0 and node.module else "<relative>"
-                bound.setdefault(alias.asname or alias.name, set()).add(f"{module}.{alias.name}")
+                bind(alias.asname or alias.name, f"{module}.{alias.name}")
         elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
             rebound.add(node.id)
         elif isinstance(node, ast.arg):
@@ -101,7 +106,7 @@ def _import_bindings(tree: ast.AST) -> dict[str, str]:
             rebound.add(node.name)
         elif isinstance(node, ast.ExceptHandler) and node.name:
             rebound.add(node.name)
-    return {name: next(iter(targets)) for name, targets in bound.items() if len(targets) == 1 and name not in rebound}
+    return {name: target for name, target in bound.items() if name not in rebound}
 
 
 def _dotted(node: ast.expr) -> str | None:

@@ -352,8 +352,9 @@ _A = "tests/test_absence.py::"
 _PLANTED = _A + "test_planted_forbidden_path_is_caught"
 AUDIT_API_MUTATIONS = {
     "name_only": ("        if target in AUDIT_API_TARGETS:\n", "        if True:\n", [_PLANTED]),
-    "rebinding_ignored": ("if len(targets) == 1 and name not in rebound}", "if len(targets) == 1}", [_PLANTED]),
-    "second_import_ignored": ("if len(targets) == 1 and name not in rebound}", "if name not in rebound}", [_PLANTED]),
+    "rebinding_ignored": ("        elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):\n", "        elif False:\n", [_PLANTED]),
+    "parameter_ignored": ("        elif isinstance(node, ast.arg):\n", "        elif False:\n", [_PLANTED]),
+    "second_import_ignored": ("        if bound.setdefault(name, target) != target:\n", "        if bound.setdefault(name, target) != target and False:\n", [_PLANTED]),
     "receiver_ignored": ('        if name == "insert_event" and receiver in AUDIT_STORE_RECEIVERS.get(self.rel, set()):\n',
                          '        if name == "insert_event":\n',
                          [_A + "test_store_method_is_allowed_only_on_the_store_receivers_of_the_store_file"]),
