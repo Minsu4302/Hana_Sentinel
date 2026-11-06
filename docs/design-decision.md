@@ -66,7 +66,7 @@
 > **v1.34 (매핑표 v1.30):** 결선 L1 — 게이트·결과 표현(코드 PR, 계약 변경 없음). §3.5 `producer_gate_merge`·`clean_requires_no_failure`·`prompt_model_freeze` 승격 + `completed_via_gate` 노트(생산자별 게이트 경로 재증명). 합성 초안으로 증명했고 어댑터 호출은 없다.
 > **v1.35 (매핑표 v1.31):** 도구 — verify 스탬프와 pre-push 훅. §3.4 신규 `push_requires_verify`(enforced, 클라이언트 훅 범위). 사람이 지키던 '실패 시 멈추는 체인' 규칙을 장치로 대체한다.
 > **v1.36 (매핑표 v1.32):** 결선 L2 — 어댑터 주변 안전장치(코드 PR, 파이프라인 결선 없음). `llm_concurrency`·`llm_io_audit`·`audit_write_failure` 승격(not_implemented → enforced, 범위는 상태 칸). `llm_adapter_loopback_only` 고정 목록에 메시지 역할·본문 키·response_format·헤더 키·API 키 비노출 추가. §2.8 지문 outcome 정의. `no_raw_persistence` 부재 검사가 감사 저장소 API를 호출 대상으로 판별.
-> **v1.37 (매핑표 v1.33):** L3 선행 계약(문서 + 키 등재, 코드 0). §2.8 생산자 설정 동결(`prompt_version` = 템플릿 + 생성 설정 묶음 해시, `prompt_model_freeze` 노트 갱신) + 대기 상한(신규 `llm_queue_bound`, not_implemented → L3)과 Burp 쪽 읽기 타임아웃 요구(Java 연결 시 이월) + 어댑터 사유 대응표. §6.3 FROZEN_PROMPTS 값 명시.
+> **v1.37 (매핑표 v1.33):** L3 선행 계약(문서 + 키 등재, 코드 0). §2.8 생산자 설정 동결(`prompt_version` = 템플릿 + 생성 설정 묶음 해시, `prompt_model_freeze` 노트 갱신) + 대기 상한(신규 `llm_queue_bound`, not_implemented → L3)과 Burp 쪽 읽기 타임아웃 요구(Java 연결 시 이월) + 어댑터 사유 대응표. §6.3 FROZEN_PROMPTS 값 명시 + J9 보고 머리에 서빙 조건 추가.
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06, v1.37 개정: 2026-11-06)
 
 ---
@@ -413,7 +413,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - Evidence는 뷰가 아니라 마스킹된 Transaction 전체에 대해 해석한다. 게이트는 전체 Transaction을 본다.
   - 예산 관계식: 뷰 토큰 / 프롬프트 처리 속도 + max_tokens / 생성 속도 + 여유 ≤ 전체 기한(`llm_adapter_bounds`). 값은 설정값이다(정본이 아니며 결선 PR에서 실측한다).
 - **프롬프트:** 고정 지시문 + 구획된 데이터 블록이다. 트랜잭션은 JSON 문자열로 넣고 신뢰 불가 데이터로 표시한다.
-- **생산자 설정 동결:** `prompt_version` = 템플릿 파일 + 생성 설정(temperature·max_tokens·뷰 상한·전송 스키마(평탄화본))의 묶음 해시다. test를 측정한 뒤 생성 설정만 바꿔도 같은 프롬프트 버전으로 기록되는 구멍을 막는다. FROZEN_PROMPTS는 이 묶음 해시를 기록하고, `prompt_model_freeze`가 이 해시로 판정한다.
+- **생산자 설정 동결:** `prompt_version` = 템플릿 파일 + 생성 설정(temperature·max_tokens·뷰 상한·전체 기한·전송 스키마(평탄화본))의 묶음 해시다. test를 측정한 뒤 생성 설정만 바꿔도 같은 프롬프트 버전으로 기록되는 구멍을 막는다. 기한은 출력 내용이 아니라 timeout 실패 빈도를 바꾸며, timeout이면 규칙 결과만 남으므로 J2·J6에 영향을 준다. FROZEN_PROMPTS는 이 묶음 해시를 기록하고, `prompt_model_freeze`가 이 해시로 판정한다.
 - **구조화 출력:** 정의처는 Pydantic FindingDraft 목록이다. 전송은 `$ref`를 풀어 넣은 평탄화 스키마(response_format)다.
   - LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋).
   - 파싱 실패 → `llm_failed:unparseable`. 재시도는 없다(v1 — 다시 생성하면 J2를 가린다).
@@ -700,6 +700,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **J7 불확실성:** 비율은 Wilson 95% 구간. 버전 간 비교는 트랜잭션 단위 쌍체 bootstrap. 대표 지표에서 차이 구간이 통째로 0 아래면 회귀이고, 개선 주장도 같은 기준을 쓴다.
 - **J8 최소 표본:** Wilson 구간 반폭 ≤ 0.15일 때만 점추정값을 낸다. 그보다 넓으면 "표본 부족(n=k)" + 구간. 0.15는 초기 임계값이다(설정값 — `DEFAULT_PORT`와 같은 성격(실측으로 조정 가능, 정본이되 불변식 아님)).
 - **J9 보고 머리:** 데이터셋 버전·집합(S/J)·분할(dev/test, 없으면 null)·pipeline_mode·model_id·prompt_version·ruleset_version. rule_only에서 model_id·prompt_version은 null로 적는다(대체 문자열 금지).
+  - **서빙 조건(rule_llm):** 추론 서버 버전·-t·-c·--parallel·CPU 요약을 적는다. 동결 대상이 아니라 측정 조건 기록이다 — 하드웨어에 따라 정해지는 값이라 해시에 묶지 않지만, 속도 차이로 생긴 timeout 차이를 모델 차이로 오독하지 않게 한다.
 
 ---
 

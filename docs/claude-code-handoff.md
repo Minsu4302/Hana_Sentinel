@@ -149,7 +149,7 @@
 - LLM 연동·프롬프트·규칙 엔진·분석 로직 — **없음**.
 - Java/Montoya Extension — **1주차엔 붙이지 않음**. 적대적 입력은 손으로 주입. (Java 실제 마스킹은 Java 연결 후 통합 테스트로 별도 증명.)
 - 2주차 항목(출력 스키마 불변식군) — manifest에 `not_implemented`로 정직 표기, 구현 안 함.
-- 이월 항목 — `token_hardening`·`receipt_hmac`(→ Java 연결 시), `audit_write_failure`(→ 수용 요청 감사(B-6) 범위 확정 시). manifest에 `not_implemented`로 정직 표기, 구현 안 함.
+- 이월 항목 — `token_hardening`·`receipt_hmac`(→ Java 연결 시). manifest에 `not_implemented`로 정직 표기, 구현 안 함. `audit_write_failure`는 LLM 감사 범위로 enforced다(수용 요청 감사 등 나머지는 미구현).
 - 3주차 이후(`hallucinated_literal_isolation`, `anomaly_aggregation`), 평가 하네스(`eval_harness` → 평가 하네스 구현 시, 프로토콜은 (A) §6) — 손대지 않음.
 
 ---
