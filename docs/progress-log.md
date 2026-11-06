@@ -1240,3 +1240,22 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 한계
 - 클라이언트 훅이라 `git push --no-verify`로 우회할 수 있다(`secret_scan_hook`과 같은 성격). 실수 방지용이며 서버측 강제가 아니다.
 - `gh pr merge`는 훅 밖이다. merge까지 스크립트로 강제하면 레포 코드가 GitHub API를 호출하게 되어 ⓑ 해석(tools의 외부 송신 0)과 충돌하므로 하지 않는다 — merge 직전 head 대조는 수동 절차로 유지한다.
+
+---
+
+## 결선 L2 — 어댑터 주변 안전장치 (Issue #103)
+
+### 결과
+- 어댑터 기본값: io_timeout·전체 기한 120초, max_tokens 1024. 도출 모델을 `LIMITS_DERIVED_FROM`에 기록했다(모델이 바뀌면 재실측).
+- 요청: system·user 메시지, temperature 0, response_format(json_schema — 스키마는 인자), `Authorization: Bearer`. 키는 `LLAMA_API_KEY`에서 어댑터가 직접 읽는다. 없거나 헤더에 못 넣는 값이면 사유 코드 `api_key_missing`이고 연결하지 않는다.
+- 감사: `audit.write_required`가 기록 성공 여부를 돌려준다(로깅 경로는 실패를 삼켜서 쓸 수 없다). `llm_audit.audit_llm_call`은 지문만 남긴다. 기록 실패 시 게이트를 `LlmFailure("audit_write")`로 다시 돌려 규칙 결과만 남긴다.
+- 서버: 분석을 스레드풀에서 동시 1건으로 돌린다. 승격 키는 `llm_concurrency`, `llm_io_audit`, `audit_write_failure`.
+
+### 범위(정직 표기)
+- 어댑터 호출 지점은 여전히 0곳이다. 감사는 합성 `LlmRun`으로, 동시성은 분석 호출 전체로 증명했다. 실제 LLM 호출의 결선은 L3.
+- `SYSTEM_PROMPT`는 임시 상수다. L3에서 프롬프트 템플릿으로 바뀌고 `prompt_version`이 파일 해시가 된다.
+- 어댑터 사유 코드 → `LLM_FAILURE_REASONS` 대응표는 L3(`api_key_missing` 포함).
+- 규칙 초안이 거부된 경우 지문의 outcome은 `rule_rejected`다(이 값은 §2.8에 없는 구현 표기다).
+
+### 미해결
+- 대기 중인 분석 요청의 상한은 없다. 동시 1건이라 뒤 요청은 앞 요청이 끝날 때까지 기다린다(요청당 최대 약 120초).

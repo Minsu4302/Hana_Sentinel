@@ -49,13 +49,15 @@ class SQLiteAuditHandler(logging.Handler):
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.execute(_SCHEMA)
 
+    def write(self, level: str, message: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO audit_events (ts, level, event, message) VALUES (?, ?, ?, ?)",
+                (datetime.now(timezone.utc).isoformat(), level, message.split(" ", 1)[0], message))
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            message = record.getMessage()
-            with self._lock:
-                self._conn.execute(
-                    "INSERT INTO audit_events (ts, level, event, message) VALUES (?, ?, ?, ?)",
-                    (datetime.now(timezone.utc).isoformat(), record.levelname, message.split(" ", 1)[0], message))
+            self.write(record.levelname, record.getMessage())
         except Exception:  # noqa: BLE001 — 1주차: 기록 실패가 요청을 막지 않음(audit_write_failure → 수용 요청 감사(B-6) 범위 확정 시)
             self.handleError(record)
 
@@ -80,6 +82,20 @@ def attach_audit_store(path: Path) -> SQLiteAuditHandler:
 def detach_audit_store(handler: SQLiteAuditHandler) -> None:
     audit_log.removeHandler(handler)
     handler.close()
+
+
+def write_required(message: str) -> bool:
+    """기록이 실제로 남았는지 돌려준다. 로깅은 실패를 삼키므로 fail-closed가 필요한 감사는 이 경로로 쓴다((A) §3.0).
+    저장소가 없어도 실패다."""
+    stores = [h for h in audit_log.handlers if isinstance(h, SQLiteAuditHandler)]
+    if not stores:
+        return False
+    try:
+        for store in stores:
+            store.write("INFO", message)
+    except sqlite3.Error:
+        return False
+    return True
 
 
 def read_audit_events(path: Path) -> list[dict[str, Any]]:

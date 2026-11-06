@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from sentinel.audit import attach_audit_store, detach_audit_store
 from sentinel.output_schema import LLM_FAILURE_REASONS, AnalysisResult
 from sentinel.pipeline import execution, output_gate, rule_engine
 from sentinel.pipeline.execution import LlmRun
@@ -29,6 +30,14 @@ STATUS = {"locus": "resp_status"}
 EMPTY = json.dumps({"findings": [], "advisory_signals": []})
 
 
+@pytest.fixture(autouse=True)
+def _audit_store(tmp_path):
+    """rule_llm 경로는 지문을 못 남기면 LLM 결과를 버린다."""
+    handler = attach_audit_store(tmp_path / "audit.sqlite3")
+    yield
+    detach_audit_store(handler)
+
+
 def _draft(*findings) -> str:
     return json.dumps({"findings": list(findings), "advisory_signals": []})
 
@@ -42,7 +51,7 @@ def _gate(rule: str, llm):
 
 
 def _respond(llm_output) -> ExecutionResponse:
-    return execution.build_execution_response(_envelope_with(TX), {}, LlmRun("m@sha256:x", "p", llm_output))
+    return execution.build_execution_response(_envelope_with(TX), {}, LlmRun("m@sha256:x", "p", llm_output, "view", 1))
 
 
 # ── 생산자 단위 폐기 ───────────────────────────────────────────────

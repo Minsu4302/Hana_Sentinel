@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.31",
+  "spec": "docs/design-decision.md §3 매핑표 v1.32",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -125,10 +125,14 @@
       "verification_tests": []
     },
     "llm_concurrency": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "분석 호출 전체 단위 — LLM 호출이 이 안에 결선되는 것은 L3",
+      "verification_tests": [
+        "tests/test_llm_safeguards.py::test_token_check_answers_while_an_analysis_is_running",
+        "tests/test_llm_safeguards.py::test_only_one_analysis_runs_at_a_time",
+        "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "llm_model_identity": {
       "status": "unverifiable",
@@ -493,16 +497,27 @@
       ]
     },
     "audit_write_failure": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR(범위 — LLM 감사)",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "범위 — LLM 감사. 수용 요청 감사 등 나머지는 미구현",
+      "verification_tests": [
+        "tests/test_llm_safeguards.py::test_llm_result_is_discarded_when_the_fingerprint_cannot_be_written",
+        "tests/test_llm_safeguards.py::test_audit_failure_with_no_findings_is_not_clean",
+        "tests/test_llm_safeguards.py::test_write_required_says_when_nothing_is_stored",
+        "tests/test_llm_safeguards.py::test_write_required_says_when_the_store_is_broken",
+        "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "llm_io_audit": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "결선 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "합성 LlmRun으로 증명 — 실제 호출 결선은 L3",
+      "verification_tests": [
+        "tests/test_llm_safeguards.py::test_llm_call_leaves_a_fingerprint",
+        "tests/test_llm_safeguards.py::test_fingerprint_records_the_outcome",
+        "tests/test_llm_safeguards.py::test_fingerprint_keeps_no_content",
+        "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
+      ]
     },
     "masked_span_integrity": {
       "status": "enforced",

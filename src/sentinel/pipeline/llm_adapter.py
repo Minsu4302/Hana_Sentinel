@@ -4,6 +4,7 @@
 레포에서 송신하는 유일한 파일이다. http.client만 쓴다(환경변수 프록시를 따르지 않고 리다이렉트를 따라가지 않는다). 접속 대상은
 127.0.0.1 하나이고 호출자는 포트만 정한다. 대상 시스템으로 보내는 코드가 아니다 — 입력에 대상 요청을 다시 만들 필드가 없다.
 입력은 ③을 통과한 값에서만 만들어진다(`llm_input`). 메시지 content는 문자열만이다(추론 서버의 원격 가져오기 차단).
+API 키는 환경변수에서만 읽어 헤더로 보낸다. 인자로 받지 않으므로 호출자의 로그·예외에 닿지 않는다(N7).
 
 아직 파이프라인에 연결되지 않았다(호출 지점 0곳). 프롬프트·출력 파싱은 2부다 — 응답 본문 바이트를 그대로 돌려준다.
 오류는 사유 코드만이다. 예외·로그에 프롬프트·응답 내용을 남기지 않는다.
@@ -13,6 +14,7 @@ from __future__ import annotations
 import http.client
 import json
 import logging
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -22,7 +24,10 @@ from sentinel.pipeline.sanitization_check import SanitizedEnvelope
 
 COMPLETIONS_METHOD: Final = "POST"
 COMPLETIONS_PATH: Final = "/v1/chat/completions"
+API_KEY_ENV: Final = "LLAMA_API_KEY"
+SYSTEM_PROMPT: Final = "HTTP 트랜잭션을 읽고 JSON으로만 답한다."  # 프롬프트 템플릿으로 바뀐다(결선 L3)
 REASON_CODES: Final = (
+    "api_key_missing",     # 환경변수에 쓸 수 있는 API 키가 없음
     "connect_failed",      # 추론 서버에 연결하지 못함
     "bad_status",          # 200이 아닌 응답(리다이렉트 포함 — 따라가지 않는다)
     "response_too_large",  # 응답 최대 바이트 초과 — 읽기 중단
@@ -43,12 +48,15 @@ class LlmInput:
 
 @dataclass(frozen=True)
 class Limits:
+    """설정값. 비스트리밍 응답을 기다리므로 io_timeout은 전체 기한과 같다. 모델이 바뀌면 재실측한다."""
     max_response_bytes: int = 1024 * 1024
     io_timeout_seconds: float = 120.0
-    deadline_seconds: float = 300.0
+    deadline_seconds: float = 120.0
+    max_tokens: int = 1024
 
 
 DEFAULT_LIMITS: Final = Limits()
+LIMITS_DERIVED_FROM: Final = "qwen2.5-1.5b-instruct-q4_k_m@sha256:6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
 
 
 @dataclass(frozen=True)
@@ -73,8 +81,15 @@ def _checked_port(port: int) -> int:
     return port
 
 
-def _request_body(payload: LlmInput) -> str:
-    return json.dumps({"messages": [{"role": "user", "content": payload.content}]})
+def _api_key() -> str | None:
+    key = os.environ.get(API_KEY_ENV, "")
+    return key if key and key.isascii() and key.isprintable() and " " not in key else None  # 헤더에 넣을 수 없는 값은 오류 메시지로 새기 전에 거른다
+
+
+def _request_body(payload: LlmInput, response_schema: dict, limits: Limits) -> str:
+    return json.dumps({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": payload.content}],
+                       "temperature": 0, "max_tokens": limits.max_tokens,
+                       "response_format": {"type": "json_schema", "json_schema": {"name": "draft", "strict": True, "schema": response_schema}}})
 
 
 def _failed(reason: str) -> AdapterFailure:
@@ -82,9 +97,9 @@ def _failed(reason: str) -> AdapterFailure:
     return AdapterFailure(reason)
 
 
-def _exchange(conn: http.client.HTTPConnection, payload: LlmInput, limits: Limits, started: float) -> bytes | AdapterFailure:
-    conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH, body=_request_body(payload),
-                 headers={"Content-Type": "application/json"})
+def _exchange(conn: http.client.HTTPConnection, body: str, key: str, limits: Limits, started: float) -> bytes | AdapterFailure:
+    conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH, body=body,
+                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
     response = conn.getresponse()
     if response.status != 200:
         return _failed("bad_status")
@@ -100,7 +115,10 @@ def _exchange(conn: http.client.HTTPConnection, payload: LlmInput, limits: Limit
     return b"".join(chunks)
 
 
-def complete(payload: LlmInput, port: int, limits: Limits = DEFAULT_LIMITS) -> bytes | AdapterFailure:
+def complete(payload: LlmInput, port: int, response_schema: dict, limits: Limits = DEFAULT_LIMITS) -> bytes | AdapterFailure:
+    key = _api_key()
+    if key is None:
+        return _failed("api_key_missing")
     conn = http.client.HTTPConnection("127.0.0.1", _checked_port(port), timeout=limits.io_timeout_seconds)
     expired = threading.Event()
 
@@ -117,7 +135,7 @@ def complete(payload: LlmInput, port: int, limits: Limits = DEFAULT_LIMITS) -> b
     started = time.monotonic()
     timer.start()
     try:
-        return _exchange(conn, payload, limits, started)
+        return _exchange(conn, _request_body(payload, response_schema, limits), key, limits, started)
     except (OSError, http.client.HTTPException) as exc:
         if expired.is_set():
             return _failed("deadline_exceeded")

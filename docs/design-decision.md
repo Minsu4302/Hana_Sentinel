@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.35 — Sentinel Harness
+# (A) 설계확정서 v1.36 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.35 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.36 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트 + v1.32 결선 L2 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -65,7 +65,8 @@
   - `analysis_meta.llm_outcome` = 가산, 소비자 없음(결선 전). `schema_version` 유지.
 > **v1.34 (매핑표 v1.30):** 결선 L1 — 게이트·결과 표현(코드 PR, 계약 변경 없음). §3.5 `producer_gate_merge`·`clean_requires_no_failure`·`prompt_model_freeze` 승격 + `completed_via_gate` 노트(생산자별 게이트 경로 재증명). 합성 초안으로 증명했고 어댑터 호출은 없다.
 > **v1.35 (매핑표 v1.31):** 도구 — verify 스탬프와 pre-push 훅. §3.4 신규 `push_requires_verify`(enforced, 클라이언트 훅 범위). 사람이 지키던 '실패 시 멈추는 체인' 규칙을 장치로 대체한다.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05)
+> **v1.36 (매핑표 v1.32):** 결선 L2 — 어댑터 주변 안전장치(코드 PR, 파이프라인 결선 없음). `llm_concurrency`·`llm_io_audit`·`audit_write_failure` 승격(not_implemented → enforced, 범위는 상태 칸). `llm_adapter_loopback_only` 고정 목록에 메시지 역할·본문 키·response_format·헤더 키·API 키 비노출 추가.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06)
 
 ---
 
@@ -417,12 +418,12 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **감사(B-6):** LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, `llm_outcome`, `prompt_version`, `model_id`를 남긴다. 내용은 남기지 않는다(`llm_io_audit`). 내용 보존은 저장 설계(D5)로 넘긴다.
   - LLM 감사 기록에 실패하면 LLM 결과를 폐기하고(`llm_failed:audit_write`) 규칙 결과는 유지한다.
 - **model_id:** `이름@sha256:<가중치 해시>`다. 기동 절차에서 기록한 값을 설정으로 받는다. 서버가 보고하는 경로와 대조하는 데까지만 가능하다(`llm_model_identity` — unverifiable).
-- **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사의 고정 목록(메시지 역할·response_format·인증 헤더)은 결선 PR에서 다시 고정한다.
+- **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사가 메시지 역할·요청 본문 키·response_format·인증 헤더를 고정한다(`llm_adapter_loopback_only`).
 - **동시성:** LLM 호출은 스레드풀에서 하고 동시 처리는 1건이다. 이벤트 루프를 막지 않는다 — LLM 처리 중에도 토큰 검증이 응답해야 한다(`llm_concurrency`).
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.31 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.32 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -453,12 +454,12 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | egress 차단 실주체(OS/네트워크) | — | unverifiable(추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함) | `egress_enforcement_owner` |
 | 로컬 LLM ≠ 외부 egress 분리 | 테스트 | enforced(허용목록 빔 검사) | `local_llm_vs_egress` |
 | 자율 전송 0(송신·소켓 심볼 import 0 — 예외: 어댑터 1파일(sentinel/pipeline 아래)의 http.client만) | 아키텍처 테스트 | enforced(예외 1건 — pipeline/llm_adapter.py의 http.client) | `no_autonomous_send` |
-| 어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단) | 아키텍처 테스트 | enforced(정적 범위 + 루프백 스텁의 동적 확인. 추론 서버 실행은 범위 밖) | `llm_adapter_loopback_only` |
+| 어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단 / 메시지 역할 system·user, 요청 본문 키·response_format·헤더 키 고정 / API 키는 환경변수에서만 읽고 로그·예외에 없음) | 아키텍처 테스트 | enforced(정적 범위 + 루프백 스텁의 동적 확인. 추론 서버 실행은 범위 밖) | `llm_adapter_loopback_only` |
 | 어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 — 현존 경로 한정, 결선 PR에서 재증명 / LLM 출력은 게이트로만) | 아키텍처 테스트 | enforced(현존 경로 한정 — 호출 지점 0곳. 결선 PR에서 재증명) | `llm_adapter_no_target_resend` |
 | 어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정. 타입은 2부 입력 뷰) | 아키텍처 테스트 | enforced(③ 표지 타입과 불변 스냅샷, 생성 지점 정적 고정. 입력 뷰는 2부) | `llm_input_from_sanitized` |
 | 어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드 | 테스트 | enforced | `llm_adapter_bounds` |
 | LLM 입력 뷰는 순서·머리꼬리 보존 규칙을 따르고 예산 관계식 안에 있다. 잘리면 서버가 limitations를 붙인다 | 테스트 | not_implemented → 결선 PR | `llm_view_budget` |
-| LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다 | 테스트 | not_implemented → 결선 PR | `llm_concurrency` |
+| LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다 | 테스트 | enforced(분석 호출 전체 단위 — LLM 호출이 이 안에 결선되는 것은 L3) | `llm_concurrency` |
 | model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능 | — | unverifiable | `llm_model_identity` |
 | 추론 서버의 바인딩 주소, 그리고 루프백 포트에서 듣는 프로세스의 정체성(포워더 여부·포트 선점)은 우리 테스트 밖 — OS·운영 절차가 실주체. 기동 절차 문서로 보완 | — | unverifiable | `inference_server_binding` |
 | 127.0.0.1 바인딩 | 테스트+설정 | enforced | `loopback_binding` |
@@ -503,8 +504,8 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 원본 트래픽 미기록(기능 부재) | 테스트 | enforced | `no_raw_persistence` |
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
-| 감사 기록 실패 시 fail-closed | 테스트 | not_implemented → 결선 PR(범위 — LLM 감사) | `audit_write_failure` |
-| LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다 | 테스트 | not_implemented → 결선 PR | `llm_io_audit` |
+| 감사 기록 실패 시 fail-closed | 테스트 | enforced(범위 — LLM 감사. 수용 요청 감사 등 나머지는 미구현) | `audit_write_failure` |
+| LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다 | 테스트 | enforced(합성 LlmRun으로 증명 — 실제 호출 결선은 L3) | `llm_io_audit` |
 | Body 불변식 1~6을 ③에서 검증 | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `masked_span_integrity` |
 | 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | enforced(relation_preserving 출력에만 — strict는 label=null이라 대상 아님) | `label_consistency` |
 
