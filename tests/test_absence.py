@@ -29,6 +29,7 @@ from sentinel.server.app import create_app
 from tools.absence_check import (
     ALLOWED, AUTOPATCH, FINETUNE, RAW_PERSIST, AbsenceScanError, scan_package, scan_source)
 from tools.guardrails import REPO_ROOT
+from tests.support.audit_files import audit_store_bytes
 from tests.test_auth import HEADER, _drive, _scope, _status
 from tests.test_sanitization import FAKES, _plant
 from tests.test_schema import T0, _env, _raw, _set
@@ -226,12 +227,17 @@ def _monitor_hook(event: str, args: tuple) -> None:
 sys.addaudithook(_monitor_hook)  # 제거 불가 — 플래그가 꺼져 있으면 아무것도 하지 않음
 
 
-def find_leaks(markers: list[str], *, events: list, texts: list[str], files: list[Path]) -> list[str]:
+def find_leaks(markers: list[str], *, events: list, texts: list[str], store: Path, files: list[Path]) -> list[str]:
+    """store는 감사 저장소다 — 곁 파일이 사라져도 읽기를 견디고 본 파일을 다시 읽는다(`audit_store_bytes`). files는 그 밖의 파일이고
+    못 읽으면 실패한다."""
     leaks = [f"file_write:{kind}" for kind, _ in events]
     blob = "\n".join(texts)
+    stored = audit_store_bytes(store)
     for m in markers:
         if m in blob:
             leaks.append("log_or_stdio")
+        if m.encode() in stored:
+            leaks.append(f"file:{store.name}")
         for f in files:
             if m.encode() in f.read_bytes():
                 leaks.append(f"file:{f.name}")
@@ -270,7 +276,8 @@ def _exercise(token: bytes) -> list[str]:
 def observed(tmp_path, caplog, capsys):
     """요청 처리 구간을 관측: 파일 쓰기 open, 전 로거 DEBUG 출력, stdout/stderr, 감사 DB 디렉터리 바이트."""
     audit_dir = tmp_path / "var"
-    handler = attach_audit_store(audit_dir / "audit.sqlite3")
+    store = audit_dir / "audit.sqlite3"
+    handler = attach_audit_store(store)
     caplog.set_level(logging.DEBUG)
 
     def run(token: bytes) -> list[str]:
@@ -281,12 +288,53 @@ def observed(tmp_path, caplog, capsys):
             _MONITOR["on"] = False
         detach_audit_store(handler)
         out = capsys.readouterr()
-        return find_leaks(markers, events=list(_MONITOR["events"]), texts=[caplog.text, out.out, out.err],
-                          files=[p for p in audit_dir.rglob("*") if p.is_file()])
+        return find_leaks(markers, events=list(_MONITOR["events"]), texts=[caplog.text, out.out, out.err], store=store,
+                          files=[p for p in audit_dir.rglob("*") if p.is_file() and not p.name.startswith(store.name)])
 
     yield run
     if handler in audit_log.handlers:
         detach_audit_store(handler)
+
+
+def _vanishing_journal(monkeypatch, tmp_path: Path, moved: bytes = b"") -> Path:
+    """목록을 만든 뒤 읽기 전에 곁 파일이 사라진다. moved는 그 순간 본 파일로 옮겨 가는 내용이다."""
+    store, journal = tmp_path / "audit.sqlite3", tmp_path / "audit.sqlite3-journal"
+    store.write_bytes(b"main")
+    journal.write_bytes(moved or b"j")
+    real = Path.read_bytes
+
+    def read_bytes(self):
+        if self == journal and journal.exists():
+            store.write_bytes(b"main" + moved)
+            journal.unlink()
+        return real(self)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    return store
+
+
+def test_vanished_sidecar_does_not_fail_the_leak_scan(tmp_path, monkeypatch):
+    store = _vanishing_journal(monkeypatch, tmp_path)
+    assert find_leaks(["absent"], events=[], texts=[], store=store, files=[]) == []
+
+
+def test_leak_that_moves_into_the_main_file_while_the_sidecar_vanishes_is_found(tmp_path, monkeypatch):
+    store = _vanishing_journal(monkeypatch, tmp_path, moved=b"leaked-value")
+    assert find_leaks(["leaked-value"], events=[], texts=[], store=store, files=[]) == ["file:audit.sqlite3"]
+
+
+def test_other_file_that_cannot_be_read_still_fails_the_scan(tmp_path):
+    store = tmp_path / "audit.sqlite3"
+    store.write_bytes(b"main")
+    with pytest.raises(FileNotFoundError):
+        find_leaks(["x"], events=[], texts=[], store=store, files=[tmp_path / "vanished.bin"])
+
+
+def test_leak_in_another_file_of_the_audit_directory_is_found(tmp_path):
+    store, other = tmp_path / "audit.sqlite3", tmp_path / "dump.bin"
+    store.write_bytes(b"main")
+    other.write_bytes(b"leaked-value")
+    assert find_leaks(["leaked-value"], events=[], texts=[], store=store, files=[other]) == ["file:dump.bin"]
 
 
 def test_runtime_request_processing_persists_no_raw_traffic(observed, token, caplog):
