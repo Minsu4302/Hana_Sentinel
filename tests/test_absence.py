@@ -23,6 +23,8 @@ import pytest
 
 import sentinel.pipeline.schema_gate as schema_gate
 from sentinel.audit import attach_audit_store, audit_log, detach_audit_store, install_egress_audit_hook
+from tests.test_rule_wiring import _run_mutant
+from tools.mutation_guard import copy_with_mutation
 from sentinel.server.app import create_app
 from tools.absence_check import (
     ALLOWED, AUTOPATCH, FINETUNE, RAW_PERSIST, AbsenceScanError, scan_package, scan_source)
@@ -106,6 +108,23 @@ PLANTED = {
         "import json\njson.dump({}, fp)",
         "def debug(body):\n    print(body)",
         "import io\nio.open('x', 'w')",
+        # 감사 저장소 API: 이름이 같아도 대상이 허용 모듈이 아니면 잡는다
+        "def f(other):\n    other.insert_event('INFO', 'x')",
+        "from evil import store\nstore.insert_event('INFO', 'x')",
+        "from sentinel import audit\naudit.insert_event('INFO', 'x')",
+        "from evil import store\nstore.write_required('x')",
+        "store = object()\nstore.write_required('x')",
+        "get_store().write_required('x')",
+        "from evil import audit\naudit.write_required('x')",
+        "import evil as audit\naudit.write_required('x')",
+        "from .evil import audit\naudit.write_required('x')",
+        "from evil import write_required\nwrite_required('x')",
+        "from evil import write_required as w\nw('x')",
+        "def write_required(m):\n    pass\nwrite_required('x')",
+        "from sentinel import audit\naudit = object()\naudit.write_required('x')",
+        "from sentinel import audit\ndef f(audit):\n    audit.write_required('x')",
+        "from sentinel import audit\nfrom evil import audit\naudit.write_required('x')",
+        "from sentinel import audit\naudit.write_required = len",
     ],
 }
 
@@ -147,6 +166,29 @@ def test_allowed_constructs_pass_as_control(tmp_path):
     assert scan_package(root) == []
 
 
+@pytest.mark.parametrize("src", [
+    "from sentinel import audit\naudit.write_required('x')",
+    "from sentinel import audit as a\na.write_required('x')",
+    "import sentinel.audit\nsentinel.audit.write_required('x')",
+    "import sentinel.audit as a\na.write_required('x')",
+    "from sentinel.audit import write_required\nwrite_required('x')",
+    "from sentinel.audit import write_required as w\nw('x')",
+], ids=["module", "module_alias", "dotted", "dotted_alias", "symbol", "symbol_alias"])
+def test_audit_api_call_resolving_to_the_audit_module_passes(tmp_path, src):
+    assert scan_package(_dummy(tmp_path, {"__init__.py": "", "ok.py": src + "\n"})) == []
+
+
+def test_store_method_is_allowed_only_on_the_store_receivers_of_the_store_file(tmp_path):
+    source = "def f(self, store, other):\n    self.insert_event('I', 'x')\n    store.insert_event('I', 'x')\n    other.insert_event('I', 'x')\n"
+    root = _dummy(tmp_path, {"__init__.py": "", "audit.py": source, "other.py": source})
+    assert [(f.path, f.line) for f in scan_package(root)] == [("audit.py", 4), ("other.py", 2), ("other.py", 3), ("other.py", 4)]
+
+
+def test_general_write_stays_forbidden_in_the_store_file(tmp_path):
+    root = _dummy(tmp_path, {"__init__.py": "", "audit.py": "def f(self):\n    self.write('I', 'x')\n"})
+    assert [f.what for f in scan_package(root)] == ["call:.write"]
+
+
 def test_allowlist_is_file_specific(tmp_path):
     root = _dummy(tmp_path, {"__init__.py": "", "audit.py": "import sqlite3\n", "other.py": "import sqlite3\n"})
     found = scan_package(root)
@@ -163,6 +205,7 @@ def test_empty_or_unparseable_target_is_an_error_not_a_pass(tmp_path):
 
 # ── 2) 런타임 관측(ⓕ) ─────────────────────────────────────────────
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 _MONITOR: dict = {"on": False, "events": []}
 _WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
 
@@ -301,3 +344,29 @@ def test_no_audit_db_or_capture_is_tracked():
     bad = [t for t in tracked if t.startswith(("var/", "captures/", "traffic/")) or
            t.endswith((".sqlite3", ".db", ".har", ".pcap", ".saz", ".burp"))]
     assert bad == []
+
+
+# ── 3) 변이 확인: 감사 저장소 API 판별 ─────────────────────────────
+
+_A = "tests/test_absence.py::"
+_PLANTED = _A + "test_planted_forbidden_path_is_caught"
+AUDIT_API_MUTATIONS = {
+    "name_only": ("        if target in AUDIT_API_TARGETS:\n", "        if True:\n", [_PLANTED]),
+    "rebinding_ignored": ("        elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):\n", "        elif False:\n", [_PLANTED]),
+    "parameter_ignored": ("        elif isinstance(node, ast.arg):\n", "        elif False:\n", [_PLANTED]),
+    "second_import_ignored": ("        if bound.setdefault(name, target) != target:\n", "        if bound.setdefault(name, target) != target and False:\n", [_PLANTED]),
+    "receiver_ignored": ('        if name == "insert_event" and receiver in AUDIT_STORE_RECEIVERS.get(self.rel, set()):\n',
+                         '        if name == "insert_event":\n',
+                         [_A + "test_store_method_is_allowed_only_on_the_store_receivers_of_the_store_file"]),
+    "aliased_target_unseen": ('        if name not in AUDIT_STORE_API and (target or "").rsplit(".", 1)[-1] not in AUDIT_STORE_API:\n',
+                              "        if name not in AUDIT_STORE_API:\n", [_PLANTED]),
+    "attribute_store_unseen": ("        if node.attr in AUDIT_STORE_API and not isinstance(node.ctx, ast.Load):\n", "        if False:\n", [_PLANTED]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(AUDIT_API_MUTATIONS))
+def test_audit_api_target_check_is_load_bearing_under_verified_mutation(tmp_path, name):
+    old, new, nodes = AUDIT_API_MUTATIONS[name]
+    root = tmp_path / "mut"
+    mutant = copy_with_mutation(REPO_ROOT, ["tools"], root, "tools/absence_check.py", old, new)
+    _run_mutant([root, REPO_ROOT / "src", REPO_ROOT], "tools.absence_check", nodes, mutant)

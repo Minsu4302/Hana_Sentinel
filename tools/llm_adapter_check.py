@@ -1,8 +1,8 @@
 """어댑터 정적 검사 — (A) §3.1 `llm_adapter_loopback_only`·`llm_adapter_no_target_resend`.
 
 `loopback_violations`: 연결 생성자 1개, 인자 고정(상수 127.0.0.1, 포트 이름, timeout만) / HTTPSConnection·set_tunnel·source_address·
-.host·.port 대입·host= 키워드·상속·별칭 import·getattr 금지 / 요청 메서드·경로는 상수 / 메시지 content는 입력의 문자열 필드만 /
-어댑터 API 인자에 대상 요청을 다시 만들 이름이 없음.
+.host·.port 대입·host= 키워드·상속·별칭 import·getattr 금지 / 요청 메서드·경로는 상수 / 메시지는 system(상수)·user(입력의 문자열
+필드) 둘 / 요청 본문·헤더·response_format의 키 고정 / API 키는 로그·예외에 없음 / 어댑터 API 인자에 대상 요청을 다시 만들 이름이 없음.
 `adapter_call_sites`: src/sentinel에서 어댑터를 부르는 곳. 지금은 0곳이다(결선 전 — 결선 PR에서 재증명).
 
 범위(정직 표기): 정적 범위다. 런타임 조립은 금지 이름 검사로만 막는다. 포트에서 듣는 프로세스의 정체는 범위 밖이다
@@ -21,6 +21,10 @@ FORBIDDEN_CALLS: Final = frozenset({"getattr", "setattr", "delattr", "vars", "ev
 FORBIDDEN_KEYWORDS: Final = frozenset({"host", "source_address", "blocksize"})
 FORBIDDEN_PARAMS: Final = frozenset({"host", "hostname", "url", "uri", "method", "path", "target", "address"})
 FORBIDDEN_STORES: Final = frozenset({"host", "port", "sock"})
+BODY_KEYS: Final = frozenset({"messages", "temperature", "max_tokens", "response_format"})
+HEADER_KEYS: Final = frozenset({"Content-Type", "Authorization"})
+SECRET_NAMES: Final = frozenset({"key", "api_key"})
+LOG_CALLS: Final = frozenset({"debug", "info", "warning", "error", "exception", "critical", "print"})
 
 
 def _imports(tree: ast.AST) -> list[str]:
@@ -88,18 +92,54 @@ def _request(tree: ast.AST) -> list[str]:
     return [] if ok else ["request_not_constant"]
 
 
+def _values(tree: ast.AST, key: str) -> list[ast.expr]:
+    return [v for n in ast.walk(tree) if isinstance(n, ast.Dict) for k, v in zip(n.keys, n.values)
+            if isinstance(k, ast.Constant) and k.value == key]
+
+
 def _content(tree: ast.AST) -> list[str]:
-    values = [v for n in ast.walk(tree) if isinstance(n, ast.Dict) for k, v in zip(n.keys, n.values)
-              if isinstance(k, ast.Constant) and k.value == "content"]
-    if len(values) != 1:
+    values = _values(tree, "content")
+    if len(values) != 2:
         return [f"content_count={len(values)}"]
-    value = values[0]
-    return [] if isinstance(value, ast.Attribute) and value.attr == "content" else ["content_not_the_input_string"]
+    system, user = values
+    found = [] if isinstance(system, ast.Name) and system.id == "SYSTEM_PROMPT" else ["system_not_the_constant"]
+    return found + ([] if isinstance(user, ast.Attribute) and user.attr == "content" else ["content_not_the_input_string"])
+
+
+def _keys_of(tree: ast.AST, member: str) -> list[set]:
+    return [{k.value for k in n.keys if isinstance(k, ast.Constant)} for n in ast.walk(tree) if isinstance(n, ast.Dict)
+            and any(isinstance(k, ast.Constant) and k.value == member for k in n.keys)]
+
+
+def _secret_in_log(node: ast.Call) -> bool:
+    name = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", "")
+    return name in LOG_CALLS and any(isinstance(n, ast.Name) and n.id in SECRET_NAMES for a in node.args for n in ast.walk(a))
+
+
+def _shape(tree: ast.AST) -> list[str]:
+    found = []
+    roles = [v.value for v in _values(tree, "role") if isinstance(v, ast.Constant)]
+    if roles != ["system", "user"]:
+        found.append("roles_changed")
+    if _keys_of(tree, "messages") != [BODY_KEYS]:
+        found.append("body_keys_changed")
+    if _keys_of(tree, "Authorization") != [HEADER_KEYS]:
+        found.append("headers_changed")
+    formats = [v.value for v in _values(tree, "type") if isinstance(v, ast.Constant)]
+    if formats != ["json_schema"]:
+        found.append("response_format_changed")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and _secret_in_log(node):
+            found.append("secret_in_log")
+        if isinstance(node, ast.Raise) and node.exc is not None and any(
+                isinstance(n, ast.Name) and n.id in SECRET_NAMES for n in ast.walk(node.exc)):
+            found.append("secret_in_raise")
+    return found
 
 
 def loopback_violations(source: str) -> list[str]:
     tree = ast.parse(source)
-    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)
+    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)
 
 
 def adapter_call_sites(package_root: Path) -> list[str]:

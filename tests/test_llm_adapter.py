@@ -35,6 +35,8 @@ SOURCE = ADAPTER.read_text(encoding="utf-8")
 CONNECTS: list[tuple[str, int]] = []
 QUICK = Limits(max_response_bytes=1024, io_timeout_seconds=0.3, deadline_seconds=0.6)
 MARGIN = 2.0
+SCHEMA = {"type": "object"}
+KEY = "stubkey0123456789"
 
 
 def _audit(event: str, args: tuple) -> None:
@@ -43,6 +45,11 @@ def _audit(event: str, args: tuple) -> None:
 
 
 sys.addaudithook(_audit)
+
+
+@pytest.fixture(autouse=True)
+def _api_key(monkeypatch):
+    monkeypatch.setenv(llm_adapter.API_KEY_ENV, KEY)
 
 
 def _sanitized() -> SanitizedEnvelope:
@@ -57,29 +64,32 @@ def _payload() -> LlmInput:
 
 def test_reply_body_comes_back_as_it_was_sent():
     with LlmStub(llm_stub.ok(b'{"choices": []}')) as stub:
-        assert complete(_payload(), stub.port) == b'{"choices": []}'
+        assert complete(_payload(), stub.port, SCHEMA) == b'{"choices": []}'
 
 
 def test_request_is_a_post_to_the_constant_path_with_string_content():
     payload = _payload()
     with LlmStub(llm_stub.ok(b"{}")) as stub:
-        complete(payload, stub.port)
+        complete(payload, stub.port, SCHEMA)
     head, _, body = stub.requests[0].partition(b"\r\n\r\n")
     assert head.startswith(b"POST /v1/chat/completions HTTP/1.1\r\n")
-    assert json.loads(body) == {"messages": [{"role": "user", "content": payload.content}]}
+    doc = json.loads(body)
+    assert doc["messages"] == [{"role": "system", "content": llm_adapter.SYSTEM_PROMPT}, {"role": "user", "content": payload.content}]
+    assert doc["response_format"]["json_schema"]["schema"] == SCHEMA and doc["max_tokens"] == 1024 and doc["temperature"] == 0
+    assert f"Authorization: Bearer {KEY}".encode() in head
 
 
 def test_connect_goes_only_to_the_loopback_address():
     CONNECTS.clear()
     with LlmStub(llm_stub.ok(b"{}")) as stub:
-        complete(_payload(), stub.port)
+        complete(_payload(), stub.port, SCHEMA)
     assert CONNECTS == [("127.0.0.1", stub.port)]
 
 
 @pytest.mark.parametrize("port", [0, 65536, -1, True, "18765", 80.0, None])
 def test_port_must_be_an_integer_in_range(port):
     with pytest.raises(ValueError):
-        complete(_payload(), port)
+        complete(_payload(), port, SCHEMA)
 
 
 # ── 구조: 대상 재구성 불가 ─────────────────────────────────────────
@@ -89,7 +99,7 @@ def test_input_type_has_only_the_content_field():
 
 
 def test_adapter_api_takes_no_host_or_target():
-    assert list(inspect.signature(complete).parameters) == ["payload", "port", "limits"]
+    assert list(inspect.signature(complete).parameters) == ["payload", "port", "response_schema", "limits"]
     assert list(inspect.signature(llm_input).parameters) == ["sanitized"]
 
 
@@ -124,7 +134,13 @@ EDITS = {
     "source_address": ("timeout=limits.io_timeout_seconds)", "timeout=limits.io_timeout_seconds, source_address=None)",
                        "forbidden_keyword:source_address"),
     "https": ("http.client.HTTPConnection(", "http.client.HTTPSConnection(", "forbidden:HTTPSConnection"),
-    "non_string_content": ('"content": payload.content', '"content": [{"type": "image_url"}]', "content_not_the_input_string"),
+    "non_string_content": ('"content": payload.content', '"content": [{"url": "http://x"}]', "content_not_the_input_string"),
+    "other_system": ('"content": SYSTEM_PROMPT', '"content": payload.content', "system_not_the_constant"),
+    "third_role": ('{"role": "user", "content": payload.content}]', '{"role": "user", "content": payload.content}, {"role": "tool"}]', "roles_changed"),
+    "extra_body_key": ('"temperature": 0,', '"temperature": 0, "tools": [],', "body_keys_changed"),
+    "extra_header": ('"Authorization": f"Bearer {key}"}', '"Authorization": f"Bearer {key}", "X-Target": "x"}', "headers_changed"),
+    "other_response_format": ('{"type": "json_schema",', '{"type": "text",', "response_format_changed"),
+    "key_in_log": ('    audit_log.warning("llm_adapter_failed reason=%s", reason)\n', '    key = 1\n    audit_log.warning("llm_adapter_failed reason=%s", key)\n', "secret_in_log"),
     "other_path": ("conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH,", 'conn.request(COMPLETIONS_METHOD, "/x",', "request_not_constant"),
     "other_method": ("conn.request(COMPLETIONS_METHOD, COMPLETIONS_PATH,", 'conn.request("GET", COMPLETIONS_PATH,', "request_not_constant"),
     "host_parameter": ("def complete(payload: LlmInput, port: int,", "def complete(payload: LlmInput, port: int, host: str,", "forbidden_param:host"),
@@ -138,6 +154,7 @@ APPENDS = {
     "subclass": ("class C(http.client.HTTPConnection):\n    pass\n", "subclass_of_http_client"),
     "getattr": ("def f(conn):\n    return getattr(conn, 'host')\n", "forbidden_call:getattr"),
     "tunnel": ("def f(conn):\n    conn.set_tunnel('x')\n", "forbidden:set_tunnel"),
+    "key_in_raise": ("def f(key):\n    raise ValueError(key)\n", "secret_in_raise"),
     "tunnel_by_name": ("NAME = 'set_tunnel'\n", "forbidden:set_tunnel"),
     "connection_alias": ("C = http.client.HTTPConnection\n", "connection_reference"),
 }
@@ -258,7 +275,7 @@ def test_planted_construction_is_found(tmp_path, name):
 
 def _timed(stub: LlmStub) -> tuple[object, float]:
     started = time.monotonic()
-    result = complete(_payload(), stub.port, QUICK)
+    result = complete(_payload(), stub.port, SCHEMA, QUICK)
     return result, time.monotonic() - started
 
 
@@ -270,7 +287,7 @@ def test_oversized_response_stops_with_a_reason_code():
 
 def test_response_of_exactly_the_limit_is_accepted():
     with LlmStub(llm_stub.ok(b"x" * QUICK.max_response_bytes)) as stub:
-        assert complete(_payload(), stub.port, QUICK) == b"x" * QUICK.max_response_bytes
+        assert complete(_payload(), stub.port, SCHEMA, QUICK) == b"x" * QUICK.max_response_bytes
 
 
 def test_silent_server_ends_with_io_timeout_within_the_deadline():
@@ -294,29 +311,58 @@ def test_server_dripping_the_headers_ends_at_the_deadline():
 
 def test_redirect_is_not_followed():
     with LlmStub(llm_stub.status(b"302 Found\r\nLocation: http://example.test/")) as stub:
-        assert complete(_payload(), stub.port) == AdapterFailure("bad_status")
+        assert complete(_payload(), stub.port, SCHEMA) == AdapterFailure("bad_status")
     assert len(stub.requests) == 1
 
 
 def test_error_status_is_a_reason_code():
     with LlmStub(llm_stub.status(b"500 Internal Server Error")) as stub:
-        assert complete(_payload(), stub.port) == AdapterFailure("bad_status")
+        assert complete(_payload(), stub.port, SCHEMA) == AdapterFailure("bad_status")
 
 
 def test_closed_port_is_a_reason_code():
     with LlmStub(llm_stub.ok(b"")) as stub:
         port = stub.port
     # Windows는 닫힌 포트 연결을 약 1초 재시도한다 — 그보다 긴 타임아웃으로 본다
-    assert complete(_payload(), port, Limits(io_timeout_seconds=10, deadline_seconds=20)) == AdapterFailure("connect_failed")
+    assert complete(_payload(), port, SCHEMA, Limits(io_timeout_seconds=10, deadline_seconds=20)) == AdapterFailure("connect_failed")
 
 
 def test_failure_carries_no_prompt_or_response_content(caplog):
     marker = secrets.token_hex(8)
     with caplog.at_level(logging.DEBUG), LlmStub(llm_stub.status(f"500 {marker}".encode())) as stub:
-        result = complete(LlmInput(content=marker), stub.port)
+        result = complete(LlmInput(content=marker), stub.port, SCHEMA)
     assert result == AdapterFailure("bad_status")
     assert marker not in repr(result) and marker not in caplog.text
     assert "reason=bad_status" in caplog.text
+
+
+def test_default_limits_are_the_measured_values():
+    limits = llm_adapter.DEFAULT_LIMITS
+    assert (limits.io_timeout_seconds, limits.deadline_seconds, limits.max_tokens) == (120.0, 120.0, 1024)
+    assert llm_adapter.LIMITS_DERIVED_FROM.startswith("qwen2.5-1.5b-instruct-q4_k_m@sha256:6a1a2eb6")
+
+
+@pytest.mark.parametrize("value", ["", "has space", "line\nbreak", "한글"], ids=["empty", "space", "newline", "non_ascii"])
+def test_unusable_api_key_is_a_reason_code_and_nothing_is_sent(monkeypatch, value):
+    monkeypatch.setenv(llm_adapter.API_KEY_ENV, value)
+    CONNECTS.clear()
+    assert complete(_payload(), 18765, SCHEMA) == AdapterFailure("api_key_missing") and CONNECTS == []
+
+
+def test_url_safe_random_key_is_usable(monkeypatch):
+    monkeypatch.setenv(llm_adapter.API_KEY_ENV, "aZ0-_.~+/=")
+    assert llm_adapter._api_key() == "aZ0-_.~+/="
+
+
+def test_missing_api_key_is_a_reason_code(monkeypatch):
+    monkeypatch.delenv(llm_adapter.API_KEY_ENV)
+    assert complete(_payload(), 18765, SCHEMA) == AdapterFailure("api_key_missing")
+
+
+def test_api_key_never_reaches_a_failure_or_the_log(caplog):
+    with caplog.at_level(logging.DEBUG), LlmStub(llm_stub.status(b"401 Unauthorized")) as stub:
+        result = complete(_payload(), stub.port, SCHEMA)
+    assert result == AdapterFailure("bad_status") and KEY not in repr(result) and KEY not in caplog.text
 
 
 def test_failure_reason_is_a_closed_list():
@@ -342,6 +388,8 @@ SRC_MUTATIONS = {
     "size_limit_off": (*ADP, "        if size > limits.max_response_bytes:\n", "        if False:\n",
                        [_T + "test_oversized_response_stops_with_a_reason_code"]),
     "deadline_timer_off": (*ADP, "    timer.start()\n", "", [_T + "test_server_dripping_the_headers_ends_at_the_deadline"]),
+    "key_not_checked": (*ADP, '    return key if key and key.isascii() and key.isprintable() and " " not in key else None', "    return key or None",
+                        [_T + "test_unusable_api_key_is_a_reason_code_and_nothing_is_sent[space]"]),
     "port_not_checked": (*ADP, "    if type(port) is not int or not 1 <= port <= 65535:\n", "    if False:\n",
                          [_T + "test_port_must_be_an_integer_in_range[65536]"]),
     "loopback_replaced": (*ADP, '"127.0.0.1", _checked_port', '"localhost", _checked_port',
@@ -352,23 +400,27 @@ CHECK = ("tools/llm_adapter_check.py", "tools.llm_adapter_check")
 ARCH = ("tools/arch_boundary.py", "tools.arch_boundary")
 PATH = ("tools/completed_path.py", "tools.completed_path")
 TOOL_MUTATIONS = {
-    "constructor_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n',
-                              "    return _imports(tree) + _names(tree) + _request(tree) + _content(tree)\n",
+    "constructor_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                              "    return _imports(tree) + _names(tree) + _request(tree) + _content(tree) + _shape(tree)\n",
                               [_T + "test_planted_edit_is_found[second_constructor]", _T + "test_planted_edit_is_found[other_address]",
                                _T + "test_planted_edit_is_found[localhost]"]),
-    "names_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n',
-                        "    return _imports(tree) + _constructor(tree) + _request(tree) + _content(tree)\n",
+    "names_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                        "    return _imports(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n",
                         [_T + "test_planted_code_is_found[host_assignment]", _T + "test_planted_code_is_found[subclass]",
                          _T + "test_planted_code_is_found[getattr]", _T + "test_planted_code_is_found[tunnel]",
                          _T + "test_planted_edit_is_found[https]", _T + "test_planted_edit_is_found[source_address]"]),
-    "imports_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n',
-                          "    return _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n",
+    "imports_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                          "    return _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n",
                           [_T + "test_planted_edit_is_found[alias_import]"]),
-    "content_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n',
-                          "    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree)\n",
+    "content_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                          "    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _shape(tree)\n",
                           [_T + "test_planted_edit_is_found[non_string_content]"]),
-    "request_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n',
-                          "    return _imports(tree) + _names(tree) + _constructor(tree) + _content(tree)\n",
+    "shape_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                        "    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree)\n",
+                        [_T + "test_planted_edit_is_found[extra_body_key]", _T + "test_planted_edit_is_found[extra_header]",
+                         _T + "test_planted_edit_is_found[third_role]", _T + "test_planted_edit_is_found[key_in_log]"]),
+    "request_check_off": (*CHECK, '    return _imports(tree) + _names(tree) + _constructor(tree) + _request(tree) + _content(tree) + _shape(tree)\n',
+                          "    return _imports(tree) + _names(tree) + _constructor(tree) + _content(tree) + _shape(tree)\n",
                           [_T + "test_planted_edit_is_found[other_path]"]),
     "call_site_check_off": (*CHECK, '            if any("llm_adapter" in name for name in names):\n', "            if False:\n",
                             [_T + "test_planted_call_site_is_found"]),

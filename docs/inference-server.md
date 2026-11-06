@@ -27,14 +27,15 @@ Set-NetFirewallProfile -All -LogBlocked True
 ## 3. 기동
 
 ```text
-llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-webui --no-slots -t <스레드>
+llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-webui --no-slots --parallel 1 -c 8192 -t <스레드>
 ```
 
 - `--host 127.0.0.1`: 다른 값을 쓰지 않는다. `0.0.0.0`이면 마스킹된 트랜잭션이 LAN에 노출된다.
 - `--offline`: 모델 다운로드를 막는다.
 - `--no-webui`: 웹 UI를 켜지 않는다.
 - `--no-slots`: 슬롯 조회 엔드포인트를 끈다(기본 켜짐).
-- API 키: 기동마다 랜덤 키를 만들어 환경변수로만 전달한다(`LLAMA_API_KEY`). 로그·커밋에 남기지 않는다(N7). 어댑터의 헤더 전송은 결선 PR이다.
+- `-c 8192`·`--parallel 1`: `-c`는 전체 값이고 슬롯 수로 나뉜다 — `--parallel 1`이 필수다. 뷰 8KB(약 3,200토큰) + `max_tokens` 1024를 담는다.
+- API 키: 기동마다 랜덤 키를 만들어 환경변수로만 전달한다(`LLAMA_API_KEY`). 로그·커밋에 남기지 않는다(N7). 어댑터는 같은 환경변수를 읽어 헤더로 보낸다.
 - `-hf`·`--model-url`을 쓰지 않는다.
 
 서버는 키 없이 기동하면 "API 키 없음, CORS 전체 허용"을 경고한다. 같은 PC의 다른 프로세스와 브라우저 페이지가 이 포트에 닿을 수 있다는 뜻이다. `/health`는 키 없이 공개다.

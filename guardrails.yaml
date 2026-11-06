@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.31. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.32. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.31"
+derived_from: "docs/design-decision.md §3 매핑표 v1.32"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -75,7 +75,7 @@ guardrails:
       - "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
     manifest_key: no_autonomous_send
   - id: llm_adapter_loopback_only
-    description: "어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단)"
+    description: "어댑터 접속 대상은 루프백 하나(연결 생성자 1개, 인자 형태 고정 — 첫 인자 상수 127.0.0.1, 포트는 설정 정수 / HTTPSConnection·set_tunnel·.host 대입·host= 키워드·상속·별칭 import·getattr·source_address 금지 / 동적: sys.audit의 http.client.connect로 목적지 확인 / 요청 메시지 content는 문자열만 — 이미지·URL 파트 금지, 추론 서버의 원격 가져오기 차단 / 메시지 역할 system·user, 요청 본문 키·response_format·헤더 키 고정 / API 키는 환경변수에서만 읽고 로그·예외에 없음)"
     target_layer: "아키텍처테스트"
     status:
       state: enforced
@@ -141,9 +141,12 @@ guardrails:
     description: "LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "결선 PR"
-    verification_tests: []
+      state: enforced
+      note: "분석 호출 전체 단위 — LLM 호출이 이 안에 결선되는 것은 L3"
+    verification_tests:
+      - "tests/test_llm_safeguards.py::test_token_check_answers_while_an_analysis_is_running"
+      - "tests/test_llm_safeguards.py::test_only_one_analysis_runs_at_a_time"
+      - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_concurrency
   - id: llm_model_identity
     description: "model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능"
@@ -508,6 +511,8 @@ guardrails:
       state: enforced
     verification_tests:
       - "tests/test_absence.py::test_engine_has_no_raw_persistence_path_except_allowlisted_audit_store"
+      - "tests/test_absence.py::test_store_method_is_allowed_only_on_the_store_receivers_of_the_store_file"
+      - "tests/test_absence.py::test_audit_api_target_check_is_load_bearing_under_verified_mutation"
       - "tests/test_absence.py::test_planted_forbidden_path_is_caught"
       - "tests/test_absence.py::test_allowlist_is_file_specific"
       - "tests/test_absence.py::test_runtime_request_processing_persists_no_raw_traffic"
@@ -547,17 +552,26 @@ guardrails:
     description: "감사 기록 실패 시 fail-closed"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "결선 PR(범위 — LLM 감사)"
-    verification_tests: []
+      state: enforced
+      note: "범위 — LLM 감사. 수용 요청 감사 등 나머지는 미구현"
+    verification_tests:
+      - "tests/test_llm_safeguards.py::test_llm_result_is_discarded_when_the_fingerprint_cannot_be_written"
+      - "tests/test_llm_safeguards.py::test_audit_failure_with_no_findings_is_not_clean"
+      - "tests/test_llm_safeguards.py::test_write_required_says_when_nothing_is_stored"
+      - "tests/test_llm_safeguards.py::test_write_required_says_when_the_store_is_broken"
+      - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
     manifest_key: audit_write_failure
   - id: llm_io_audit
     description: "LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "결선 PR"
-    verification_tests: []
+      state: enforced
+      note: "합성 LlmRun으로 증명 — 실제 호출 결선은 L3"
+    verification_tests:
+      - "tests/test_llm_safeguards.py::test_llm_call_leaves_a_fingerprint"
+      - "tests/test_llm_safeguards.py::test_fingerprint_records_the_outcome"
+      - "tests/test_llm_safeguards.py::test_fingerprint_keeps_no_content"
+      - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_io_audit
   - id: masked_span_integrity
     description: "Body 불변식 1~6을 ③에서 검증"

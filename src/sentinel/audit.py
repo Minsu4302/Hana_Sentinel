@@ -10,8 +10,8 @@ egress 시도 감사: 제품 코드에는 송신 코드가 없다(N1·N2). 그�
 — 운영 차단의 실주체는 OS/네트워크(`egress_enforcement_owner` = unverifiable). 목적지 호스트는 사내 정보일 수
 있어 기록하지 않는다(동작 종류·포트만).
 
-정직 표기: 감사 기록 *실패* 시 fail-closed(`audit_write_failure`)는 수용 요청 감사(B-6) 범위 확정 시로 이월됐다. 1주차는 '감사가 남는다'만 보장하며,
-기록에 실패해도 요청 처리를 막지 않는다(logging의 handleError로 넘어감) — '못 남기면 거부'는 미정의.
+정직 표기: 감사 기록 *실패* 시 fail-closed(`audit_write_failure`)의 현재 범위는 LLM 감사다(`write_required`). 로깅 경로의 나머지
+감사는 기록에 실패해도 요청 처리를 막지 않는다(logging의 handleError로 넘어감) — 수용 요청 감사(B-6) 범위 확정 시로 이월.
 """
 from __future__ import annotations
 
@@ -49,14 +49,16 @@ class SQLiteAuditHandler(logging.Handler):
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.execute(_SCHEMA)
 
+    def insert_event(self, level: str, message: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO audit_events (ts, level, event, message) VALUES (?, ?, ?, ?)",
+                (datetime.now(timezone.utc).isoformat(), level, message.split(" ", 1)[0], message))
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            message = record.getMessage()
-            with self._lock:
-                self._conn.execute(
-                    "INSERT INTO audit_events (ts, level, event, message) VALUES (?, ?, ?, ?)",
-                    (datetime.now(timezone.utc).isoformat(), record.levelname, message.split(" ", 1)[0], message))
-        except Exception:  # noqa: BLE001 — 1주차: 기록 실패가 요청을 막지 않음(audit_write_failure → 수용 요청 감사(B-6) 범위 확정 시)
+            self.insert_event(record.levelname, record.getMessage())
+        except Exception:  # noqa: BLE001 — 로깅 경로: 기록 실패가 요청을 막지 않음(fail-closed는 `write_required`)
             self.handleError(record)
 
     def close(self) -> None:
@@ -80,6 +82,20 @@ def attach_audit_store(path: Path) -> SQLiteAuditHandler:
 def detach_audit_store(handler: SQLiteAuditHandler) -> None:
     audit_log.removeHandler(handler)
     handler.close()
+
+
+def write_required(message: str) -> bool:
+    """기록이 실제로 남았는지 돌려준다. 로깅은 실패를 삼키므로 fail-closed가 필요한 감사는 이 경로로 쓴다((A) §3.0).
+    저장소가 없어도 실패다."""
+    stores = [h for h in audit_log.handlers if isinstance(h, SQLiteAuditHandler)]
+    if not stores:
+        return False
+    try:
+        for store in stores:
+            store.insert_event("INFO", message)
+    except sqlite3.Error:
+        return False
+    return True
 
 
 def read_audit_events(path: Path) -> list[dict[str, Any]]:

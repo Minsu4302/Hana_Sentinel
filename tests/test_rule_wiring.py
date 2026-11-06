@@ -591,9 +591,7 @@ sys.exit(int(code))
 """
 _W = "tests/test_rule_wiring.py::"
 _E = "tests/test_rule_engine.py::"
-GATE_CALL = ("    outcome = output_gate.validate_producers(\n"
-             "        draft, None if llm_run is None else llm_run.output, transactions=transactions, produced_by=RULE_PATH,\n"
-             "        make_meta=lambda llm_outcome: _analysis_meta(manifest_snapshot, started, llm_run, llm_outcome))\n")
+GATE_CALL = "    outcome = gated(None if llm_run is None else llm_run.output)\n"
 SRC_MUTATIONS = {
     "gate_bypassed": ("sentinel/pipeline/execution.py", "sentinel.pipeline.execution", GATE_CALL,
                       "    outcome = output_gate._build([(f, RULE_PATH) for f in output_gate.AnalysisDraft.model_validate_json(draft).findings], "
@@ -611,9 +609,9 @@ SRC_MUTATIONS = {
                                 "    outside = _refs_outside(parsed, frozenset(by_id))  # ④\n",
                                 [_W + "test_invalid_twin_of_a_duplicate_is_not_hidden_by_the_merge[bad_last]"]),
     "handler_calls_a_stage_directly": ("sentinel/server/app.py", "sentinel.server.app",
-                                       "            result = entry.analyze(raw, manifest_snapshot)\n",
+                                       "            async with one_at_a_time:\n",
                                        "            schema_gate.parse_envelope(raw)\n"
-                                       "            result = entry.analyze(raw, manifest_snapshot)\n",
+                                       "            async with one_at_a_time:\n",
                                        [_W + "test_handler_reaches_the_pipeline_only_through_the_entry_function"]),
     "entry_skips_stage_three": ("sentinel/pipeline/entry.py", "sentinel.pipeline.entry",
                                 "    sanitization_check.verify_sanitization(envelope)\n", "",
