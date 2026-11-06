@@ -1225,3 +1225,18 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 미해결
 - L2: 어댑터 기본값(io_timeout·deadline 120초), API 키 헤더, 감사, 스레드풀, 환각 리터럴은 L3 범위와 함께 — 발주 분할을 따른다.
 - `docs/inference-server.md`의 `-c`·`--parallel 1` 기록 → L2.
+
+---
+
+## verify 스탬프 + pre-push 훅 (Issue #101)
+
+### 배경
+- **체인 규칙 위반 3회(G1·G2·L1) → 규칙을 장치로 대체.** G1은 `guardrails sync` 거부 뒤 커밋, G2는 `set -e`가 듣지 않아 실패 뒤 푸시, L1은 `;`로 이은 푸시가 실패 커밋을 원격에 올렸다.
+
+### 결과
+- `tools/verify_stamp.py`, `make verify`의 시작·끝, pre-push 훅(`make install-hooks`). 신규 키 `push_requires_verify`.
+- 작업 트리가 더러운 상태의 verify는 스탬프를 쓰지 않는다(검증한 내용과 커밋이 다를 수 있다).
+
+### 한계
+- 클라이언트 훅이라 `git push --no-verify`로 우회할 수 있다(`secret_scan_hook`과 같은 성격). 실수 방지용이며 서버측 강제가 아니다.
+- `gh pr merge`는 훅 밖이다. merge까지 스크립트로 강제하면 레포 코드가 GitHub API를 호출하게 되어 ⓑ 해석(tools의 외부 송신 0)과 충돌하므로 하지 않는다 — merge 직전 head 대조는 수동 절차로 유지한다.

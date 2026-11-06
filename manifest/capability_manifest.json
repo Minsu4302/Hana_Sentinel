@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.30",
+  "spec": "docs/design-decision.md §3 매핑표 v1.31",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -548,6 +548,20 @@
       "effective_status": "unverifiable",
       "note": "레포 설정",
       "verification_tests": []
+    },
+    "push_requires_verify": {
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "클라이언트 훅 — git push --no-verify로 우회 가능. 실수 방지용이며 서버측 강제 아님",
+      "verification_tests": [
+        "tests/test_verify_stamp.py::test_matching_stamp_on_a_clean_tree_is_pushed",
+        "tests/test_verify_stamp.py::test_push_without_a_stamp_is_refused",
+        "tests/test_verify_stamp.py::test_stamp_of_another_commit_is_refused",
+        "tests/test_verify_stamp.py::test_dirty_tree_is_refused",
+        "tests/test_verify_stamp.py::test_failed_verify_removes_the_old_stamp_so_push_is_refused",
+        "tests/test_verify_stamp.py::test_make_verify_clears_first_checks_the_hook_and_stamps_last",
+        "tests/test_verify_stamp.py::test_stamp_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "evidence_min_one": {
       "status": "enforced",

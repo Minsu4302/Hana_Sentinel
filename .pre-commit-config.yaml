@@ -1,7 +1,8 @@
 # pre-commit — (A) §3.3 `secret_scan_hook` / N7.
 # 외부 다운로드 0: 원격 훅 저장소를 쓰지 않고 레포 내 스캐너(tools/secret_scan.py)만 실행한다.
 # 설치: make install-hooks   (PATH에 python이 있어야 한다)
-# 한계: 클라이언트 훅은 `git commit --no-verify`로 우회 가능 → `make verify`가 추적 파일 전수 재스캔.
+# 한계: 클라이언트 훅은 `git commit --no-verify`·`git push --no-verify`로 우회 가능 → `make verify`가 추적 파일 전수 재스캔.
+# `verify-stamp`는 (A) §3.4 `push_requires_verify` — verify가 통과한 커밋만 푸시한다. 실수 방지용이고 서버측 강제가 아니다.
 repos:
   - repo: local
     hooks:
@@ -10,3 +11,11 @@ repos:
         entry: python tools/secret_scan.py
         language: unsupported
         types: [text]
+        stages: [pre-commit]
+      - id: verify-stamp
+        name: verify-stamp (make verify를 통과한 커밋만 푸시)
+        entry: python tools/verify_stamp.py check-push
+        language: unsupported
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

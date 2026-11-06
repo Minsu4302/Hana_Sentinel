@@ -41,6 +41,9 @@ htmlcov/
 # ── 평가 보고서(`make eval` 산출물 — 커밋하지 않는다) ──
 reports/
 
+# ── verify 스탬프(`make verify` 산출물, pre-push 훅이 대조) ──
+.verify-stamp
+
 # ── 편집기 ──
 .vscode/
 .idea/
