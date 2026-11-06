@@ -1278,3 +1278,34 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 
 ### 브랜치 관행 변경
 - merge 후 원격 PR 브랜치 삭제(--delete-branch). 커밋은 PR·main에 남는다. 기존 브랜치는 그대로.
+
+---
+
+## 결선 L3 — rule_llm 결선 (Issue #107)
+
+### 결과
+- `entry.analyze`: ③이 돌려준 스냅샷을 ④의 규칙과 어댑터가 함께 쓴다. `pipeline/llm_path.py`가 어댑터의 유일한 호출 지점이다.
+- 기본 rule_only. `SENTINEL_PIPELINE_MODE=rule_llm`인데 설정이 모자라면 기동·평가를 거부한다(내려가지 않는다).
+- `pipeline/llm_prompt.py`: 템플릿(`prompts/analysis.txt`), 입력 뷰(뷰에 host·scheme·port 없음), 전송 스키마(2,650바이트), 묶음 해시.
+- 게이트: 환각 리터럴 격리, 뷰 limitation. 서버: 대기 상한 503 busy. 러너: 서빙 조건, rule_llm이면 감사 저장소.
+
+### 실서버 dev 스모크 1회 (측정 아님 — S v2 dev만, 프롬프트 미동결)
+- 조건: llama.cpp b12119, -t 6, -c 8192, --parallel 1, i5-10400. 방화벽 규칙 22개 Enabled·Block, 차단 로그 켜짐. 가중치 SHA-256 일치.
+- `/props`: 슬롯 1개, 슬롯당 n_ctx 8192(≥ 4,300). Origin 헤더 + 키 없음: `/v1/chat/completions`·`/props` 401.
+- `make eval` dev 40건 154초: ok 38, truncated 1, rejected 1(draft_schema_invalid), timeout·unavailable·oversize·unparseable·audit_write 0. 소요 시간 중앙값 2.0초, 최대 66.6초.
+- 채점: strict TP 6 · FP 0 · FN 16 — rule_only와 같다. **LLM이 만든 finding이 결과에 0건이다(llm_only_tp 0, produced_by는 rule뿐).** 경로가 도는 것을 보였을 뿐 탐지력은 보이지 않는다. 프롬프트는 튜닝 전이고 이 숫자는 측정이 아니다.
+- 서버 로그에 키 0건. 방화벽 로그 오늘 아웃바운드 DROP 0(프로세스 이름은 없다).
+
+### 깨진 가정
+- 테스트가 가렸던 결함: 러너에 감사 저장소가 없으면 모든 LLM 결과가 `audit_write`로 버려진다. `store` fixture가 이를 가렸다. fixture 없이 `runner.main`을 도는 테스트를 더했다.
+- 헤더를 예산 경계까지 줄인 뒤 빈 `content` 키가 예산을 넘겨 트랜잭션째 뷰에서 빠졌다. 고쳤고 변이로 고정했다.
+- 평탄화 스키마를 `AnalysisDraft` 그대로 펼치면 4,571바이트였다. §2.8의 정의처(FindingDraft 목록)대로 `advisory_signals`를 빈 배열로 고정해 0단계 실측(2,591바이트)에 맞췄다.
+
+### 범위(정직 표기)
+- 유효 근거 0인 finding은 `needs_review`로 남기고 폐기하지 않는다. 채점기는 status를 보지 않으므로 이 finding도 예측으로 센다.
+- `llm_adapter`의 뷰 구획은 `>` 이스케이프로 닫는 표지만 막는다. 인젝션 자체를 막는 장치가 아니다(§2.4 피해 범위).
+- `auth_scheme_credential` 패턴은 "basic authentication" 같은 평문 표현에도 걸린다. 치환·플래그되므로 안전한 쪽이지만 LLM 문구를 망가뜨릴 수 있다. 이번 스모크에서는 발생 0건이다.
+
+### 미해결
+- dev 튜닝 → 프롬프트 동결 → test 측정(J6 첫 비교, 조항 × 규칙 커버리지 표).
+- `tests/test_absence.py`의 `find_leaks`가 `-journal` 곁 파일 사라짐에 간헐 실패한다(L3 부분 실행에서 1회). #92의 내성 헬퍼를 쓰지 않는다. 발주 목록 밖이라 고치지 않았다.

@@ -44,6 +44,16 @@ MAX_HALF_WIDTH = 0.15         # J8 초기 임계값(설정값 — 정본이되 �
 OUT_OF_FREEZE_ORDER = "동결 순서 밖 — 측정 아님"
 
 
+class ServingConditions(BaseModel):
+    """J9 서빙 조건. 동결 대상이 아니라 측정 조건 기록이다 — 속도 차이로 생긴 timeout 차이를 모델 차이로 오독하지 않게 한다."""
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+    server_version: str
+    threads: int
+    context: int
+    parallel: int
+    cpu: str
+
+
 class RunMeta(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
     split: Literal["dev", "test"] | None  # 데이터셋 기록. 기록이 없으면 null(S v1)
@@ -51,11 +61,14 @@ class RunMeta(BaseModel):
     model_id: str | None
     prompt_version: str | None
     ruleset_version: str
+    serving_conditions: ServingConditions | None = None
 
     @model_validator(mode="after")
     def _versions_match_mode(self) -> Self:
         if not producer_versions_consistent(self.pipeline_mode, self.model_id, self.prompt_version):
             raise ValueError("rule_only ⇔ model_id·prompt_version null")
+        if self.pipeline_mode == "rule_only" and self.serving_conditions is not None:
+            raise ValueError("rule_only에는 서빙 조건이 없다")
         return self
 
 
@@ -279,6 +292,8 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
                    "pipeline_mode": run.run_meta.pipeline_mode, "model_id": run.run_meta.model_id,
                    "prompt_version": run.run_meta.prompt_version,
                    "ruleset_version": run.run_meta.ruleset_version,
+                   "serving_conditions": (None if run.run_meta.serving_conditions is None
+                                          else run.run_meta.serving_conditions.model_dump(mode="json")),
                    "freeze_order": freeze_order(label_file, run.run_meta)},
         "J1": {"strict": _pr(len(strict), len(fps), len(fns)), "per_category": per_category,
                "location_only": _pr(len(location), len(preds) - len(location) - len(undetermined),

@@ -95,10 +95,10 @@ def test_runner_reaches_the_pipeline_only_through_the_entry_function():
     tree = ast.parse(Path(runner.__file__).read_text(encoding="utf-8"))
     imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.module == "sentinel.pipeline"
                 for a in n.names}
-    assert imported == {"entry", "sanitization_check", "schema_gate"}  # 뒤의 둘은 거부 예외 이름만
+    assert imported == {"entry", "llm_path", "sanitization_check", "schema_gate"}  # 뒤의 셋은 설정 읽기와 거부 예외 이름만
     calls = {(n.func.value.id, n.func.attr) for n in ast.walk(tree) if isinstance(n, ast.Call)
              and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id in imported}
-    assert calls == {("entry", "analyze")}
+    assert calls == {("entry", "analyze"), ("llm_path", "config_from_env")}
 
 
 # ── J9 머리: 결과의 메타에서만 ─────────────────────────────────────
@@ -137,7 +137,7 @@ def test_results_whose_metas_disagree_are_refused(monkeypatch):
     versions = iter(f"rules-{i}" for i in range(len(RAWS)))
     real = entry.analyze
 
-    def analyze(raw, snapshot):
+    def analyze(raw, snapshot, llm_config=None):
         monkeypatch.setattr(rule_engine, "RULESET_VERSION", next(versions))
         return real(raw, snapshot)
 
@@ -179,7 +179,7 @@ def test_response_that_was_never_analyzed_is_refused(monkeypatch):
         analysis_status = "not_implemented"
         result = None
 
-    monkeypatch.setattr(entry, "analyze", lambda raw, snapshot: NotAnalyzed())
+    monkeypatch.setattr(entry, "analyze", lambda raw, snapshot, llm_config=None: NotAnalyzed())
     with pytest.raises(RunRejected, match="unexpected_response"):
         runner.predictions(RAWS, {})
 
@@ -258,22 +258,23 @@ def test_make_eval_fails_when_the_target_loses_its_python_path(tmp_path):
 # ── 변이 확인 ──────────────────────────────────────────────────────
 
 _R = "tests/test_eval_runner.py::"
-ANALYZE_CALL = "            response = entry.analyze(raw, manifest_snapshot)\n"
+ANALYZE_CALL = "            response = entry.analyze(raw, manifest_snapshot, llm_config)\n"
 TOOL_MUTATIONS = {
     "stage_three_skipped": ("tools/eval/runner.py", "tools.eval.runner", ANALYZE_CALL,
                             "            from sentinel.pipeline import execution\n"
-                            "            response = execution.build_execution_response(schema_gate.parse_envelope(raw), "
-                            "manifest_snapshot)\n",
+                            "            from sentinel.pipeline.sanitization_check import SanitizedEnvelope\n"
+                            "            response = execution.build_execution_response(SanitizedEnvelope("
+                            "schema_gate.parse_envelope(raw).model_dump_json(include={'transactions'})), manifest_snapshot)\n",
                             [_R + "test_input_that_stage_three_rejects_is_refused_not_scored",
                              _R + "test_every_envelope_goes_through_the_entry_function_and_each_stage",
                              _R + "test_runner_reaches_the_pipeline_only_through_the_entry_function"]),
     "rule_engine_called_directly": ("tools/eval/runner.py", "tools.eval.runner", ANALYZE_CALL,
                                     "            from sentinel.pipeline import rule_engine\n"
                                     "            rule_engine.evaluate(schema_gate.parse_envelope(raw).transactions[0])\n"
-                                    "            response = entry.analyze(raw, manifest_snapshot)\n",
+                                    "            response = entry.analyze(raw, manifest_snapshot, llm_config)\n",
                                     [_R + "test_runner_reaches_the_pipeline_only_through_the_entry_function"]),
     "header_from_a_runner_constant": ("tools/eval/runner.py", "tools.eval.runner",
-                                      "ruleset_version=metas[0].ruleset_version)", 'ruleset_version="rules-1")',
+                                      "ruleset_version=metas[0].ruleset_version,", 'ruleset_version="rules-1",',
                                       [_R + "test_header_follows_the_meta_not_a_runner_constant"]),
     "header_check_off": ("tools/eval/harness.py", "tools.eval.harness",
                          "            if not _same_producer(self.run_meta, r.analysis_meta):\n",
@@ -283,11 +284,11 @@ TOOL_MUTATIONS = {
     "all_rejected_check_off": ("tools/eval/runner.py", "tools.eval.runner",
                                '    if not metas:\n        raise RunRejected("all_output_rejected")\n'
                                "    return RunMeta(split=split, pipeline_mode=metas[0].pipeline_mode, model_id=metas[0].model_id,\n"
-                               "                   prompt_version=metas[0].prompt_version, ruleset_version=metas[0].ruleset_version)\n",
+                               "                   prompt_version=metas[0].prompt_version, ruleset_version=metas[0].ruleset_version,\n",
                                '    if not metas:\n        return RunMeta(split=split, pipeline_mode="rule_only", model_id=None, '
                                'prompt_version=None, ruleset_version="x")\n'
                                "    return RunMeta(split=split, pipeline_mode=metas[0].pipeline_mode, model_id=metas[0].model_id,\n"
-                               "                   prompt_version=metas[0].prompt_version, ruleset_version=metas[0].ruleset_version)\n",
+                               "                   prompt_version=metas[0].prompt_version, ruleset_version=metas[0].ruleset_version,\n",
                                [_R + "test_fully_rejected_run_gives_no_report",
                                 _R + "test_fully_rejected_run_writes_no_file_and_exits_non_zero"]),
     "split_argument_not_checked": ("tools/eval/runner.py", "tools.eval.runner",

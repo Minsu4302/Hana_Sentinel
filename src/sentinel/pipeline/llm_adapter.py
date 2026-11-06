@@ -6,7 +6,7 @@
 입력은 ③을 통과한 값에서만 만들어진다(`llm_input`). 메시지 content는 문자열만이다(추론 서버의 원격 가져오기 차단).
 API 키는 환경변수에서만 읽어 헤더로 보낸다. 인자로 받지 않으므로 호출자의 로그·예외에 닿지 않는다(N7).
 
-아직 파이프라인에 연결되지 않았다(호출 지점 0곳). 프롬프트·출력 파싱은 2부다 — 응답 본문 바이트를 그대로 돌려준다.
+호출 지점은 `pipeline/llm_path.py` 한 곳이다. 응답 본문 바이트를 그대로 돌려주고 해석은 호출자가 한다.
 오류는 사유 코드만이다. 예외·로그에 프롬프트·응답 내용을 남기지 않는다.
 """
 from __future__ import annotations
@@ -20,12 +20,12 @@ import time
 from dataclasses import dataclass
 from typing import Final
 
+from sentinel.pipeline.llm_prompt import SYSTEM_PROMPT, render_view, user_message
 from sentinel.pipeline.sanitization_check import SanitizedEnvelope
 
 COMPLETIONS_METHOD: Final = "POST"
 COMPLETIONS_PATH: Final = "/v1/chat/completions"
 API_KEY_ENV: Final = "LLAMA_API_KEY"
-SYSTEM_PROMPT: Final = "HTTP 트랜잭션을 읽고 JSON으로만 답한다."  # 프롬프트 템플릿으로 바뀐다(결선 L3)
 REASON_CODES: Final = (
     "api_key_missing",     # 환경변수에 쓸 수 있는 API 키가 없음
     "connect_failed",      # 추론 서버에 연결하지 못함
@@ -53,6 +53,8 @@ class Limits:
     io_timeout_seconds: float = 120.0
     deadline_seconds: float = 120.0
     max_tokens: int = 1024
+    temperature: int = 0
+    view_bytes: int = 8192
 
 
 DEFAULT_LIMITS: Final = Limits()
@@ -68,11 +70,12 @@ class AdapterFailure:
             raise ValueError("AdapterFailure.reason은 닫힌 목록 값이어야 함")
 
 
-def llm_input(sanitized: SanitizedEnvelope) -> LlmInput:
-    """③을 통과한 값의 스냅샷에서만 입력을 만든다. 구체적인 뷰·예산은 2부."""
+def llm_input(sanitized: SanitizedEnvelope, limits: Limits = DEFAULT_LIMITS) -> tuple[LlmInput, bool]:
+    """③을 통과한 값의 스냅샷에서만 입력을 만든다. (입력, 뷰가 잘렸는가)."""
     if not isinstance(sanitized, SanitizedEnvelope):
         raise TypeError("어댑터 입력은 ③을 통과한 값에서만 만든다")
-    return LlmInput(content=sanitized.transactions_json)
+    view, truncated = render_view(sanitized.transactions_json, limits.view_bytes)
+    return LlmInput(content=user_message(view)), truncated
 
 
 def _checked_port(port: int) -> int:
@@ -86,9 +89,13 @@ def _api_key() -> str | None:
     return key if key and key.isascii() and key.isprintable() and " " not in key else None  # 헤더에 넣을 수 없는 값은 오류 메시지로 새기 전에 거른다
 
 
+def api_key_present() -> bool:
+    return _api_key() is not None
+
+
 def _request_body(payload: LlmInput, response_schema: dict, limits: Limits) -> str:
     return json.dumps({"messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": payload.content}],
-                       "temperature": 0, "max_tokens": limits.max_tokens,
+                       "temperature": limits.temperature, "max_tokens": limits.max_tokens,
                        "response_format": {"type": "json_schema", "json_schema": {"name": "draft", "strict": True, "schema": response_schema}}})
 
 

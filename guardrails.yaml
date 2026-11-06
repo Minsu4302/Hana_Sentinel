@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.33. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.34. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.33"
+derived_from: "docs/design-decision.md §3 매핑표 v1.34"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -91,24 +91,25 @@ guardrails:
       - "tests/test_llm_adapter.py::test_adapter_guard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_adapter_loopback_only
   - id: llm_adapter_no_target_resend
-    description: "어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 — 현존 경로 한정, 결선 PR에서 재증명 / LLM 출력은 게이트로만)"
+    description: "어댑터로 대상 요청을 재구성할 수 없음(입력 타입에 URL·host·method·path 필드 없음, 필드 목록 고정 / 요청 경로·메서드 상수 / 호출 지점은 파이프라인 한 곳 / LLM 출력은 게이트로만)"
     target_layer: "아키텍처테스트"
     status:
       state: enforced
-      note: "현존 경로 한정 — 호출 지점 0곳. 결선 PR에서 재증명"
+      note: "호출 지점 1곳 — `pipeline/llm_path.py`. 뷰에 host·scheme·port 없음"
     verification_tests:
       - "tests/test_llm_adapter.py::test_input_type_has_only_the_content_field"
       - "tests/test_llm_adapter.py::test_adapter_api_takes_no_host_or_target"
       - "tests/test_llm_adapter.py::test_method_and_path_are_the_inference_api_constants"
-      - "tests/test_llm_adapter.py::test_nothing_calls_the_adapter_yet"
+      - "tests/test_llm_adapter.py::test_only_the_llm_path_calls_the_adapter"
       - "tests/test_llm_adapter.py::test_planted_call_site_is_found"
+      - "tests/test_llm_wiring.py::test_view_has_no_target_coordinates"
     manifest_key: llm_adapter_no_target_resend
   - id: llm_input_from_sanitized
-    description: "어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정. 타입은 2부 입력 뷰)"
+    description: "어댑터 입력은 ③을 통과한 Transaction에서만 만들어진다(생성 지점 1곳 정적 고정)"
     target_layer: "아키텍처테스트"
     status:
       state: enforced
-      note: "③ 표지 타입과 불변 스냅샷, 생성 지점 정적 고정. 입력 뷰는 2부"
+      note: "③ 표지 타입과 불변 스냅샷, 생성 지점 정적 고정. 입력 뷰는 같은 스냅샷에서 만든다"
     verification_tests:
       - "tests/test_llm_adapter.py::test_input_comes_from_the_sanitized_snapshot"
       - "tests/test_llm_adapter.py::test_value_that_did_not_pass_stage_three_is_refused"
@@ -116,6 +117,7 @@ guardrails:
       - "tests/test_llm_adapter.py::test_change_to_the_envelope_after_stage_three_does_not_reach_the_input"
       - "tests/test_llm_adapter.py::test_sanitized_and_input_are_built_at_one_place_each"
       - "tests/test_llm_adapter.py::test_planted_construction_is_found"
+      - "tests/test_llm_wiring.py::test_rule_and_adapter_use_the_same_snapshot"
     manifest_key: llm_input_from_sanitized
   - id: llm_adapter_bounds
     description: "어댑터 상한: 응답 최대 바이트·연결/읽기 타임아웃·전체 기한(단조 시계). 초과하면 사유 코드"
@@ -133,28 +135,40 @@ guardrails:
     description: "LLM 입력 뷰는 순서·머리꼬리 보존 규칙을 따르고 예산 관계식 안에 있다. 잘리면 서버가 limitations를 붙인다"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "결선 PR"
-    verification_tests: []
+      state: enforced
+      note: "예산 관계식은 0단계 실측값 기준 — 모델이 바뀌면 재실측"
+    verification_tests:
+      - "tests/test_llm_wiring.py::test_view_order_is_headers_then_params_then_bodies"
+      - "tests/test_llm_wiring.py::test_long_body_keeps_its_head_and_tail"
+      - "tests/test_llm_wiring.py::test_view_never_exceeds_the_limit"
+      - "tests/test_llm_wiring.py::test_oversized_headers_and_params_stay_inside_the_limit"
+      - "tests/test_llm_wiring.py::test_server_adds_the_view_limitation_when_the_view_was_cut"
+      - "tests/test_llm_wiring.py::test_budget_relation_holds_for_the_measured_rates"
+      - "tests/test_llm_wiring.py::test_wiring_is_load_bearing_under_verified_mutation"
     manifest_key: llm_view_budget
   - id: llm_concurrency
     description: "LLM 호출은 스레드풀, 동시 처리 1건. 처리 중에도 토큰 검증이 응답한다"
     target_layer: "테스트"
     status:
       state: enforced
-      note: "분석 호출 전체 단위 — LLM 호출이 이 안에 결선되는 것은 L3"
+      note: "분석 호출 전체 단위 — LLM 호출 포함"
     verification_tests:
       - "tests/test_llm_safeguards.py::test_token_check_answers_while_an_analysis_is_running"
       - "tests/test_llm_safeguards.py::test_only_one_analysis_runs_at_a_time"
       - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_wiring.py::test_token_check_answers_during_a_real_llm_call"
     manifest_key: llm_concurrency
   - id: llm_queue_bound
     description: "분석 대기 상한(설정값, 기본 2). 넘으면 토큰 검증 뒤·스레드풀 진입 전에 즉시 503 + 감사 사유 busy, 분석 안 함"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "L3"
-    verification_tests: []
+      state: enforced
+    verification_tests:
+      - "tests/test_llm_wiring.py::test_fourth_request_is_refused_at_once_with_busy_and_no_llm_call"
+      - "tests/test_llm_wiring.py::test_room_comes_back_after_the_queue_drains"
+      - "tests/test_llm_wiring.py::test_rejected_input_gives_its_place_back"
+      - "tests/test_llm_wiring.py::test_busy_check_comes_after_the_token_check"
+      - "tests/test_llm_wiring.py::test_wiring_is_load_bearing_under_verified_mutation"
     manifest_key: llm_queue_bound
   - id: llm_model_identity
     description: "model_id가 실제로 올라간 가중치인지는 우리 테스트 밖 — 서버가 보고하는 경로와 대조까지만 가능"
@@ -574,12 +588,13 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "합성 LlmRun으로 증명 — 실제 호출 결선은 L3"
+      note: "실제 호출 경로 — 스텁 서버로 증명"
     verification_tests:
       - "tests/test_llm_safeguards.py::test_llm_call_leaves_a_fingerprint"
       - "tests/test_llm_safeguards.py::test_fingerprint_records_the_outcome"
       - "tests/test_llm_safeguards.py::test_fingerprint_keeps_no_content"
       - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_wiring.py::test_fingerprint_is_of_the_view_and_the_raw_output"
     manifest_key: llm_io_audit
   - id: masked_span_integrity
     description: "Body 불변식 1~6을 ③에서 검증"
@@ -714,7 +729,7 @@ guardrails:
       - "tests/test_output_gate.py::test_draft_type_has_no_server_assigned_field_anywhere"
       - "tests/test_output_gate.py::test_stored_finding_allows_only_null_severity"
       - "tests/test_output_gate.py::test_stored_finding_requires_severity_field_present"
-      - "tests/test_output_gate.py::test_stored_evidence_allows_only_empty_anomaly_flags"
+      - "tests/test_output_gate.py::test_stored_evidence_allows_only_the_known_anomaly_flag"
       - "tests/test_output_gate.py::test_clean_draft_is_a_result_with_empty_findings_not_a_rejection"
       - "tests/test_output_gate.py::test_reason_codes_are_a_closed_list"
       - "tests/test_output_gate.py::test_gate_is_in_pipeline_package_so_auth_spies_cover_it"
@@ -780,19 +795,21 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "판정 값은 묶음 해시(§2.8) — 산출은 L3. 동결 표는 비어 있다 — 등록은 프롬프트 동결 때"
+      note: "판정 값은 묶음 해시(§2.8). 동결 표는 비어 있다 — 등록은 프롬프트 동결 때"
     verification_tests:
       - "tests/test_producer_gate.py::test_frozen_tables_start_empty"
       - "tests/test_producer_gate.py::test_rule_llm_test_split_is_out_of_order_until_prompt_and_model_are_frozen"
       - "tests/test_producer_gate.py::test_rule_llm_needs_both_prompt_and_model_frozen"
       - "tests/test_producer_gate.py::test_harness_guard_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_wiring.py::test_changing_one_setting_changes_the_prompt_version"
+      - "tests/test_llm_wiring.py::test_setting_changed_after_freezing_is_out_of_the_freeze_order"
     manifest_key: prompt_model_freeze
   - id: completed_via_gate
     description: "④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정)"
     target_layer: "테스트"
     status:
       state: enforced
-      note: "현존 경로 한정 — 생산자별 게이트 경로까지 재증명, 어댑터 결선은 L3에서 같은 키로 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)"
+      note: "현존 경로 한정 — 생산자별 게이트 경로까지 재증명, 어댑터 결선 경로까지 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)"
     verification_tests:
       - "tests/test_rule_wiring.py::test_result_and_response_are_built_at_exactly_one_place_each"
       - "tests/test_rule_wiring.py::test_planted_construction_path_is_found"
@@ -824,6 +841,7 @@ guardrails:
       - "tests/test_rule_wiring.py::test_analysis_meta_cannot_invent_or_omit_producer_versions"
       - "tests/test_rule_wiring.py::test_each_wiring_guard_is_load_bearing_under_verified_mutation"
       - "tests/test_rule_wiring.py::test_static_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_wiring.py::test_llm_finding_reaches_the_result_through_the_gate"
     manifest_key: completed_via_gate
   - id: assertive_token_guard
     description: "hypothesis 단정 토큰 차단"
@@ -845,9 +863,15 @@ guardrails:
     description: "환각 리터럴 격리(LLM 자유 문자열의 정책 패턴 리터럴 치환 + 플래그, 원문 저장·로그 금지, 플래그 달린 evidence는 유효 근거 제외)"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "LLM 결선 시"
-    verification_tests: []
+      state: enforced
+      note: "정책 패턴 안 — 패턴 밖 환각은 `corroboration_check` 몫"
+    verification_tests:
+      - "tests/test_llm_wiring.py::test_literal_is_replaced_and_flagged_in_every_free_string"
+      - "tests/test_llm_wiring.py::test_only_the_flagged_evidence_loses_its_weight"
+      - "tests/test_llm_wiring.py::test_literal_in_the_finding_text_flags_all_its_evidence"
+      - "tests/test_llm_wiring.py::test_audit_names_the_pattern_only"
+      - "tests/test_llm_wiring.py::test_flag_cannot_be_written_by_the_draft"
+      - "tests/test_llm_wiring.py::test_wiring_is_load_bearing_under_verified_mutation"
     manifest_key: hallucinated_literal_isolation
   - id: anomaly_aggregation
     description: "반복 이상 → 세션 신호"

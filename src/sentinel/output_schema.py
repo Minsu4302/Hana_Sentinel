@@ -27,6 +27,7 @@ FindingStatus = Literal["unverified", "verifying", "confirmed", "false_positive"
 ProducedBy = Literal["rule", "llm", "hybrid"]
 Corroboration = Literal["matched", "unmatched", "not_checkable", "not_run"]
 PipelineMode = Literal["rule_only", "rule_llm"]
+AnomalyFlag = Literal["hallucinated_literal_suspected"]
 LLM_FAILURE_REASONS: Final = ("unavailable", "timeout", "oversize", "truncated", "unparseable", "audit_write")  # (A) §2.5 닫힌 목록
 LlmOutcome = Literal["ok", "rejected", "failed:unavailable", "failed:timeout", "failed:oversize", "failed:truncated",
                      "failed:unparseable", "failed:audit_write"]
@@ -114,7 +115,7 @@ class Evidence(_Stored):
     pointer: Locator
     observation: str
     corroboration: Corroboration
-    anomaly_flags: Annotated[tuple[str, ...], Field(max_length=0)]  # 값 목록 미정의 → 지금은 빈 목록만
+    anomaly_flags: tuple[AnomalyFlag, ...]
     review_required: bool
 
 

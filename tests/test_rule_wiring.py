@@ -48,6 +48,10 @@ FAKE_REF = str(uuid.UUID("00000000-0000-4000-8000-0000000000e5"))
 HEADER_PTR = {"locus": "resp_header", "name": "x-dummy"}
 
 
+def _sanitized_with(tx):
+    return sanitization_check.verify_sanitization(_envelope_with(tx))
+
+
 def _envelope_with(tx) -> object:
     return type(ENVELOPE).model_construct(schema_version="1.0", analysis_type="single", transactions=[tx])
 
@@ -187,7 +191,7 @@ def test_entry_function_is_covered_by_the_auth_spy():
                                          (sanitization_check.SanitizationRejected(["x"]), "sanitization_rejected")],
                          ids=["schema", "sanitization"])
 def test_handler_only_translates_the_two_input_rejections(token, monkeypatch, error, code):
-    def rejected(raw, snapshot):
+    def rejected(raw, snapshot, llm_config=None):
         raise error
 
     monkeypatch.setattr(entry, "analyze", rejected)
@@ -200,20 +204,20 @@ def test_handler_only_translates_the_two_input_rejections(token, monkeypatch, er
 def test_completed_result_is_the_object_the_gate_returned(monkeypatch):
     real, returned = output_gate.validate_producers, []
     monkeypatch.setattr(output_gate, "validate_producers", lambda *a, **k: returned.append(real(*a, **k)) or returned[-1])
-    response = execution.build_execution_response(ENVELOPE, {})
+    response = execution.build_execution_response(sanitization_check.verify_sanitization(ENVELOPE), {})
     assert response.analysis_status == "completed" and len(returned) == 1 and response.result is returned[0]
 
 
 def test_gate_rejection_overrides_a_rule_finding(monkeypatch):
     monkeypatch.setattr(output_gate, "validate_producers", lambda *a, **k: output_gate.OutputRejection(("draft_unparseable",)))
-    response = execution.build_execution_response(_envelope_with(TX), {})
+    response = execution.build_execution_response(_sanitized_with(TX), {})
     assert response.analysis_status == "output_rejected" and response.result is None
 
 
 def test_rule_draft_with_no_evidence_is_output_rejected_and_audited(monkeypatch, caplog):
     _with_rule_output(monkeypatch, _finding())
     with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
-        response = execution.build_execution_response(_envelope_with(TX), {})
+        response = execution.build_execution_response(_sanitized_with(TX), {})
     assert response.analysis_status == "output_rejected" and response.result is None
     assert any("evidence_missing" in r.getMessage() for r in caplog.records if r.name == "sentinel.audit")
 
@@ -221,14 +225,14 @@ def test_rule_draft_with_no_evidence_is_output_rejected_and_audited(monkeypatch,
 def test_rule_draft_with_an_unresolvable_locator_is_output_rejected_and_audited(monkeypatch, caplog):
     _with_rule_output(monkeypatch, _finding({"locus": "resp_header", "name": "x-missing"}))
     with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
-        response = execution.build_execution_response(_envelope_with(TX), {})
+        response = execution.build_execution_response(_sanitized_with(TX), {})
     assert response.analysis_status == "output_rejected" and response.result is None
     assert any("pointer_unresolvable" in r.getMessage() for r in caplog.records if r.name == "sentinel.audit")
 
 
 def test_rule_draft_pointing_outside_analyzed_refs_is_output_rejected(monkeypatch):
     _with_rule_output(monkeypatch, _finding(HEADER_PTR, ref=FAKE_REF))
-    assert execution.build_execution_response(_envelope_with(TX), {}).analysis_status == "output_rejected"
+    assert execution.build_execution_response(_sanitized_with(TX), {}).analysis_status == "output_rejected"
 
 
 def test_output_rejected_reaches_the_client_as_a_200_with_null_result(token, monkeypatch):
@@ -267,7 +271,7 @@ def test_gate_call_takes_produced_by_from_the_path_constant():
 
 
 def test_every_finding_of_the_rule_path_is_marked_rule():
-    result = execution.build_execution_response(_envelope_with(TX), {}).result
+    result = execution.build_execution_response(_sanitized_with(TX), {}).result
     assert result.findings and {f.produced_by for f in result.findings} == {"rule"}
 
 
@@ -275,7 +279,7 @@ def test_every_finding_of_the_rule_path_is_marked_rule():
 def test_produced_by_inside_a_rule_draft_is_rejected_even_when_it_says_rule(monkeypatch, caplog, value):
     _with_rule_output(monkeypatch, _finding(HEADER_PTR, produced_by=value))
     with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
-        response = execution.build_execution_response(_envelope_with(TX), {})
+        response = execution.build_execution_response(_sanitized_with(TX), {})
     assert response.analysis_status == "output_rejected"
     assert any("server_field_injected" in r.getMessage() for r in caplog.records if r.name == "sentinel.audit")
 
@@ -421,7 +425,7 @@ def test_changing_the_source_map_does_not_reach_the_result():
 
 
 def test_real_stage_four_result_has_a_read_only_snapshot_too():
-    result = execution.build_execution_response(_envelope_with(TX), json.loads(json.dumps(SNAPSHOT))).result
+    result = execution.build_execution_response(_sanitized_with(TX), json.loads(json.dumps(SNAPSHOT))).result
     with pytest.raises(TypeError):
         result.analysis_meta.manifest_snapshot["capabilities"]["k"]["status"] = "tampered"
 
@@ -614,7 +618,8 @@ SRC_MUTATIONS = {
                                        "            async with one_at_a_time:\n",
                                        [_W + "test_handler_reaches_the_pipeline_only_through_the_entry_function"]),
     "entry_skips_stage_three": ("sentinel/pipeline/entry.py", "sentinel.pipeline.entry",
-                                "    sanitization_check.verify_sanitization(envelope)\n", "",
+                                "    sanitized = sanitization_check.verify_sanitization(envelope)\n",
+                                '    sanitized = sanitization_check.SanitizedEnvelope(envelope.model_dump_json(include={"transactions"}))\n',
                                 ["tests/test_eval_runner.py::test_input_that_stage_three_rejects_is_refused_not_scored",
                                  "tests/test_eval_runner.py::test_every_envelope_goes_through_the_entry_function_and_each_stage"]),
     "no_merge": ("sentinel/pipeline/output_gate.py", "sentinel.pipeline.output_gate",

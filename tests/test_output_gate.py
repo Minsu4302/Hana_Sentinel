@@ -376,9 +376,9 @@ def test_stored_finding_requires_severity_field_present():
         Finding.model_validate(data)
 
 
-def test_stored_evidence_allows_only_empty_anomaly_flags():
+def test_stored_evidence_allows_only_the_known_anomaly_flag():
     data = _stored_finding()
-    data["evidence"][0]["anomaly_flags"] = ["hallucinated_literal_suspected"]
+    data["evidence"][0]["anomaly_flags"] = ["made_up_flag"]
     with pytest.raises(ValidationError):
         Finding.model_validate(data)
 
