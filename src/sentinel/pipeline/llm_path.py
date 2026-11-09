@@ -22,6 +22,10 @@ MODE_ENV: Final = "SENTINEL_PIPELINE_MODE"
 PORT_ENV: Final = "SENTINEL_LLM_PORT"
 MODEL_ENV: Final = "SENTINEL_LLM_MODEL_ID"
 MODEL_ID: Final = re.compile(r"[^@\s]+@sha256:[0-9a-f]{64}")
+# 모델별 예산(§6.2 선별 — 실측 속도로 다시 도출). 없으면 Limits 기본값. 값은 묶음 해시에 그대로 들어간다. 출처는 progress-log에 남긴다.
+BUDGET_ENV: Final = {"view_bytes": ("SENTINEL_LLM_VIEW_BYTES", 512, 65536),
+                     "max_tokens": ("SENTINEL_LLM_MAX_TOKENS", 16, 8192),
+                     "deadline_seconds": ("SENTINEL_LLM_DEADLINE_SECONDS", 10, 3600)}
 
 # (A) §2.8 사유 대응표. 어댑터 사유를 더하면 이 표부터 정한다.
 FAILURE_OF: Final = {
@@ -52,6 +56,20 @@ class LlmConfig:
                                          deadline_seconds=limits.deadline_seconds)
 
 
+def _budget() -> llm_adapter.Limits:
+    values: dict[str, int] = {}
+    for field_name, (env, low, high) in BUDGET_ENV.items():
+        text = os.environ.get(env)
+        if text is None:
+            continue
+        if not (text.isascii() and text.isdigit() and low <= int(text) <= high):
+            raise LlmConfigError("llm_budget_invalid")
+        values[field_name] = int(text)
+    if "deadline_seconds" in values:  # 비스트리밍 응답이라 읽기 한 번의 상한도 전체 기한과 같다
+        values["io_timeout_seconds"] = values["deadline_seconds"]
+    return llm_adapter.Limits(**values)
+
+
 def config_from_env() -> LlmConfig | None:
     """None이면 rule_only다. rule_llm을 달라고 했는데 설정이 모자라면 조용히 rule_only로 내려가지 않고 거부한다."""
     mode = os.environ.get(MODE_ENV, "rule_only")
@@ -66,7 +84,7 @@ def config_from_env() -> LlmConfig | None:
         raise LlmConfigError("llm_model_id_invalid")
     if not llm_adapter.api_key_present():
         raise LlmConfigError("llm_api_key_missing")
-    return LlmConfig(model_id=model_id, port=int(port))
+    return LlmConfig(model_id=model_id, port=int(port), limits=_budget())
 
 
 def parsed_completion(body: bytes) -> str | LlmFailure:

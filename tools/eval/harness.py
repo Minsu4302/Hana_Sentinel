@@ -22,10 +22,11 @@
 from __future__ import annotations
 
 import math
+import statistics
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -104,6 +105,8 @@ class _Pred:
     category: str
     cnas: frozenset
     produced_by: str
+    status: str = "unverified"
+    flagged: bool = False  # evidence 중 하나라도 환각 리터럴 플래그
 
     @property
     def key(self) -> tuple:  # (category, CNA 집합의 최소 CNA, finding_id)
@@ -208,6 +211,28 @@ def _llm_rates(outcomes: dict[UUID, str | None]) -> dict[str, Any]:
             "failed": {reason: wilson(counts[f"failed:{reason}"], len(outcomes)) for reason in LLM_FAILURE_REASONS}}
 
 
+ENV_FAILURES: Final = ("failed:unavailable", "failed:oversize", "failed:audit_write")
+FLAGGED_NOTE: Final = "치환 횟수의 대리 지표 — 정확한 치환 횟수는 결과에 없다"
+
+
+def _selection(outcomes: dict[UUID, str | None], preds: list, strict: dict, fps: list, llm_only: list,
+               elapsed: list[int]) -> dict[str, Any]:
+    """§6.2 모델 선별 기준의 재료(dev — 측정 아님). 실패 합은 ok가 아닌 LLM 결과 전부다: truncated·timeout·unparseable·rejected와
+    재실행 뒤에도 남은 환경 실패(unavailable·oversize·audit_write)."""
+    judged = {ref: outcome for ref, outcome in outcomes.items() if outcome is not None}  # output_rejected는 규칙 쪽 — LLM 실패가 아니다
+    failed = Counter(outcome for outcome in judged.values() if outcome != "ok")
+    llm_fp = sum(1 for p in fps if p.produced_by == "llm")
+    needs_review = [p for p in preds if p.status == "needs_review"]
+    return {"failure": {"count": sum(failed.values()), "rate": wilson(sum(failed.values()), len(judged)),
+                        "by_outcome": dict(sorted(failed.items())),
+                        "environment_left": sum(n for outcome, n in failed.items() if outcome in ENV_FAILURES)},
+            "llm_only_tp": len(llm_only), "llm_fp": llm_fp, "net_gain": len(llm_only) - llm_fp,
+            "needs_review": {"count": len(needs_review), "tp": sum(1 for p in needs_review if p in strict),
+                             "fp": sum(1 for p in needs_review if p in fps)},
+            "flagged_findings": {"count": sum(1 for p in preds if p.flagged), "note": FLAGGED_NOTE},
+            "elapsed_ms": {"median": statistics.median(elapsed) if elapsed else None, "max": max(elapsed, default=None)}}
+
+
 def _clean_rates(clean: list[Label], hard: list[Label], flagged: set, success: set) -> dict[str, Any]:
     """J3의 LLM 성공 부분집합."""
     clean_ok = [x for x in clean if x.transaction_ref in success]
@@ -246,7 +271,8 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
     by_ref = {label.transaction_ref: label for label in labels}  # 한 트랜잭션의 복수 라벨은 모두 labeled_positive — 상태만 읽는다
     rejected = sorted((ref for ref, r in run.results.items() if r == "output_rejected"), key=str)
     raw_preds = [_Pred(f.finding_id, f.category, frozenset(canonical_address(txs[e.transaction_ref], e.pointer)
-                                                          for e in f.evidence), f.produced_by)
+                                                          for e in f.evidence), f.produced_by, f.status,
+                       any(e.anomaly_flags for e in f.evidence))
                  for r in run.results.values() if r != "output_rejected" for f in r.findings]
     groups: dict[tuple, list[_Pred]] = {}
     for p in raw_preds:  # 중복 처리(§2.4): (category, CNA 집합) 정확 일치만 병합
@@ -320,6 +346,8 @@ def score(dataset: Path, run: PredictionRun) -> dict[str, Any]:
                "llm_success": _pr(sum(1 for v in strict.values() if v.label.transaction_ref in success),
                                   sum(1 for p in fps if {c.transaction_ref for c in p.cnas} & success),
                                   sum(1 for v in fns if v.label.transaction_ref in success)) if rule_llm else None},
+        "selection": _selection(outcomes, preds, strict, fps, llm_only,
+                                [r.analysis_meta.elapsed_ms for r in run.results.values() if r != "output_rejected"]) if rule_llm else None,
         "J7": {"method": "wilson95", "version_comparison": "비교할 실행 없음(단일 실행)"},
         "matches": sorted([str(p.finding_id), str(v.label.transaction_ref)] for p, v in strict.items()),
     }

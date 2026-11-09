@@ -1332,3 +1332,11 @@ J6의 비교 기준점이다. 측정 전 해석 기준을 따른다(평가 대�
 ### 이월(코드, 선별·측정 전)
 - 병기 항목은 아직 보고서에 없다. 치환 횟수는 결과에 없고 감사의 `count`는 패턴 수다 — 값의 출처부터 정해야 한다.
 - 예산 설정값은 지금 `Limits` 기본값뿐이다. 모델마다 다른 값을 주는 설정 경로가 필요하다.
+
+---
+
+## 선별 준비 (Issue #113)
+
+- 보고서 `selection`(rule_llm만): 실패 합(ok가 아닌 LLM 결과 전부 — 재실행 뒤 남은 환경 실패 포함), llm_only_tp·produced_by=llm FP·순이득, needs_review 건수와 그중 TP·FP, 플래그 달린 finding 수(치환 횟수의 대리 지표 — 정확한 횟수는 결과에 없다), 중앙·최대 소요 시간(analysis_meta.elapsed_ms — LLM 호출만이 아니라 분석 전체).
+- 모델별 예산: `SENTINEL_LLM_VIEW_BYTES`·`SENTINEL_LLM_MAX_TOKENS`·`SENTINEL_LLM_DEADLINE_SECONDS`(읽기 타임아웃도 같은 값). 없으면 기본값. 값은 묶음 해시에 들어간다. 후보별 값의 출처(실측 속도·도출식)는 선별 실측 때 이 로그에 남긴다.
+- 러너 `--rerun-env-failures`: 환경 실패 건만 1회 재실행, 보고서 `reruns`에 처음·다시 결과.

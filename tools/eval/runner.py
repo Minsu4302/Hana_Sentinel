@@ -7,6 +7,8 @@
 보고 머리(J9):
 - pipeline_mode·model_id·prompt_version·ruleset_version은 결과의 analysis_meta에서만 읽는다. 러너 상수로 채우지 않는다.
   일부 거부면 남은 메타로 읽고, 메타끼리 다르면 거부한다. 전부 거부되면 메타가 없으므로 보고서를 내지 않는다.
+- reruns: `--rerun-env-failures`면 환경 실패(unavailable·oversize·audit_write) 트랜잭션만 1회 재실행하고 처음·다시 결과를 기록한다.
+  재실행 뒤에도 남은 환경 실패는 선별 실패 합에 들어간다(§6.2 ①).
 - serving_conditions: rule_llm이면 `--serving-conditions`(JSON 파일)가 필수다(§6.3 J9). 동결 대상이 아니라 측정 조건 기록이다.
 - split: split_scheme이 있는 데이터셋은 인자가 필수이고 그 split만 채점한다. 없으면 null이고(S v1) 인자를 주면 거부한다.
 
@@ -30,7 +32,7 @@ from sentinel.manifest_snapshot import load_manifest_snapshot
 from sentinel.output_schema import AnalysisResult
 from sentinel.pipeline import entry, llm_path, sanitization_check, schema_gate
 from tools.dataset.labelfile import LabelFile
-from tools.eval.harness import DatasetRejected, PredictionRun, RunMeta, ServingConditions, load_dataset, score
+from tools.eval.harness import ENV_FAILURES, DatasetRejected, PredictionRun, RunMeta, ServingConditions, load_dataset, score
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET: Final = REPO_ROOT / "datasets" / "S" / "v1"
@@ -73,6 +75,22 @@ def predictions(raws: Iterable[bytes], manifest_snapshot: dict[str, Any],
     return results
 
 
+def _outcome(prediction: Prediction) -> str | None:
+    return None if prediction == "output_rejected" else prediction.analysis_meta.llm_outcome
+
+
+def rerun_environment_failures(raws: dict[UUID, bytes], results: dict[UUID, Prediction], manifest_snapshot: dict[str, Any],
+                               llm_config: llm_path.LlmConfig) -> list[dict[str, str | None]]:
+    """환경 실패 건만 1회 다시 돌려 결과를 바꾼다. 기록은 숨기지 않는다."""
+    reruns = []
+    for ref in sorted(results, key=str):
+        first = _outcome(results[ref])
+        if first in ENV_FAILURES:
+            results.update(predictions([raws[ref]], manifest_snapshot, llm_config))
+            reruns.append({"transaction_ref": str(ref), "first": first, "second": _outcome(results[ref])})
+    return reruns
+
+
 def _run_meta(results: dict[UUID, Prediction], split: str | None, serving: ServingConditions | None = None) -> RunMeta:
     metas = [r.analysis_meta for r in results.values() if r != "output_rejected"]
     if not metas:
@@ -83,24 +101,28 @@ def _run_meta(results: dict[UUID, Prediction], split: str | None, serving: Servi
 
 
 def run(dataset: Path, manifest_snapshot: dict[str, Any], split: str | None = None, llm_config: llm_path.LlmConfig | None = None,
-        serving: ServingConditions | None = None) -> dict[str, Any]:
+        serving: ServingConditions | None = None, rerun_environment: bool = False) -> dict[str, Any]:
     if llm_config is not None and serving is None:
         raise RunRejected("serving_conditions_required")
     if llm_config is None and serving is not None:
         raise RunRejected("serving_conditions_without_llm")
+    if llm_config is None and rerun_environment:
+        raise RunRejected("rerun_without_llm")
     dataset = Path(dataset)
     label_file, _txs = load_dataset(dataset)
     chosen = selected_split(label_file, split)
     refs = {str(label.transaction_ref) for label in label_file.labels if chosen is None or label.split == chosen}
     paths = [p for p in sorted((dataset / "envelopes").glob("*.json")) if p.stem in refs]
-    results = predictions((p.read_bytes() for p in paths), manifest_snapshot, llm_config)
+    raws = {UUID(p.stem): p.read_bytes() for p in paths}
+    results = predictions(raws.values(), manifest_snapshot, llm_config)
+    reruns = rerun_environment_failures(raws, results, manifest_snapshot, llm_config) if rerun_environment else None
     run_meta = _run_meta(results, chosen, serving)
     try:
         prediction_run = PredictionRun(run_meta=run_meta, results=results)
     except ValidationError:
         raise RunRejected("analysis_meta_disagrees") from None
     report = score(dataset, prediction_run)
-    return {**report, "matches": sorted(ref for _finding_id, ref in report["matches"])}
+    return {**report, "reruns": reruns, "matches": sorted(ref for _finding_id, ref in report["matches"])}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -109,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", choices=("dev", "test"))
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--serving-conditions", type=Path)
+    parser.add_argument("--rerun-env-failures", action="store_true")
     args = parser.parse_args(argv)
     store = None
     try:
@@ -116,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         llm_config = llm_path.config_from_env()
         if llm_config is not None:
             store = attach_audit_store(audit_db_path())  # 지문을 못 남기면 LLM 결과가 버려진다(§2.8)
-        report = run(args.dataset, load_manifest_snapshot(), args.split, llm_config, serving)
+        report = run(args.dataset, load_manifest_snapshot(), args.split, llm_config, serving, args.rerun_env_failures)
     except (RunRejected, DatasetRejected, llm_path.LlmConfigError, ValidationError, OSError) as exc:
         print(f"eval 거부: {exc}", file=sys.stderr)
         return 1
