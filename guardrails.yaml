@@ -929,6 +929,18 @@ guardrails:
       - "tests/test_eval_harness.py::test_harness_refuses_labels_pointing_nowhere"
       - "tests/test_eval_harness.py::test_prediction_interface_is_strict"
       - "tests/test_eval_harness.py::test_each_harness_rule_is_load_bearing_under_verified_mutation"
+      - "tests/test_selection_prep.py::test_net_gain_subtracts_only_llm_false_positives"
+      - "tests/test_selection_prep.py::test_failure_sum_counts_rejections_and_environment_failures_left_after_rerun"
+      - "tests/test_selection_prep.py::test_needs_review_is_counted_with_its_tp_and_fp"
+      - "tests/test_selection_prep.py::test_flagged_findings_are_counted_with_the_proxy_note"
+      - "tests/test_selection_prep.py::test_elapsed_median_and_max_are_reported"
+      - "tests/test_selection_prep.py::test_changing_a_budget_setting_changes_the_prompt_version"
+      - "tests/test_selection_prep.py::test_invalid_budget_is_refused"
+      - "tests/test_selection_prep.py::test_environment_failure_is_rerun_once_and_recorded"
+      - "tests/test_selection_prep.py::test_environment_failure_left_after_rerun_counts_toward_the_failure_sum"
+      - "tests/test_selection_prep.py::test_quality_failures_are_not_rerun"
+      - "tests/test_selection_prep.py::test_selection_tool_is_load_bearing_under_verified_mutation"
+      - "tests/test_selection_prep.py::test_budget_path_is_load_bearing_under_verified_mutation"
     manifest_key: eval_harness
   - id: canonical_address
     description: "정규화 함수 — 같은 값을 가리키는 서로 다른 Locator가 같은 CNA로 정규화됨"

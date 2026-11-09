@@ -295,7 +295,7 @@ TOOL_MUTATIONS = {
                                    "        if split is not None:\n", "        if False:\n",
                                    [_R + "test_split_argument_is_refused_when_the_dataset_records_none[dev]"]),
     "finding_id_left_in_the_report": ("tools/eval/runner.py", "tools.eval.runner",
-                                      '    return {**report, "matches": sorted(ref for _finding_id, ref in report["matches"])}\n',
+                                      '    return {**report, "reruns": reruns, "matches": sorted(ref for _finding_id, ref in report["matches"])}\n',
                                       "    return report\n",
                                       [_R + "test_same_input_gives_the_same_report",
                                        _R + "test_main_writes_the_report_and_two_runs_are_byte_identical"]),

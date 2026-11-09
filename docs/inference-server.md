@@ -55,6 +55,12 @@ llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-web
 - `SENTINEL_LLM_MODEL_ID=<이름@sha256:가중치 해시>`
 - `LLAMA_API_KEY`: 서버 기동 때 만든 키
 
+모델별 예산은 선택이다(없으면 기본값 — 뷰 8192바이트, max_tokens 1024, 전체 기한 120초). 값은 `prompt_version` 묶음 해시에 들어가고, 출처(실측 속도·도출식)는 progress-log에 남긴다.
+
+- `SENTINEL_LLM_VIEW_BYTES`(512~65536), `SENTINEL_LLM_MAX_TOKENS`(16~8192), `SENTINEL_LLM_DEADLINE_SECONDS`(10~3600, 읽기 타임아웃도 같은 값)
+
+선별 실행은 `--rerun-env-failures`를 붙인다. 환경 실패 건만 1회 다시 돌리고 보고서 `reruns`에 처음·다시 결과를 남긴다.
+
 평가는 `make eval EVAL_ARGS="--dataset datasets/S/v2 --split dev --serving-conditions <파일>"`다. 서빙 조건 파일은 `server_version`·`threads`·`context`·`parallel`·`cpu`를 담은 JSON이고 rule_llm에서 필수다(§6.3 J9). 동결 대상이 아니라 측정 조건 기록이다.
 
 ## 6. 끝낸 뒤
