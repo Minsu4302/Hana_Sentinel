@@ -44,7 +44,7 @@ def _run(output, view="view", elapsed_ms=7) -> LlmRun:
 
 
 def _respond(run: LlmRun):
-    return execution.build_execution_response(_sanitized_with(TX), {}, run)
+    return execution.build_execution_response(_sanitized_with(TX), {}, run, started=time.monotonic())
 
 
 def _calls(store: Path) -> list[str]:
@@ -74,7 +74,7 @@ def test_fingerprint_keeps_no_content(store):
 
 
 def test_rule_only_path_leaves_no_llm_fingerprint(store):
-    execution.build_execution_response(_sanitized_with(TX), {})
+    execution.build_execution_response(_sanitized_with(TX), {}, started=time.monotonic())
     assert _calls(store) == []
 
 
@@ -116,7 +116,7 @@ def test_audit_failure_with_no_findings_is_not_clean(monkeypatch):
 
 
 def test_rule_only_path_does_not_need_the_audit_store():
-    assert execution.build_execution_response(_sanitized_with(TX), {}).analysis_status == "completed"
+    assert execution.build_execution_response(_sanitized_with(TX), {}, started=time.monotonic()).analysis_status == "completed"
 
 
 # ── 동시성 ─────────────────────────────────────────────────────────

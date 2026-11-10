@@ -264,7 +264,7 @@ TOOL_MUTATIONS = {
                             "            from sentinel.pipeline import execution\n"
                             "            from sentinel.pipeline.sanitization_check import SanitizedEnvelope\n"
                             "            response = execution.build_execution_response(SanitizedEnvelope("
-                            "schema_gate.parse_envelope(raw).model_dump_json(include={'transactions'})), manifest_snapshot)\n",
+                            "schema_gate.parse_envelope(raw).model_dump_json(include={'transactions'})), manifest_snapshot, started=0.0)\n",
                             [_R + "test_input_that_stage_three_rejects_is_refused_not_scored",
                              _R + "test_every_envelope_goes_through_the_entry_function_and_each_stage",
                              _R + "test_runner_reaches_the_pipeline_only_through_the_entry_function"]),

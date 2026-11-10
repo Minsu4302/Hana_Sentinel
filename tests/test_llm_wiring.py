@@ -17,7 +17,7 @@ import pytest
 from sentinel import audit
 from sentinel.audit import attach_audit_store, detach_audit_store, read_audit_events
 from sentinel.output_schema import LLM_FAILURE_REASONS, AnalysisDraft
-from sentinel.pipeline import entry, llm_adapter, llm_path, llm_prompt, output_gate, rule_engine, sanitization_check, schema_gate
+from sentinel.pipeline import entry, execution, llm_adapter, llm_path, llm_prompt, output_gate, rule_engine, sanitization_check, schema_gate
 from sentinel.pipeline.llm_adapter import Limits
 from sentinel.pipeline.llm_path import FAILURE_OF, LlmConfig, LlmConfigError, config_from_env, parsed_completion
 from sentinel.pipeline.llm_prompt import CUT_MARK, TRANSMISSION_SCHEMA, prompt_version, render_view
@@ -129,6 +129,24 @@ def test_rule_and_adapter_use_the_same_snapshot(store, monkeypatch):
     monkeypatch.setattr(rule_engine, "evaluate", lambda tx: seen.append(tx.model_dump_json()) or real_rules(tx))
     _response, stub = _analyze(_reply(_draft()))
     assert seen and marker not in seen[0] and marker.encode() not in stub.requests[0]
+
+
+def test_elapsed_time_includes_the_llm_call(store):
+    """시계가 LLM 호출 뒤에서 시작하면 선별 보고의 소요 시간이 0에 가깝게 나온다(선별 결과 보고 3번)."""
+    delay = 0.5
+    response, _stub = _analyze(_slow(delay, _draft()), Limits(io_timeout_seconds=5.0, deadline_seconds=5.0))
+    assert response.result.analysis_meta.elapsed_ms >= delay * 1000
+
+
+def test_response_cannot_be_built_without_a_start_time():
+    """기본값이 있으면 빠뜨린 호출이 ④만 재는 값을 조용히 낸다."""
+    sanitized = sanitization_check.verify_sanitization(schema_gate.parse_envelope(_raw(_env())))
+    with pytest.raises(TypeError):
+        execution.build_execution_response(sanitized, {})
+
+
+def test_rule_only_elapsed_time_is_still_measured():
+    assert entry.analyze(_raw(_env()), {}).result.analysis_meta.elapsed_ms >= 0
 
 
 # ── 적대: 스텁 서버 ────────────────────────────────────────────────
@@ -757,6 +775,12 @@ MUTATIONS = {
                          [_T + "test_llm_finding_reaches_the_result_through_the_gate"]),
     "view_flag_dropped": (*EXEC, "            llm_view_truncated=llm_run is not None and llm_run.view_truncated,\n", "",
                           [_T + "test_server_adds_the_view_limitation_when_the_view_was_cut"]),
+    "clock_starts_after_the_llm": (*ENTRY, "    return execution.build_execution_response(sanitized, manifest_snapshot, llm_run, started=started)\n",
+                                   "    return execution.build_execution_response(sanitized, manifest_snapshot, llm_run, started=time.monotonic())\n",
+                                   [_T + "test_elapsed_time_includes_the_llm_call"]),
+    "start_time_has_a_default": (*EXEC, "llm_run: LlmRun | None = None, *, started: float) -> ExecutionResponse:",
+                                 "llm_run: LlmRun | None = None, *, started: float = 0.0) -> ExecutionResponse:",
+                                 [_T + "test_response_cannot_be_built_without_a_start_time"]),
     "raw_output_not_fingerprinted": (*EXEC, "    if llm_run.raw_output is not None:\n", "    if False:\n", [_T + "test_fingerprint_is_of_the_view_and_the_raw_output"]),
 }
 
