@@ -78,9 +78,9 @@ def _audited(llm_run: LlmRun, outcome: AnalysisResult | output_gate.OutputReject
 
 
 def build_execution_response(sanitized: SanitizedEnvelope, manifest_snapshot: dict[str, Any],
-                             llm_run: LlmRun | None = None, *, started: float | None = None) -> ExecutionResponse:
-    """started는 분석 시작 시각(단조 시계)이다. 진입 함수가 ③ 통과 직후 값을 넘긴다 — 없으면 지금부터 잰다(④만)."""
-    started = time.monotonic() if started is None else started
+                             llm_run: LlmRun | None = None, *, started: float) -> ExecutionResponse:
+    """started는 분석 시작 시각(단조 시계)이다. 진입 함수가 ③ 통과 직후 값을 넘긴다. 기본값이 없다 — 빠뜨리면 TypeError로,
+    조용히 다른 구간(④만)을 재지 않는다((A) §2.4 elapsed_ms)."""
     transactions = sanitized.transactions()
     draft = _draft_json([d for tx in transactions for d in rule_engine.evaluate(tx)])
 
