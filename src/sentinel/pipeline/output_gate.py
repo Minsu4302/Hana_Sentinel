@@ -22,6 +22,9 @@ evidence 전부에 `hallucinated_literal_suspected`를 붙인다. 플래그 달�
 corroboration=not_run, anomaly_flags=위 격리 결과, review_required=true, severity_if_true=null, produced_by=생산 경로, analysis_meta=호출자가 만든 값,
 analyzed_refs=transactions의 ID 목록, schema_version="1.0". 헤더 Locator의 name은 소문자로 정규화해 저장한다.
 
+LLM 초안 거부의 감사에는 Pydantic 오류의 위치·종류 코드도 남긴다((A) §2.8). 위치 조각은 계약에 정의된 이름(필드명·판별 리터럴)과
+정수 인덱스만이고 그 밖은 `<extra>`다 — 계약 밖 키는 LLM이 지어낸 문자열이다. 종류 코드는 검증 라이브러리의 고정 코드만 쓴다.
+
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
 입력이 정한 필드명·헤더 이름·경로·range 값은 남기지 않는다(Pydantic 오류의 loc·msg는 분류에만 쓰고 버린다).
 서버 인자는 초안 파싱 전에 검사한다. 잘못된 서버 인자는 출력 거부가 아니라 호출자 버그라 ValueError다
@@ -38,12 +41,14 @@ analyzed_refs를 따로 받지 않고 transactions에서 파생한다 — 둘이
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Final, get_args
+from typing import Annotated, Any, Final, Literal, get_args, get_origin
 from uuid import UUID, uuid4
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+from pydantic.fields import FieldInfo
 
 from sentinel import strict_json
 from sentinel.canonical_address import canonical_address
@@ -73,6 +78,58 @@ HYBRID: Final = "hybrid"
 LITERAL_FLAG: Final = "hallucinated_literal_suspected"
 LITERAL_REPLACEMENT: Final = "[hallucinated_literal_removed]"
 VIEW_LIMITATION: Final = "LLM 입력 뷰가 일부만 포함"
+EXTRA_PIECE: Final = "<extra>"
+ERROR_KIND: Final = re.compile(r"[a-z_]{1,64}")
+MAX_SITES: Final = 32
+
+
+def _contract_names(root: type[BaseModel]) -> frozenset[str]:
+    """초안 계약에 정의된 이름: 모든 모델의 필드명 + 판별 필드의 리터럴 값."""
+    names: set[str] = set()
+    discriminators: set[str] = set()
+    models: list[type[BaseModel]] = []
+
+    def walk(tp: Any) -> None:
+        if isinstance(tp, type) and issubclass(tp, BaseModel):
+            if tp in models:
+                return
+            models.append(tp)
+            for name, field in tp.model_fields.items():
+                names.add(name)
+                if field.discriminator:
+                    discriminators.add(field.discriminator)
+                walk(field.annotation)
+            return
+        if get_origin(tp) is Annotated:
+            discriminators.update(m.discriminator for m in get_args(tp)[1:] if isinstance(m, FieldInfo) and isinstance(m.discriminator, str))
+        if get_origin(tp) is not Literal:
+            for arg in get_args(tp):
+                walk(arg)
+
+    walk(root)
+    for model in models:
+        for name in discriminators & set(model.model_fields):
+            names.update(v for v in get_args(model.model_fields[name].annotation) if isinstance(v, str))
+    return frozenset(names)
+
+
+CONTRACT_NAMES: Final = _contract_names(AnalysisDraft)
+
+
+def _site_piece(piece: Any) -> str:
+    if isinstance(piece, int) and not isinstance(piece, bool):
+        return str(piece)
+    return piece if piece in CONTRACT_NAMES else EXTRA_PIECE
+
+
+def _error_sites(exc: ValidationError) -> tuple[str, ...]:
+    """(위치, 종류) — 값·메시지는 담지 않는다."""
+    sites = set()
+    for err in exc.errors(include_url=False, include_context=False, include_input=False):
+        kind = err["type"] if ERROR_KIND.fullmatch(err["type"]) else EXTRA_PIECE
+        sites.add(".".join(_site_piece(piece) for piece in err["loc"]) + ":" + kind)
+    return tuple(sorted(sites))[:MAX_SITES]
+
 
 
 @dataclass(frozen=True)
@@ -121,7 +178,7 @@ def _checked_draft(draft: str | bytes, by_id: dict[UUID, Transaction], event: st
     try:
         parsed = AnalysisDraft.model_validate_json(draft)  # ①②③
     except ValidationError as exc:
-        return _reject(_classify(exc), event)
+        return _reject(_classify(exc), event, _error_sites(exc) if event == "llm_draft_rejected" else ())
     outside = _refs_outside(parsed, frozenset(by_id))  # ④
     if outside:
         return _reject(("evidence_ref_outside_analyzed",), event)
@@ -347,8 +404,11 @@ def _body_resolves(body: Body, at) -> bool:
 
 # ── 거부·부여 ─────────────────────────────────────────────────────
 
-def _reject(codes: tuple[str, ...], event: str = "output_rejected") -> OutputRejection:
-    audit_log.warning("%s count=%d reasons=%s", event, len(codes), ",".join(codes))
+def _reject(codes: tuple[str, ...], event: str = "output_rejected", sites: tuple[str, ...] = ()) -> OutputRejection:
+    if sites:
+        audit_log.warning("%s count=%d reasons=%s sites=%s", event, len(codes), ",".join(codes), ",".join(sites))
+    else:
+        audit_log.warning("%s count=%d reasons=%s", event, len(codes), ",".join(codes))
     return OutputRejection(codes)
 
 

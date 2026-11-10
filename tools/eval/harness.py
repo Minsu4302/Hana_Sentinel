@@ -215,6 +215,22 @@ ENV_FAILURES: Final = ("failed:unavailable", "failed:oversize", "failed:audit_wr
 FLAGGED_NOTE: Final = "치환 횟수의 대리 지표 — 정확한 치환 횟수는 결과에 없다"
 
 
+def rejection_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """LLM 초안 거부 감사 → 사유 코드별·(경로, 종류)별 건수. 인덱스는 *로 모은다. 한 초안 안의 같은 자리는 한 번만 센다."""
+    reasons: Counter = Counter()
+    sites: Counter = Counter()
+    drafts = [e["message"] for e in events if e["event"] == "llm_draft_rejected"]
+    for message in drafts:
+        fields = dict(part.split("=", 1) for part in message.split()[1:] if "=" in part)
+        reasons.update(r for r in fields.get("reasons", "").split(",") if r)
+        found = set()
+        for site in (s for s in fields.get("sites", "").split(",") if s):
+            path, _, kind = site.rpartition(":")
+            found.add(".".join("*" if piece.isdigit() else piece for piece in path.split(".")) + " " + kind)
+        sites.update(found)
+    return {"drafts": len(drafts), "reasons": dict(sorted(reasons.items())), "sites": dict(sorted(sites.items()))}
+
+
 def _selection(outcomes: dict[UUID, str | None], preds: list, strict: dict, fps: list, llm_only: list,
                elapsed: list[int]) -> dict[str, Any]:
     """§6.2 모델 선별 기준의 재료(dev — 측정 아님). 실패 합은 ok가 아닌 LLM 결과 전부다: truncated·timeout·unparseable·rejected와

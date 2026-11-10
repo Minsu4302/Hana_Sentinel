@@ -595,6 +595,14 @@ guardrails:
       - "tests/test_llm_safeguards.py::test_fingerprint_keeps_no_content"
       - "tests/test_llm_safeguards.py::test_safeguard_is_load_bearing_under_verified_mutation"
       - "tests/test_llm_wiring.py::test_fingerprint_is_of_the_view_and_the_raw_output"
+      - "tests/test_rejection_diagnosis.py::test_invented_key_with_a_secret_looking_name_becomes_extra"
+      - "tests/test_rejection_diagnosis.py::test_no_secret_shaped_key_reaches_the_audit"
+      - "tests/test_rejection_diagnosis.py::test_unknown_discriminator_value_leaves_only_the_kind"
+      - "tests/test_rejection_diagnosis.py::test_invented_top_level_key_becomes_extra"
+      - "tests/test_rejection_diagnosis.py::test_values_and_messages_never_reach_the_audit"
+      - "tests/test_rejection_diagnosis.py::test_number_of_sites_is_capped"
+      - "tests/test_rejection_diagnosis.py::test_rule_draft_rejection_has_no_sites"
+      - "tests/test_rejection_diagnosis.py::test_audit_site_guard_is_load_bearing_under_verified_mutation"
     manifest_key: llm_io_audit
   - id: masked_span_integrity
     description: "Body 불변식 1~6을 ③에서 검증"

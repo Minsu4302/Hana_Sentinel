@@ -27,12 +27,12 @@ from uuid import UUID
 
 from pydantic import ValidationError
 
-from sentinel.audit import attach_audit_store, audit_db_path, detach_audit_store
+from sentinel.audit import attach_audit_store, audit_db_path, detach_audit_store, read_audit_events
 from sentinel.manifest_snapshot import load_manifest_snapshot
 from sentinel.output_schema import AnalysisResult
 from sentinel.pipeline import entry, llm_path, sanitization_check, schema_gate
 from tools.dataset.labelfile import LabelFile
-from tools.eval.harness import ENV_FAILURES, DatasetRejected, PredictionRun, RunMeta, ServingConditions, load_dataset, score
+from tools.eval.harness import ENV_FAILURES, DatasetRejected, PredictionRun, RunMeta, ServingConditions, load_dataset, rejection_summary, score
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET: Final = REPO_ROOT / "datasets" / "S" / "v1"
@@ -134,12 +134,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rerun-env-failures", action="store_true")
     args = parser.parse_args(argv)
     store = None
+    seen = 0
     try:
         serving = None if args.serving_conditions is None else ServingConditions.model_validate_json(args.serving_conditions.read_bytes())
         llm_config = llm_path.config_from_env()
         if llm_config is not None:
             store = attach_audit_store(audit_db_path())  # 지문을 못 남기면 LLM 결과가 버려진다(§2.8)
+            seen = len(read_audit_events(audit_db_path()))
         report = run(args.dataset, load_manifest_snapshot(), args.split, llm_config, serving, args.rerun_env_failures)
+        # 거부 원인(경로, 종류) 집계 — 이번 실행의 감사만. 원문은 감사에 없다(§2.8)
+        report["rejections"] = None if store is None else rejection_summary(read_audit_events(audit_db_path())[seen:])
     except (RunRejected, DatasetRejected, llm_path.LlmConfigError, ValidationError, OSError) as exc:
         print(f"eval 거부: {exc}", file=sys.stderr)
         return 1
