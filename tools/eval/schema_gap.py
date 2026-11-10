@@ -1,27 +1,43 @@
-"""정적 대조 — Pydantic 초안 계약의 제약과 전송 스키마(평탄화본)를 경로별로 맞대 본다. (A) §2.8, 선별 거부 원인 진단.
+"""정적 대조 — Pydantic 초안 계약의 제약이 LLM에 전달되는지 경로별로 판정한다. (A) §2.8, `llm_contract_conveyed`.
 
 `python -m tools.eval.schema_gap`이 표를 출력한다. 판정 값:
-- represented: 같은 제약이 전송 스키마에 키워드로 있다(서버 문법이 그 키워드를 강제하는지는 별개 — 레포 밖 탐침의 몫).
-- missing: Pydantic에는 있는데 전송 스키마에 없다(측정 장치 결함 후보).
-- not_expressible: 검증 함수라 JSON 스키마로 표현할 수 없다(문법이 막지 못하고 게이트에서만 걸린다).
-- excluded: 의도적으로 뺐다(LLM 초안의 range, LLM이 만들지 않는 advisory_signals — §2.8).
+- represented: 같은 제약이 전송 스키마에 키워드로 있다(서버 문법이 그 키워드를 강제하는지는 별개 — docs/inference-server.md의 탐침).
+- conveyed_by_rule: 스키마에는 없고, 프롬프트의 출력 규칙 절에 그 하위 제약의 문장이 모두 있다.
+- excluded: 정당한 제외 — `EXCLUSION_BASIS`에 근거가 있는 필드만(초안 금지: range, advisory_signals).
+- missing: 어느 수단으로도 전달되지 않는다(근거 없는 제외 포함).
+- not_expressible: 검증 함수인데 `SUBCONSTRAINTS`에 분해가 없다 — 새 검증기가 생기면 여기로 떨어지고 고정 테스트가 실패한다.
 
-범위(정직 표기): 이 도구는 우리 쪽 두 정의의 차이만 본다. llama.cpp 문법이 어떤 키워드를 건너뛰는지는 알 수 없다.
+복합 검증기는 하위 제약 단위로 판정한다(하나가 스키마로 전달돼도 나머지를 대신하지 않는다).
+
+범위(정직 표기): 우리 쪽 정의(스키마·프롬프트)에 전달 수단이 있는지만 본다. 모델이 지키는지는 게이트가 판정하고,
+llama.cpp 문법이 어떤 키워드를 건너뛰는지는 이 도구가 알 수 없다.
 """
 from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Callable
 from typing import Annotated, Any, Final, Literal, get_args, get_origin
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
+from sentinel.common_types import POINTER_PATTERN
 from sentinel.output_schema import AnalysisDraft
-from sentinel.pipeline.llm_prompt import LLM_DROPPED_FIELDS, TRANSMISSION_SCHEMA
+from sentinel.pipeline.llm_prompt import LLM_DROPPED_FIELDS, OUTPUT_RULES, RULES_HEADING, SYSTEM_PROMPT, TRANSMISSION_SCHEMA
 
 KEYWORD_OF: Final = {"uuid": "format", "min_length": "minItems", "ge": "minimum", "extra_forbid": "additionalProperties",
                      "literal": "enum/const", "pattern": "pattern"}
+# 검증 함수 → (하위 제약 ID, 스키마 판정 — None이면 스키마로 전달하지 않음). ID는 llm_prompt.OUTPUT_RULES의 키와 같다
+SUBCONSTRAINTS: Final = {
+    "_check_json_pointer": (("json_pointer.syntax", lambda node: node.get("pattern") == POINTER_PATTERN),  # RFC 6901 문법
+                            ("json_pointer.no_dash_token", None),  # pattern에 넣지 않는다: 위반이 HTTP 500(환경 실패)으로 잘못 분류된다
+                            ("json_pointer.one_node", None)),  # 데이터에 따라 달라짐 — 게이트 해석(evidence_pointer_resolves)
+}
+EXCLUSION_BASIS: Final = {
+    "range": "(A) §2.8 LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋)",
+    "advisory_signals": "(A) §2.8 LLM 초안은 advisory_signals를 만들지 않는다(v1 — 전송 스키마에서 빈 배열 고정)",
+}
 
 
 def _constraints(field: FieldInfo, annotation: Any, model: type[BaseModel], name: str) -> list[str]:
@@ -84,27 +100,50 @@ def _array_item(node: dict[str, Any] | None) -> dict[str, Any] | None:
     return None if node is None else node.get("items", node)
 
 
-def gaps(root: type[BaseModel] = AnalysisDraft, schema: dict[str, Any] = TRANSMISSION_SCHEMA) -> list[dict[str, str]]:
+def _rule_lines(prompt: str) -> set[str]:
+    """출력 규칙 절(제목 다음부터 시스템 지시문 끝까지)의 규칙 줄. 절 밖의 같은 문장은 세지 않는다."""
+    if RULES_HEADING not in prompt:
+        return set()
+    return {line[2:] for line in prompt.split(RULES_HEADING, 1)[1].splitlines() if line.startswith("- ")}
+
+
+def _excluded(path: str, name: str, schema: str) -> dict[str, str]:
+    if name not in EXCLUSION_BASIS:
+        return {"path": path, "pydantic": "field", "schema": schema, "verdict": "missing", "basis": "근거 없는 제외"}
+    return {"path": path, "pydantic": "field", "schema": schema, "verdict": "excluded", "basis": EXCLUSION_BASIS[name]}
+
+
+def gaps(root: type[BaseModel] = AnalysisDraft, schema: dict[str, Any] = TRANSMISSION_SCHEMA, prompt: str = SYSTEM_PROMPT,
+         rules: dict[str, tuple[str, ...]] = OUTPUT_RULES) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
+    lines = _rule_lines(prompt)
+
+    def judge(path: str, constraint: str, node: dict[str, Any] | None) -> None:
+        func = constraint.removeprefix("validator:")
+        if not constraint.startswith("validator:") or func not in SUBCONSTRAINTS:
+            rows.append(_row(path, constraint, node))
+            return
+        for sub_id, in_schema in SUBCONSTRAINTS[func]:
+            rows.append(_sub_row(path, func, sub_id, in_schema, node, lines, rules))
 
     def visit(model: type[BaseModel], node: dict[str, Any] | None, path: str) -> None:
         if model.model_config.get("extra") == "forbid":
             rows.append(_row(path or "(root)", "extra_forbid", node))
         for d in model.__pydantic_decorators__.model_validators.values():
-            rows.append({"path": path or "(root)", "pydantic": f"validator:{d.func.__name__}", "schema": "-", "verdict": "not_expressible"})
+            judge(path or "(root)", f"validator:{d.func.__name__}", node)
         for name, field in model.model_fields.items():
             here = f"{path}.{name}" if path else name
             child = None if node is None else node.get("properties", {}).get(name)
             if name in LLM_DROPPED_FIELDS:
-                rows.append({"path": here, "pydantic": "field", "schema": "-", "verdict": "excluded"})
+                rows.append(_excluded(here, name, "-"))
                 continue
             annotation = field.annotation
             base = get_args(annotation)[0] if get_origin(annotation) is Annotated else annotation
             for constraint in _constraints(field, base, model, name):
-                rows.append(_row(here, constraint, child))
+                judge(here, constraint, child)
             is_list = get_origin(base) in (list, tuple)
             if child is not None and child.get("maxItems") == 0:
-                rows.append({"path": here, "pydantic": "field", "schema": "maxItems 0", "verdict": "excluded"})
+                rows.append(_excluded(here, name, "maxItems 0"))
                 continue
             target = _array_item(child) if is_list else child
             members = _models_in(base)
@@ -129,13 +168,27 @@ def _row(path: str, constraint: str, node: dict[str, Any] | None) -> dict[str, s
     return {"path": path, "pydantic": constraint, "schema": keyword if present else "-", "verdict": "represented" if present else "missing"}
 
 
+def _sub_row(path: str, func: str, sub_id: str, in_schema: Callable[[dict[str, Any]], bool] | None, node: dict[str, Any] | None,
+             lines: set[str], rules: dict[str, tuple[str, ...]]) -> dict[str, str]:
+    label = f"validator:{func}/{sub_id}"
+    if in_schema is not None and node is not None and in_schema(node):
+        return {"path": path, "pydantic": label, "schema": "keyword", "verdict": "represented"}
+    sentences = rules.get(sub_id, ())
+    if sentences and all(s in lines for s in sentences):
+        return {"path": path, "pydantic": label, "schema": "output rule", "verdict": "conveyed_by_rule"}
+    return {"path": path, "pydantic": label, "schema": "-", "verdict": "missing"}
+
+
+VERDICTS: Final = ("represented", "conveyed_by_rule", "excluded", "missing", "not_expressible")
+
+
 def main() -> int:
     rows = gaps()
-    print("| 경로 | Pydantic 제약 | 전송 스키마 | 판정 |")
-    print("|---|---|---|---|")
+    print("| 경로 | Pydantic 제약 | 전송 수단 | 판정 | 제외 근거 |")
+    print("|---|---|---|---|---|")
     for row in rows:
-        print(f"| {row['path']} | {row['pydantic']} | {row['schema']} | {row['verdict']} |")
-    print(json.dumps({v: sum(1 for r in rows if r["verdict"] == v) for v in ("represented", "missing", "not_expressible", "excluded")}))
+        print(f"| {row['path']} | {row['pydantic']} | {row['schema']} | {row['verdict']} | {row.get('basis', '')} |")
+    print(json.dumps({v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}))
     return 0
 
 

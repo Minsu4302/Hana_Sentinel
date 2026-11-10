@@ -5,6 +5,8 @@
   `>`를 JSON 이스케이프하므로 데이터 안의 문자열이 닫는 표지를 만들지 못한다.
 - 전송 스키마: 정의처는 Pydantic FindingDraft 목록이다. `$ref`를 풀어 평탄화하고 Locator의 range를 뺀다(뷰 오프셋 ≠ 원본 오프셋).
   초안 형태를 맞추려고 `advisory_signals`는 빈 배열로 고정한다 — LLM은 advisory를 만들지 않는다.
+- 출력 규칙 절: 전송 스키마로 표현하지 않는(또는 서버가 강제하지 못하는) 초안 계약의 하위 제약을 `OUTPUT_RULES`에서 기계적으로
+  펼친다(`llm_contract_conveyed`). 절 밖의 지시문은 템플릿 파일 그대로다. 전달만 보장한다 — 모델이 지키는지는 게이트가 판정한다.
 - `prompt_version`: 템플릿 + 생성 설정의 묶음 해시. 측정 뒤 설정만 바꿔도 같은 버전으로 기록되는 구멍을 막는다.
 """
 from __future__ import annotations
@@ -17,7 +19,24 @@ from typing import Any, Final
 from sentinel.output_schema import AnalysisDraft
 
 TEMPLATE_PATH: Final = Path(__file__).parent / "prompts" / "analysis.txt"
-TEMPLATE_TEXT: Final = TEMPLATE_PATH.read_bytes().replace(b"\r\n", b"\n").decode("utf-8")
+RULES_SLOT: Final = "{output_rules}"
+RULES_HEADING: Final = "Output rules:"
+# 하위 제약 ID → 출력 규칙 문장. ID는 tools/eval/schema_gap의 분해 표와 같다(고정 테스트가 맞춘다)
+OUTPUT_RULES: Final[dict[str, tuple[str, ...]]] = {
+    "json_pointer.one_node": ("A body path is a JSON Pointer: nested keys as /a/b, array items as /a/0. "
+                              "Never write nesting with dots or brackets (not a.b, not a[0]).",
+                              "Use only body paths that actually exist in the DATA block."),
+    "json_pointer.no_dash_token": ("A body path never uses - as a whole segment (not /items/-).",),
+}
+
+
+def _with_rules(raw: str) -> str:
+    if raw.count(RULES_SLOT) != 1 or raw.count(RULES_HEADING) != 1:
+        raise ValueError("출력 규칙 자리와 제목은 템플릿에 정확히 하나씩")
+    return raw.replace(RULES_SLOT, "\n".join(f"- {line}" for lines in OUTPUT_RULES.values() for line in lines))
+
+
+TEMPLATE_TEXT: Final = _with_rules(TEMPLATE_PATH.read_bytes().replace(b"\r\n", b"\n").decode("utf-8"))
 SYSTEM_PROMPT, USER_TEMPLATE = (part.strip() for part in TEMPLATE_TEXT.split("---USER---"))
 VIEW_SLOT: Final = "{view}"
 CUT_MARK: Final = "…[view cut]…"

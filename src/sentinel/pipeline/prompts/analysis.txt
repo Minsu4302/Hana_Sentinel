@@ -17,6 +17,9 @@ Rules:
 - claim_basis is observed, inferred or speculative.
 - next_steps are checks for a human, with type "verification".
 - limitations says what this one transaction cannot show.
+
+Output rules:
+{output_rules}
 ---USER---
 <<<DATA
 {view}

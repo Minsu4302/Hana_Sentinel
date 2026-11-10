@@ -185,11 +185,6 @@ def test_current_contract_has_no_missing_constraint():
     assert _verdicts(rows)[("findings[].evidence[].transaction_ref", "uuid")] == "represented"
 
 
-def test_json_pointer_check_is_reported_as_not_expressible():
-    verdicts = _verdicts(gaps())
-    assert verdicts[("findings[].evidence[].pointer{locus=resp_body}.body{kind=json}.path", "validator:_check_json_pointer")] == "not_expressible"
-
-
 def test_range_and_advisories_are_reported_as_excluded():
     verdicts = _verdicts(gaps())
     assert verdicts[("findings[].evidence[].pointer{locus=req_header}.range", "field")] == "excluded"
