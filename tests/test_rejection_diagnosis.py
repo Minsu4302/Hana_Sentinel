@@ -107,6 +107,52 @@ def test_number_of_sites_is_capped(caplog):
     assert len(_sites(message)) == MAX_SITES
 
 
+# ── 해석 실패(⑤): locus·body kind까지만 ─────────────────────────────
+
+def test_unresolved_invented_header_leaves_only_the_locus(caplog):
+    pointer = {"locus": "req_header", "name": SECRET_KEY, "occurrence": 0}
+    [message] = _llm({"findings": [_finding(_evidence(pointer=pointer))], "advisory_signals": []}, caplog)
+    assert "reasons=pointer_unresolvable" in message
+    assert _sites(message) == {"findings.0.evidence.0.pointer.req_header:unresolved"}
+    assert SECRET_KEY not in caplog.text and SECRET_KEY.lower() not in caplog.text
+
+
+def test_unresolved_invented_param_leaves_no_name_or_location_value(caplog):
+    pointer = {"locus": "req_param", "location": "query", "name": SECRET_KEY, "occurrence": 3}
+    [message] = _llm({"findings": [_finding(_evidence(pointer=pointer))], "advisory_signals": []}, caplog)
+    assert _sites(message) == {"findings.0.evidence.0.pointer.req_param:unresolved"}
+    assert SECRET_KEY not in caplog.text and "query" not in message
+
+
+def test_unresolved_body_path_leaves_only_locus_and_kind(caplog):
+    path = "/" + SECRET_KEY + "/0"
+    pointer = {"locus": "resp_body", "body": {"kind": "json", "path": path}}
+    [message] = _llm({"findings": [_finding(_evidence(), _evidence(pointer=pointer))], "advisory_signals": []}, caplog)
+    assert _sites(message) == {"findings.0.evidence.1.pointer.resp_body.body.json:unresolved"}
+    assert SECRET_KEY not in caplog.text
+
+
+def test_unresolved_sites_are_capped(caplog):
+    pointer = {"locus": "req_header", "name": "x-none", "occurrence": 0}
+    findings = [_finding(_evidence(pointer=pointer)) for _ in range(MAX_SITES + 5)]
+    [message] = _llm({"findings": findings, "advisory_signals": []}, caplog)
+    assert len(_sites(message)) == MAX_SITES
+
+
+def test_rule_draft_unresolved_rejection_has_no_sites(caplog):
+    pointer = {"locus": "req_header", "name": "x-none", "occurrence": 0}
+    draft = json.dumps({"findings": [_finding(_evidence(pointer=pointer))], "advisory_signals": []})
+    with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
+        output_gate.validate_producers(draft, None, transactions=[TX], produced_by="rule", make_meta=lambda outcome: _meta())
+    assert "reasons=pointer_unresolvable" in caplog.text and "sites=" not in caplog.text
+
+
+def test_summary_counts_unresolved_sites():
+    events = [{"event": "llm_draft_rejected",
+               "message": "llm_draft_rejected count=1 reasons=pointer_unresolvable sites=findings.0.evidence.0.pointer.req_header:unresolved"}]
+    assert rejection_summary(events)["sites"] == {"findings.*.evidence.*.pointer.req_header unresolved": 1}
+
+
 def test_rule_draft_rejection_has_no_sites(caplog):
     with caplog.at_level(logging.WARNING, logger="sentinel.audit"):
         output_gate.validate_producers("not json", None, transactions=[TX], produced_by="rule", make_meta=lambda outcome: _meta())
@@ -215,6 +261,14 @@ SRC_MUTATIONS = {
     "no_sites": (*GATE, '_error_sites(exc) if event == "llm_draft_rejected" else ()', "()",
                  [_D + "test_rejection_records_the_contract_path_and_the_error_kind"]),
     "no_cap": (*GATE, "    return tuple(sorted(sites))[:MAX_SITES]\n", "    return tuple(sorted(sites))\n", [_D + "test_number_of_sites_is_capped"]),
+    "no_unresolved_sites": (*GATE, '_unresolved_sites(parsed, by_id) if event == "llm_draft_rejected" else ()', "()",
+                            [_D + "test_unresolved_invented_header_leaves_only_the_locus"]),
+    "unresolved_name_recorded": (*GATE, '            found.add(".".join(_site_piece(piece) for piece in pieces) + ":" + UNRESOLVED_KIND)\n',
+                                 '            found.add(".".join(map(str, pieces + [getattr(e.pointer, "name", "")])) + ":" + UNRESOLVED_KIND)\n',
+                                 [_D + "test_unresolved_invented_header_leaves_only_the_locus",
+                                  _D + "test_unresolved_invented_param_leaves_no_name_or_location_value"]),
+    "unresolved_no_cap": (*GATE, "    return tuple(sorted(found))[:MAX_SITES]\n", "    return tuple(sorted(found))\n",
+                          [_D + "test_unresolved_sites_are_capped"]),
 }
 TOOL_MUTATIONS = {
     "indexes_not_folded": ("tools/eval/harness.py", "tools.eval.harness", '"*" if piece.isdigit() else piece', "piece",

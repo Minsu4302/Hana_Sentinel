@@ -9,8 +9,14 @@
 
 복합 검증기는 하위 제약 단위로 판정한다(하나가 스키마로 전달돼도 나머지를 대신하지 않는다).
 
+게이트 검사(`gate_checks`): 게이트가 LLM 초안에 적용하는 검사(`output_gate.DRAFT_CHECKS`)마다 근거 게이트 판정과 전달 수단을
+`GATE_CHECKS`에 둔다. 수단은 초안 계약 판정(contract) / 기존 Rules: 절 문장 원문(rule — 템플릿을 바꾸지 않고 등록만) /
+출력 규칙(output_rule) / 항상 해석됨(always) 중 하나 이상이고, 모두 성립해야 conveyed다.
+기준((A) v1.41 무효 처리 규칙): 게이트가 요구하는 조건을 우리가 준 정보만으로 모델이 알 수 있는가.
+
 범위(정직 표기): 우리 쪽 정의(스키마·프롬프트)에 전달 수단이 있는지만 본다. 모델이 지키는지는 게이트가 판정하고,
-llama.cpp 문법이 어떤 키워드를 건너뛰는지는 이 도구가 알 수 없다.
+llama.cpp 문법이 어떤 키워드를 건너뛰는지는 이 도구가 알 수 없다. 거부 사유 코드는 전부 `DRAFT_CHECKS`에 대응되지만
+(`output_gate.CHECKS_OF_REASON`), 같은 사유 코드 아래의 새 해석 조건은 기계로 못 잡는다 — 게이트를 고칠 때 함께 고친다.
 """
 from __future__ import annotations
 
@@ -37,6 +43,36 @@ SUBCONSTRAINTS: Final = {
 EXCLUSION_BASIS: Final = {
     "range": "(A) §2.8 LLM 초안 스키마에는 Locator의 range가 없다(뷰 오프셋 ≠ 원본 오프셋)",
     "advisory_signals": "(A) §2.8 LLM 초안은 advisory_signals를 만들지 않는다(v1 — 전송 스키마에서 빈 배열 고정)",
+}
+
+
+EXISTING_RULES_HEADING: Final = "Rules:"
+# 기존 Rules: 절 문장 원문(템플릿 불변 — 등록만)
+T_REF: Final = "evidence.transaction_ref copies transaction_id exactly."
+T_POINTER: Final = ("evidence.pointer names a place that exists in the data: resp_status, req_line, req_header, resp_header, req_param, "
+                    "req_body or resp_body. Header and parameter names are copied exactly and occurrence starts at 0.")
+T_OBSERVATION: Final = ("evidence.observation states what is there. Masked values stay as the labels you see. "
+                        "Never invent a value, token, key or password.")
+CONTRACT: Final = ("contract",)
+# 게이트 검사 → (근거 게이트 판정 output_gate.<심볼>, 전달 수단들)
+GATE_CHECKS: Final = {
+    "draft_schema": ("_checked_draft", (CONTRACT,)),
+    "category_closed": ("_checked_draft", (CONTRACT,)),
+    "evidence_min_one": ("_checked_draft", (CONTRACT,)),
+    "llm_no_range": ("_has_range", (CONTRACT,)),  # 전송 스키마에 range 없음 + 추가 필드 금지
+    "transaction_ref_in_analyzed": ("_refs_outside", (("rule", T_REF),)),  # 뷰에 transaction_id가 있다
+    "locus_names": ("_resolves", (("rule", T_POINTER), ("output_rule", "gate.locus_names"))),
+    "status_always": ("_resolves", (("always", "StatusLocator는 항상 해석된다"),)),
+    "req_line_part": ("_resolves", (CONTRACT,)),  # part enum, range 없음 → method·path는 항상 있다
+    "header_name_case_insensitive": ("_resolves", (("rule", T_POINTER),)),  # 정확히 복사 ⊂ 대소문자 무시 비교
+    "header_occurrence_by_name": ("_resolves", (("output_rule", "gate.occurrence"),)),
+    "param_location_and_name_exact": ("_resolves", (("rule", T_POINTER),)),  # location은 스키마 enum + 뷰의 location 키
+    "param_occurrence_by_location_and_name": ("_resolves", (("output_rule", "gate.occurrence"),)),
+    "body_needs_content": ("_body_resolves", (("rule", T_POINTER),)),  # content가 없으면 뷰에 content 키도 없다
+    "body_json_needs_json_content": ("_body_resolves", (("output_rule", "gate.body_kind"),)),
+    "body_json_needs_untruncated": ("_body_resolves", (("output_rule", "gate.body_kind"),)),
+    "body_json_one_node": ("_body_resolves", (CONTRACT,)),  # json_pointer.one_node 하위 제약(출력 규칙)
+    "literal_isolation": ("_isolated", (("rule", T_OBSERVATION),)),
 }
 
 
@@ -180,6 +216,38 @@ def _sub_row(path: str, func: str, sub_id: str, in_schema: Callable[[dict[str, A
 
 
 VERDICTS: Final = ("represented", "conveyed_by_rule", "excluded", "missing", "not_expressible")
+CONVEYED: Final = frozenset({"represented", "conveyed_by_rule", "excluded"})
+
+
+def _existing_rule_lines(prompt: str) -> set[str]:
+    """기존 Rules: 절(제목 다음부터 출력 규칙 제목 앞까지)의 규칙 줄."""
+    marker = "\n" + EXISTING_RULES_HEADING + "\n"
+    if marker not in prompt:
+        return set()
+    section = prompt.split(marker, 1)[1].split(RULES_HEADING, 1)[0]
+    return {line[2:] for line in section.splitlines() if line.startswith("- ")}
+
+
+def gate_checks(prompt: str = SYSTEM_PROMPT, rules: dict[str, tuple[str, ...]] = OUTPUT_RULES,
+                checks: dict[str, tuple[str, tuple[tuple[str, ...], ...]]] = GATE_CHECKS) -> list[dict[str, str]]:
+    """게이트 검사마다 (근거 판정, 전달 수단, 판정). 수단이 모두 성립해야 conveyed."""
+    contract_ok = all(r["verdict"] in CONVEYED for r in gaps(prompt=prompt, rules=rules))
+    existing, output = _existing_rule_lines(prompt), _rule_lines(prompt)
+
+    def holds(means: tuple[str, ...]) -> bool:
+        kind = means[0]
+        if kind == "contract":
+            return contract_ok
+        if kind == "rule":
+            return means[1] in existing
+        if kind == "output_rule":
+            sentences = rules.get(means[1], ())
+            return bool(sentences) and all(s in output for s in sentences)
+        return kind == "always"
+
+    return [{"check": check, "gate": f"output_gate.{symbol}", "means": " + ".join(m[0] if m[0] != "output_rule" else m[1] for m in means),
+             "verdict": "conveyed" if means and all(holds(m) for m in means) else "missing"}
+            for check, (symbol, means) in checks.items()]
 
 
 def main() -> int:
@@ -189,6 +257,11 @@ def main() -> int:
     for row in rows:
         print(f"| {row['path']} | {row['pydantic']} | {row['schema']} | {row['verdict']} | {row.get('basis', '')} |")
     print(json.dumps({v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}))
+    print()
+    print("| 게이트 검사 | 근거 판정 | 전달 수단 | 판정 |")
+    print("|---|---|---|---|")
+    for row in gate_checks():
+        print(f"| {row['check']} | {row['gate']} | {row['means']} | {row['verdict']} |")
     return 0
 
 

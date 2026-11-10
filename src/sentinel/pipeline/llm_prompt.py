@@ -21,8 +21,13 @@ from sentinel.output_schema import AnalysisDraft
 TEMPLATE_PATH: Final = Path(__file__).parent / "prompts" / "analysis.txt"
 RULES_SLOT: Final = "{output_rules}"
 RULES_HEADING: Final = "Output rules:"
-# 하위 제약 ID → 출력 규칙 문장. ID는 tools/eval/schema_gap의 분해 표와 같다(고정 테스트가 맞춘다)
+# 하위 제약·게이트 검사 ID → 출력 규칙 문장. ID는 tools/eval/schema_gap의 분해 표·게이트 검사 표와 같다(고정 테스트가 맞춘다)
 OUTPUT_RULES: Final[dict[str, tuple[str, ...]]] = {
+    "gate.locus_names": ("resp_status = status, req_line = method or path, req_header = req_headers, resp_header = resp_headers, "
+                         "req_param = params.",),
+    "gate.occurrence": ("occurrence counts from 0: for headers, among headers with the same name ignoring case; "
+                        "for params, among params with the same location and name.",),
+    "gate.body_kind": ("Use body kind json only when the body content is JSON and truncated is false; otherwise use kind text.",),
     "json_pointer.one_node": ("A body path is a JSON Pointer: nested keys as /a/b, array items as /a/0. "
                               "Never write nesting with dots or brackets (not a.b, not a[0]).",
                               "Use only body paths that actually exist in the DATA block."),
