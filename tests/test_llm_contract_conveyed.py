@@ -222,6 +222,15 @@ def test_contract_gap_makes_contract_backed_checks_missing():
     assert verdicts["body_json_one_node"] == "missing" and verdicts["draft_schema"] == "missing"
 
 
+def test_every_draft_reason_code_maps_to_a_gate_check():
+    assert set(output_gate.CHECKS_OF_REASON) | output_gate.NOT_FROM_DRAFT == set(output_gate.REASON_CODES)
+    assert not set(output_gate.CHECKS_OF_REASON) & output_gate.NOT_FROM_DRAFT
+    for code, checks in output_gate.CHECKS_OF_REASON.items():
+        assert checks and set(checks) <= set(output_gate.DRAFT_CHECKS), code
+    assert set(output_gate.CHECKS_OF_REASON["pointer_unresolvable"]) >= {"locus_names", "body_json_needs_json_content",
+                                                                           "body_json_needs_untruncated", "header_occurrence_by_name"}
+
+
 def test_check_without_any_means_is_missing():
     checks = {**GATE_CHECKS, "body_json_needs_untruncated": ("_body_resolves", ())}
     assert _gate(gate_checks(checks=checks))["body_json_needs_untruncated"] == "missing"
@@ -238,6 +247,9 @@ SRC_MUTATIONS = {
                         ', Field(json_schema_extra={"pattern": POINTER_PATTERN})]', "]", [FIXED]),
 }
 GATE_FIXED = _C + "test_every_gate_check_is_listed_and_conveyed"
+SRC_MUTATIONS["reason_code_unmapped"] = ("sentinel/pipeline/output_gate.py", "sentinel.pipeline.output_gate",
+                                         '    "llm_range_present": ("llm_no_range",),\n', "",
+                                         [_C + "test_every_draft_reason_code_maps_to_a_gate_check"])
 GATE_RULE_MUTATIONS = {  # 출력 규칙 1~3 중 하나 삭제 → 실패
     "locus_rule_deleted": '    "gate.locus_names": (',
     "occurrence_rule_deleted": '    "gate.occurrence": (',

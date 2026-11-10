@@ -127,6 +127,21 @@ DRAFT_CHECKS: Final = (
     "body_needs_content", "body_json_needs_json_content", "body_json_needs_untruncated", "body_json_one_node",
     "literal_isolation",  # 거부가 아니라 플래그
 )
+_RESOLUTION: Final = tuple(c for c in DRAFT_CHECKS[DRAFT_CHECKS.index("locus_names"):DRAFT_CHECKS.index("literal_isolation")])
+# LLM 초안에 쓰일 수 있는 거부 사유 코드 → 그 사유를 내는 검사(DRAFT_CHECKS). 고정 테스트가 사유 코드 전부의 대응을 확인한다.
+# 한계: 같은 사유 코드 아래에 새 해석 조건을 더하면(예: pointer_unresolvable의 새 조건) 기계로 못 잡는다 — DRAFT_CHECKS를 함께 고친다.
+CHECKS_OF_REASON: Final = {
+    "draft_unparseable": ("draft_schema",),
+    "draft_schema_invalid": ("draft_schema",),
+    "server_field_injected": ("draft_schema",),
+    "unknown_field": ("draft_schema",),
+    "category_not_allowed": ("category_closed",),
+    "evidence_missing": ("evidence_min_one",),
+    "evidence_ref_outside_analyzed": ("transaction_ref_in_analyzed",),
+    "pointer_unresolvable": _RESOLUTION,
+    "llm_range_present": ("llm_no_range",),
+}
+NOT_FROM_DRAFT: Final = frozenset({"result_build_failed"})  # 방어: 검사를 모두 통과한 뒤 저장용 타입 구성 실패 — 초안 조건이 아니다
 
 
 def _site_piece(piece: Any) -> str:

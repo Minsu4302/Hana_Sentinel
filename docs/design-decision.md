@@ -561,7 +561,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 생산자별 초안을 각각 검증한 뒤 (category, CNA 집합) 일치를 병합하고 _assign 1회로 만든다. 규칙 초안 거부는 output_rejected, LLM 초안 거부·실패는 completed + 규칙 결과 + 실패 사유 | 테스트 | enforced(합성 초안으로 증명 — 어댑터 결선은 L3) | `producer_gate_merge` |
 | 깨끗함 = completed ∧ findings [] ∧ 실패 사유 없음. LLM 실패 + 빈 findings는 깨끗함이 아니다 | 테스트 | enforced | `clean_requires_no_failure` |
 | rule_llm의 test split은 FROZEN_PROMPTS·FROZEN_MODELS에 있는 버전만 측정(아니면 동결 순서 밖 표기) | 테스트 | enforced(판정 값은 묶음 해시(§2.8). 동결 표는 비어 있다 — 등록은 프롬프트 동결 때) | `prompt_model_freeze` |
-| LLM 초안 계약의 모든 하위 제약이 전송 스키마에 표현 / 프롬프트 출력 규칙 절에 열거 / 정당한 제외(초안 금지) 중 하나이고, 게이트가 LLM 초안에 적용하는 검사마다 전달 수단(초안 계약 / 기존 지시문 원문 / 출력 규칙)이 있다. 새 제약·새 검증기·표에 없는 검사는 실패 | 테스트 | enforced(전달은 보장하지만 모델이 지키는지는 게이트가 판정. 범위 — 초안 계약 + 게이트 검사(해석 조건 단위, 검사 목록은 게이트 옆 선언). 서버 문법의 키워드 강제는 수동 절차) | `llm_contract_conveyed` |
+| LLM 초안 계약의 모든 하위 제약이 전송 스키마에 표현 / 프롬프트 출력 규칙 절에 열거 / 정당한 제외(초안 금지) 중 하나이고, 게이트가 LLM 초안에 적용하는 검사마다 전달 수단(초안 계약 / 기존 지시문 원문 / 출력 규칙)이 있다. 새 제약·새 검증기·표에 없는 검사는 실패 | 테스트 | enforced(전달은 보장하지만 모델이 지키는지는 게이트가 판정. 범위 — 초안 계약 + 게이트 검사(해석 조건 단위. 거부 사유 코드는 전부 검사에 대응 — 같은 사유 코드 아래의 새 해석 조건은 기계로 못 잡는다). 서버 문법의 키워드 강제는 수동 절차) | `llm_contract_conveyed` |
 | ④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정) | 테스트 | enforced(현존 경로 한정 — 생산자별 게이트 경로까지 재증명, 어댑터 결선 경로까지 재증명. 게이트 결과의 불변은 공개 API 범위 — `object.__setattr__`·`__dict__` 직접 조작은 런타임 범위 밖(src/sentinel 안의 사용은 정적 검사가 거부한다 — 런타임 조립은 그 범위 밖)) | `completed_via_gate` |
 | hypothesis 단정 토큰 차단 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `assertive_token_guard` |
 | observation 재대조 | 테스트 | not_implemented → 5번 평가 데이터로 기준 확정 시 | `corroboration_check` |

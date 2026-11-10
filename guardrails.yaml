@@ -822,7 +822,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "전달은 보장하지만 모델이 지키는지는 게이트가 판정. 범위 — 초안 계약 + 게이트 검사(해석 조건 단위, 검사 목록은 게이트 옆 선언). 서버 문법의 키워드 강제는 수동 절차"
+      note: "전달은 보장하지만 모델이 지키는지는 게이트가 판정. 범위 — 초안 계약 + 게이트 검사(해석 조건 단위. 거부 사유 코드는 전부 검사에 대응 — 같은 사유 코드 아래의 새 해석 조건은 기계로 못 잡는다). 서버 문법의 키워드 강제는 수동 절차"
     verification_tests:
       - "tests/test_llm_contract_conveyed.py::test_every_draft_constraint_is_conveyed_or_legitimately_excluded"
       - "tests/test_llm_contract_conveyed.py::test_json_pointer_is_judged_per_subconstraint"
@@ -850,6 +850,7 @@ guardrails:
       - "tests/test_llm_contract_conveyed.py::test_existing_rule_moved_into_output_rules_does_not_count_as_registered"
       - "tests/test_llm_contract_conveyed.py::test_deleted_output_rule_leaves_its_gate_check_missing"
       - "tests/test_llm_contract_conveyed.py::test_contract_gap_makes_contract_backed_checks_missing"
+      - "tests/test_llm_contract_conveyed.py::test_every_draft_reason_code_maps_to_a_gate_check"
       - "tests/test_llm_contract_conveyed.py::test_check_without_any_means_is_missing"
       - "tests/test_llm_contract_conveyed.py::test_gate_output_rules_are_load_bearing_under_verified_mutation"
       - "tests/test_llm_contract_conveyed.py::test_existing_rule_deleted_from_the_template_is_caught_under_verified_mutation"
