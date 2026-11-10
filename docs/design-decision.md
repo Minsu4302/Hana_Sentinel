@@ -425,7 +425,8 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 - **감사(B-6):** LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, `llm_outcome`, `prompt_version`, `model_id`를 남긴다. 내용은 남기지 않는다(`llm_io_audit`). 내용 보존은 저장 설계(D5)로 넘긴다.
   - LLM 지문의 outcome = llm_outcome ∪ {rule_rejected}(규칙 초안 거부 시에도 LLM 호출의 지문을 남긴다).
   - LLM 감사 기록에 실패하면 LLM 결과를 폐기하고(`llm_failed:audit_write`) 규칙 결과는 유지한다.
-  - LLM 초안이 거부되면 Pydantic 오류의 위치(필드 경로)와 종류 코드만 기록한다. 값·메시지는 기록하지 않는다(입력이 정한 필드명·값이 메시지에 섞인다).
+  - LLM 초안이 거부되면 Pydantic 오류의 위치·종류 코드만 기록한다(값·메시지 금지). 위치 조각은 계약에 정의된 이름(필드명·판별 리터럴)과 정수 인덱스만 기록하고, 그 밖의 조각은 `<extra>`로 바꾼다. 종류 코드는 검증 라이브러리의 고정 코드만 쓴다.
+    - 근거: 계약 밖 키(extra_forbidden 등)는 위치의 마지막 조각이 LLM이 지어낸 문자열이다 — 출력 게이트의 "입력이 정한 필드명은 남기지 않는다"와 같은 원칙.
 - **model_id:** `이름@sha256:<가중치 해시>`다. 기동 절차에서 기록한 값을 설정으로 받는다. 서버가 보고하는 경로와 대조하는 데까지만 가능하다(`llm_model_identity` — unverifiable).
 - **추론 서버 인증:** 기동마다 랜덤 API 키를 만들고 환경변수로만 전달한다. 로그·커밋에 남기지 않는다(N7). 어댑터가 헤더로 보낸다. 기동 절차에 `--no-slots`를 둔다. 어댑터 정적 검사가 메시지 역할·요청 본문 키·response_format·인증 헤더를 고정한다(`llm_adapter_loopback_only`).
 - **동시성:** LLM 호출은 스레드풀에서 하고 동시 처리는 1건이다. 이벤트 루프를 막지 않는다 — LLM 처리 중에도 토큰 검증이 응답해야 한다(`llm_concurrency`).
