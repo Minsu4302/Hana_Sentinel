@@ -24,6 +24,7 @@ analyzed_refs=transactions의 ID 목록, schema_version="1.0". 헤더 Locator의
 
 LLM 초안 거부의 감사에는 Pydantic 오류의 위치·종류 코드도 남긴다((A) §2.8). 위치 조각은 계약에 정의된 이름(필드명·판별 리터럴)과
 정수 인덱스만이고 그 밖은 `<extra>`다 — 계약 밖 키는 LLM이 지어낸 문자열이다. 종류 코드는 검증 라이브러리의 고정 코드만 쓴다.
+해석 실패(⑤)는 근거 위치를 locus·body kind까지만(헤더·파라미터 이름, 경로는 없음) 종류 `unresolved`로 남긴다.
 
 폐기는 조용히 하지 않는다: OutputRejection(닫힌 사유 코드)을 반환하고 감사에 사유 코드만 남긴다. 초안 원문·입력 값·
 입력이 정한 필드명·헤더 이름·경로·range 값은 남기지 않는다(Pydantic 오류의 loc·msg는 분류에만 쓰고 버린다).
@@ -114,6 +115,18 @@ def _contract_names(root: type[BaseModel]) -> frozenset[str]:
 
 
 CONTRACT_NAMES: Final = _contract_names(AnalysisDraft)
+UNRESOLVED_KIND: Final = "unresolved"
+# 이 게이트가 LLM 초안에 적용하는 검사(①~⑤의 해석 조건 단위). 전달 확인 표(tools/eval/schema_gap.GATE_CHECKS)가 모두 덮어야 한다
+# (`llm_contract_conveyed`). 검사를 더하거나 해석 조건을 바꾸면 여기와 표를 함께 고친다.
+DRAFT_CHECKS: Final = (
+    "draft_schema", "category_closed", "evidence_min_one", "llm_no_range",  # ①②③ + range 금지
+    "transaction_ref_in_analyzed",  # ④
+    "locus_names", "status_always", "req_line_part",  # ⑤ 공통·변형
+    "header_name_case_insensitive", "header_occurrence_by_name",
+    "param_location_and_name_exact", "param_occurrence_by_location_and_name",
+    "body_needs_content", "body_json_needs_json_content", "body_json_needs_untruncated", "body_json_one_node",
+    "literal_isolation",  # 거부가 아니라 플래그
+)
 
 
 def _site_piece(piece: Any) -> str:
@@ -184,7 +197,7 @@ def _checked_draft(draft: str | bytes, by_id: dict[UUID, Transaction], event: st
         return _reject(("evidence_ref_outside_analyzed",), event)
     unresolved = _unresolvable(parsed, by_id)  # ⑤
     if unresolved:
-        return _reject(("pointer_unresolvable",), event)
+        return _reject(("pointer_unresolvable",), event, _unresolved_sites(parsed, by_id) if event == "llm_draft_rejected" else ())
     return parsed
 
 
@@ -338,6 +351,22 @@ def _refs_outside(parsed: AnalysisDraft, refs: frozenset[UUID]) -> frozenset[tup
 def _unresolvable(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> frozenset[tuple[str, int]]:
     return frozenset((name, i) for name, i, e in _all_evidence(parsed)
                      if not _resolves(_normalized(e.pointer), by_id[e.transaction_ref]))
+
+
+def _unresolved_sites(parsed: AnalysisDraft, by_id: dict[UUID, Transaction]) -> tuple[str, ...]:
+    """해석되지 않은 근거의 위치 — 계약 리터럴(locus·body kind)과 정수 인덱스만. 이름·경로·값은 담지 않는다((A) §2.8)."""
+    found = set()
+    lists = [("findings", i, "evidence", f.evidence) for i, f in enumerate(parsed.findings)]
+    lists += [("advisory_signals", i, "basis", a.basis) for i, a in enumerate(parsed.advisory_signals)]
+    for owner, i, field, evidence in lists:
+        for j, e in enumerate(evidence):
+            if _resolves(_normalized(e.pointer), by_id[e.transaction_ref]):
+                continue
+            pieces = [owner, i, field, j, "pointer", e.pointer.locus]
+            if isinstance(e.pointer, BodyLocator):
+                pieces += ["body", e.pointer.body.kind]
+            found.add(".".join(_site_piece(piece) for piece in pieces) + ":" + UNRESOLVED_KIND)
+    return tuple(sorted(found))[:MAX_SITES]
 
 
 def _cna_set(evidence: Sequence[EvidenceDraft], by_id: dict[UUID, Transaction]) -> frozenset:
