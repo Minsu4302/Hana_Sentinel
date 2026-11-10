@@ -1399,6 +1399,8 @@ model_id는 `이름@sha256:<첫 파일 SHA-256>`이다(7B는 2분할 — 둘째 
 
 ## 선별 결과 — 선정 없음 (Issue #117)
 
+> **[무효 — 2026-11-10 민수 판정]** 이 실행은 측정 장치 결함으로 무효다. 아래 「선별 실행 무효 판정」 참조. 표·사실은 기록으로 남긴다.
+
 진단보다 먼저 기록한다(결과 잠금). 모델 능력에 대한 결론은 진단 뒤로 미룬다 — Qwen 계열 거부가 전부 `draft_schema_invalid`라 측정 장치 결함(전송 스키마 ≠ Pydantic 계약) 가능성이 있다.
 
 ### 민수 판정
@@ -1448,3 +1450,66 @@ model_id는 `이름@sha256:<첫 파일 SHA-256>`이다(7B는 2분할 — 둘째 
 - §6.2 무효 처리 규칙(측정 장치 결함만, 1회 재실행, 기준 고정)과 ② 문구 정리. 규칙은 선별 결과를 본 뒤 등록했다는 사실을 함께 적었다.
 - §2.8 LLM 초안 거부 감사에 Pydantic 오류의 위치·종류 코드(값·메시지 금지) — 구현은 진단 PR.
 - §2.4 elapsed_ms 정의(③ 통과 직후부터 응답 조립까지).
+
+---
+
+## 진단·수정 — 거부 원인 진단(#124), LLM 계약 전달(#126, (A) v1.42), 게이트 검사 전달(#128, (A) v1.43)
+
+- #124 진단 장치: LLM 초안 거부 감사에 Pydantic 오류의 위치·종류(계약 이름·정수만, 그 밖은 `<extra>`), 러너 `rejections` 집계, 정적 대조 `tools/eval/schema_gap`.
+- #126 수정: `JsonPointer`의 JSON 스키마에 RFC 6901 문법 pattern(검증 동작 불변), 프롬프트 출력 규칙 절(`OUTPUT_RULES`에서 펼침), 하위 제약 단위 판정, 신규 키 `llm_contract_conveyed`(enforced), inference-server 수동 가드(스키마 변환 경고 0, 버전 변경 시 탐침).
+- #128 수정: 출력 규칙 3문장(locus ↔ 뷰 키, occurrence 단위, 본문 kind), 게이트 검사 표(`DRAFT_CHECKS` 17개 → 근거 판정 → 전달 수단, 기존 `Rules:` 문장은 원문 등록·템플릿 불변), 거부 사유 코드 ↔ 검사 대응, `pointer_unresolvable` 감사 위치(locus·body kind까지).
+- 깨진 가정: "응답 형식을 문법으로 강제하면 스키마 위반은 없다" — 전송 스키마가 계약 제약을 잃은 자리(JSON Pointer)는 문법이 막지 못했다. "게이트 조건은 지시문이 이미 전한다" — 해석 조건 4건은 전해지지 않았다.
+- 한계(남음): 서버 문법의 키워드 강제는 수동 절차다(`make verify`는 실서버를 보지 않는다). `DRAFT_CHECKS`는 게이트 옆 선언이라 같은 사유 코드 아래의 새 해석 조건은 기계로 못 잡는다.
+
+---
+
+## 선별 실행 무효 판정 (Issue #129, (A) v1.44)
+
+### 판정 (민수, 2026-11-10)
+- `draft_schema_invalid` 31건 = 측정 장치 결함(v1.41 무효 처리 규칙 — 전송 스키마가 계약 제약을 잃음). 선별 실행(Issue #117) 무효.
+- 게이트 해석 조건 4건 미전달도 장치 결함(기준: 게이트가 요구하는 조건을 우리가 준 정보만으로 모델이 알 수 있는가).
+- truncated·`pointer_unresolvable`·`evidence_ref_outside_analyzed`는 모델 행동이다 — 무효 사유가 아니다.
+
+### 원인
+1. 전송 스키마의 JSON Pointer: body.json.path가 `{"type": "string"}`뿐이었다(Pydantic 검증기는 스키마로 나가지 않는다). 문법이 형식을 강제하지 않고 지시문도 형식을 말하지 않아 모델이 점 표기(`body.user.name`)를 냈고, 게이트가 `value_error`로 거부했다.
+2. 게이트 해석 조건 4건이 모델에게 전달되지 않았다: 본문 kind json은 content가 JSON이고 truncated=false일 때만 / locus 이름과 뷰 키의 대응 / occurrence 단위(헤더는 대소문자 무시 같은 이름끼리, 파라미터는 같은 (location, 이름)끼리).
+
+### 근거
+- 진단 집계(dev 재실행, 코드 `9c88bac`, 예산 사전 등록 값 그대로). outcome 수·llm_only_tp·llm_fp가 무효 실행과 4개 후보 모두 같았다(temperature 0). 진단 보고(PR #124 댓글): https://github.com/Minsu4302/Hana_Sentinel/pull/124#issuecomment-6761282081
+
+| 후보 | 실패율 | truncated | rejected | 사유별 | 거부 자리(경로 · 종류) |
+|---|---|---|---|---|---|
+| Qwen2.5-1.5B | 5% | 1 | 1 | draft_schema_invalid 1 | `findings.*.evidence.*.pointer.resp_body.body.json.path` · value_error 1 |
+| Qwen3-4B-2507 | 55% | 9 | 13 | draft_schema_invalid 13 | 같은 자리 13 |
+| Phi-4-mini | 75% | 8 | 22 | pointer_unresolvable 16, draft_schema_invalid 4, evidence_ref_outside_analyzed 2 | 같은 자리 4 |
+| Qwen2.5-7B(참고) | 35% | 1 | 13 | draft_schema_invalid 13 | 같은 자리 13 |
+
+  - `draft_schema_invalid` 31건이 전부 한 자리다. 다른 위치·종류는 0건.
+- 정적 대조(#124 시점): represented 36, missing 0, not_expressible 2(req_body·resp_body의 JSON Pointer 검증기), excluded 9.
+- 문법 탐침(레포 밖, Qwen2.5-1.5B, llama.cpp b12119, 합성 지시문만 — dev·test 데이터 없음, 기동마다 방화벽 확인):
+
+| 탐침 | 결과 |
+|---|---|
+| format uuid · minimum · minItems · enum | 강제됨 |
+| 키워드 없는 path 문자열 | 강제 안 됨(점 표기 출력) |
+| RFC 6901 pattern(점 표기 유도) | 강제됨 — 단 `/user.name`은 문법상 유효(형식만 보장) |
+| additionalProperties false | 강제됨 |
+| 부정 전방탐색 pattern | 지원 안 됨 — 서버 로그 경고만 남기고 아무 문자열이나 받음(요청은 200) |
+| 전방탐색 없는 `-` 금지 pattern, `/items/-` 유도 | HTTP 500(출력이 형식에 맞지 않음) |
+
+- 0단계 표(게이트 검사 × 전달 문장): 전달 안 됨 2건(json kind의 JSON 조건, truncated 조건), 약함 2건(locus 대응, occurrence 단위) → 4건 모두 장치 결함으로 판정. transaction_id는 뷰 120/120에 있고, 헤더(`name,value`)·파라미터(`name,value,location`)는 뷰에서 그대로 복사할 수 있다.
+
+### 수정 PR
+- #124(진단 장치), #126((A) v1.42 — 스키마 pattern·출력 규칙·`llm_contract_conveyed`), #128((A) v1.43 — 게이트 검사 전달·감사 위치).
+- `prompt_version`(묶음 해시)은 바뀐다 — 정상. 기존 `Rules:` 절 지시문은 바꾸지 않았다(튜닝 아님 — 결함 수정만).
+
+### 채택하지 않은 것 — `-` 토큰 금지의 동치 pattern
+- `^(/(([^~/-]|~[01])([^~/]|~[01])*|-([^~/]|~[01])+)?)*$` (전방탐색 없음). 검증기 `_check_json_pointer`와 판정 일치 — 알파벳 `/-~01a.`, 길이 0~7의 960,800개 문자열 전수 대조에서 차이 0.
+- 채택하지 않은 이유(민수 판정): pattern 위반은 서버가 HTTP 500으로 끝내 `bad_status → unavailable`(환경 실패)로 잘못 분류되어 J2 사유가 거짓이 된다. 출력 규칙 문장만 쓰면 위반은 게이트에서 `draft_schema_invalid`(모델 행동)로 정확히 분류된다.
+
+### 재실행 전 예상
+- draft_schema_invalid와 pointer_unresolvable이 줄 수 있다. 남는 것은 모델 행동으로 센다.
+
+### 재실행 조건 (v1.41 규칙의 1회)
+- 같은 기준(§6.2 ①~⑤), 사전 등록 예산 그대로(max_tokens 400, 뷰 상한·기한은 등록값), S v2 dev 40건, `--rerun-env-failures`. 선정용 3개 → 참고 3개(4B급 2개·7B, 기한 240초).
+- 기동마다 방화벽 확인 + 서버 로그의 스키마 변환 경고 수 기록(수동 가드).
