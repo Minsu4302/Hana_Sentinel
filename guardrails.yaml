@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.34. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.35. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.34"
+derived_from: "docs/design-decision.md §3 매핑표 v1.35"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -812,6 +812,32 @@ guardrails:
       - "tests/test_llm_wiring.py::test_changing_one_setting_changes_the_prompt_version"
       - "tests/test_llm_wiring.py::test_setting_changed_after_freezing_is_out_of_the_freeze_order"
     manifest_key: prompt_model_freeze
+  - id: llm_contract_conveyed
+    description: "LLM 초안 계약의 모든 하위 제약이 전송 스키마에 표현 / 프롬프트 출력 규칙 절에 열거 / 정당한 제외(초안 금지) 중 하나다. 새 제약·새 검증기는 실패"
+    target_layer: "테스트"
+    status:
+      state: enforced
+      note: "전달은 보장하지만 모델이 지키는지는 게이트가 판정. 범위 — Pydantic 초안 계약과 JSON Pointer 하위 제약. 서버 문법의 키워드 강제는 수동 절차"
+    verification_tests:
+      - "tests/test_llm_contract_conveyed.py::test_every_draft_constraint_is_conveyed_or_legitimately_excluded"
+      - "tests/test_llm_contract_conveyed.py::test_json_pointer_is_judged_per_subconstraint"
+      - "tests/test_llm_contract_conveyed.py::test_only_range_and_advisories_are_excluded"
+      - "tests/test_llm_contract_conveyed.py::test_every_output_rule_belongs_to_a_known_subconstraint"
+      - "tests/test_llm_contract_conveyed.py::test_rendered_prompt_lists_every_rule_under_the_heading_only"
+      - "tests/test_llm_contract_conveyed.py::test_schema_carries_the_rfc_pattern_and_nothing_narrower"
+      - "tests/test_llm_contract_conveyed.py::test_contract_itself_is_unchanged_by_the_schema_pattern"
+      - "tests/test_llm_contract_conveyed.py::test_dropped_pattern_makes_the_syntax_missing"
+      - "tests/test_llm_contract_conveyed.py::test_a_different_pattern_does_not_count_as_the_contract"
+      - "tests/test_llm_contract_conveyed.py::test_one_missing_rule_is_not_covered_by_the_schema_pattern"
+      - "tests/test_llm_contract_conveyed.py::test_partial_rule_does_not_convey_the_subconstraint"
+      - "tests/test_llm_contract_conveyed.py::test_rule_outside_the_section_does_not_count"
+      - "tests/test_llm_contract_conveyed.py::test_rule_table_without_the_id_does_not_convey_it"
+      - "tests/test_llm_contract_conveyed.py::test_exclusion_without_a_basis_is_missing"
+      - "tests/test_llm_contract_conveyed.py::test_new_validator_without_a_decomposition_fails_the_fixed_check"
+      - "tests/test_llm_contract_conveyed.py::test_template_without_the_rules_slot_is_refused"
+      - "tests/test_llm_contract_conveyed.py::test_conveyance_is_load_bearing_under_verified_mutation"
+      - "tests/test_llm_contract_conveyed.py::test_conveyance_judge_is_load_bearing_under_verified_mutation"
+    manifest_key: llm_contract_conveyed
   - id: completed_via_gate
     description: "④의 completed 반환 경로가 출력 게이트를 지남(현존 경로 한정)"
     target_layer: "테스트"

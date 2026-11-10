@@ -28,7 +28,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 
 NonNegative = Annotated[int, Field(ge=0)]
 
-_POINTER_RE: Final = re.compile(r"^(/([^~/]|~[01])*)*$")
+POINTER_PATTERN: Final = r"^(/([^~/]|~[01])*)*$"  # RFC 6901 문법만. "-" 세그먼트 금지는 아래 검증기에만 있다
+_POINTER_RE: Final = re.compile(POINTER_PATTERN)
 
 
 def _check_json_pointer(value: str) -> str:
@@ -39,7 +40,8 @@ def _check_json_pointer(value: str) -> str:
     return value
 
 
-JsonPointer = Annotated[str, AfterValidator(_check_json_pointer)]
+# JSON 스키마에는 문법(pattern)만 싣는다 — 전송 스키마가 계약 제약을 잃지 않게((A) §2.8). 검증 동작은 그대로다.
+JsonPointer = Annotated[str, AfterValidator(_check_json_pointer), Field(json_schema_extra={"pattern": POINTER_PATTERN})]
 
 
 class _Common(BaseModel):
