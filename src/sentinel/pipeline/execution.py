@@ -78,8 +78,9 @@ def _audited(llm_run: LlmRun, outcome: AnalysisResult | output_gate.OutputReject
 
 
 def build_execution_response(sanitized: SanitizedEnvelope, manifest_snapshot: dict[str, Any],
-                             llm_run: LlmRun | None = None) -> ExecutionResponse:
-    started = time.monotonic()
+                             llm_run: LlmRun | None = None, *, started: float | None = None) -> ExecutionResponse:
+    """started는 분석 시작 시각(단조 시계)이다. 진입 함수가 ③ 통과 직후 값을 넘긴다 — 없으면 지금부터 잰다(④만)."""
+    started = time.monotonic() if started is None else started
     transactions = sanitized.transactions()
     draft = _draft_json([d for tx in transactions for d in rule_engine.evaluate(tx)])
 

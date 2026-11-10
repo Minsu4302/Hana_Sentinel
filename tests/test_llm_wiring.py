@@ -131,6 +131,17 @@ def test_rule_and_adapter_use_the_same_snapshot(store, monkeypatch):
     assert seen and marker not in seen[0] and marker.encode() not in stub.requests[0]
 
 
+def test_elapsed_time_includes_the_llm_call(store):
+    """시계가 LLM 호출 뒤에서 시작하면 선별 보고의 소요 시간이 0에 가깝게 나온다(선별 결과 보고 3번)."""
+    delay = 0.5
+    response, _stub = _analyze(_slow(delay, _draft()), Limits(io_timeout_seconds=5.0, deadline_seconds=5.0))
+    assert response.result.analysis_meta.elapsed_ms >= delay * 1000
+
+
+def test_rule_only_elapsed_time_is_still_measured():
+    assert entry.analyze(_raw(_env()), {}).result.analysis_meta.elapsed_ms >= 0
+
+
 # ── 적대: 스텁 서버 ────────────────────────────────────────────────
 
 @pytest.mark.parametrize("respond, reason", [
@@ -757,6 +768,9 @@ MUTATIONS = {
                          [_T + "test_llm_finding_reaches_the_result_through_the_gate"]),
     "view_flag_dropped": (*EXEC, "            llm_view_truncated=llm_run is not None and llm_run.view_truncated,\n", "",
                           [_T + "test_server_adds_the_view_limitation_when_the_view_was_cut"]),
+    "clock_starts_after_the_llm": (*ENTRY, "    return execution.build_execution_response(sanitized, manifest_snapshot, llm_run, started=started)\n",
+                                   "    return execution.build_execution_response(sanitized, manifest_snapshot, llm_run)\n",
+                                   [_T + "test_elapsed_time_includes_the_llm_call"]),
     "raw_output_not_fingerprinted": (*EXEC, "    if llm_run.raw_output is not None:\n", "    if False:\n", [_T + "test_fingerprint_is_of_the_view_and_the_raw_output"]),
 }
 
