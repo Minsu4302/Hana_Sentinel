@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.36",
+  "spec": "docs/design-decision.md §3 매핑표 v1.37",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -37,7 +37,7 @@
     "egress_enforcement_owner": {
       "status": "unverifiable",
       "effective_status": "unverifiable",
-      "note": "추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함",
+      "note": "추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함. Burp 자체의 외부 연결(업데이트 확인 등)은 시스템 밖 도구 — OS·운영 통제가 실주체",
       "verification_tests": []
     },
     "local_llm_vs_egress": {
@@ -330,6 +330,24 @@
         "tests/test_tools_no_send.py::test_tools_send_check_is_load_bearing_under_verified_mutation"
       ]
     },
+    "java_no_target_send": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "Java 1부 구현 PR",
+      "verification_tests": []
+    },
+    "java_loopback_only": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "Java 1부 구현 PR",
+      "verification_tests": []
+    },
+    "java_build_egress": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "Java 1부 구현 PR",
+      "verification_tests": []
+    },
     "engine_burp_isolation": {
       "status": "enforced",
       "effective_status": "enforced",
@@ -461,12 +479,6 @@
         "tests/test_sanitization.py::test_rejection_audit_has_reason_codes_only_no_values_or_input_names",
         "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema"
       ]
-    },
-    "receipt_hmac": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Java 연결 시",
-      "verification_tests": []
     },
     "secret_scan_hook": {
       "status": "enforced",

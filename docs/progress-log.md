@@ -1603,3 +1603,31 @@ model_id는 `이름@sha256:<첫 파일 SHA-256>`이다(7B는 2분할 — 둘째 
 
 ### 산출물
 - 레포 밖 스크래치패드 `rerun/`(보고서·감사 DB·서버 로그·집계 `aggregate.json`). 원문은 없다.
+
+---
+
+## Java 연결 1부 — 경계·송신 (Issue #133, (A) v1.46)
+
+### 0단계 환경 확인 (2026-11-16, 민수 승인)
+| # | 항목 | 확인 결과 |
+|---|---|---|
+| 1 | JDK | Eclipse Temurin 21.0.13+9 LTS. Adoptium API → GitHub `adoptium/temurin21-binaries` 릴리스 zip, SHA-256 `a4dbaa05fca4bd89d84584e58c459bd732efebb1722af80ab13c6516832004f9`(API 값·릴리스 체크섬 파일과 일치). zip만 풀었다(레포 밖, 시스템 설치·PATH 변경 없음). |
+| 2 | Burp | Community Edition 2024.12.1. 설치 파일이 남아 있지 않아 설치 파일 SHA-256은 확인 불가. 설치된 `BurpSuiteCommunity.exe`는 Authenticode 서명 유효(PortSwigger Ltd). |
+| 3 | Montoya API | `net.portswigger.burp.extensions:montoya-api:2024.12`(Maven Central). Burp jar 안의 Montoya 소스 225개가 2024.12 sources와 전부 같다(2024.11은 224, 2025.2는 220). |
+| 4 | 최소 확장 로드 | 레포 밖 임시 Gradle 프로젝트(이름 등록 + 로그 한 줄, Java 17 대상). `--user-config-file`·전용 `--data-dir`로 등록 → Community에서 로드됨(화면에서 사람이 확인). |
+| 5 | Gradle 의존성 | Gradle 9.9.1 배포본(SHA-256 공식값과 일치). 새 Gradle 홈에서 빌드가 받은 것은 montoya-api 2024.12의 jar·pom·module 3개뿐. |
+| 6 | Burp 외부 연결 | 관찰만(차단·우회 없음, `--disable-auto-update` 미사용). 10분 동안 외부 TCP 3건, 모두 443 SynSent(CloudFront 2, AWS eu-west-1 1). 목적 미확인 — 시스템 밖 도구. |
+
+- 번들 JRE는 22.0.2이고 javac가 없다 — 빌드에는 별도 JDK가 필요하다. Java 17 대상 jar는 번들 JRE에서 로드됐다.
+- 확장 출력 설정 미적용: 설정 파일의 `"output": "system"`이 적용되지 않고 출력이 Burp 화면으로 갔다. 그래서 자동 판정은 할 수 없었고 로드는 사람이 확인했다 → Burp 로드 확인은 수동 절차로 둔다(§2.9).
+- `--data-dir`로도 Burp는 기본 사용자 설정 위치(레지스트리 Java Preferences)에 값을 썼다. 그 값에 확장 이름·경로·extender 흔적은 0건이다.
+
+### (A) v1.46
+- §2.9 신설(Burp Extension(Java) 계약), §1.3 ⓐ 해석 한 줄, ⓑ 해석 강제 매핑에 Java 확장, §1.4 N1·N2.
+- §3.1 신규 `java_no_target_send`·`java_loopback_only`·`java_build_egress`(not_implemented → Java 1부 구현 PR), §3.2 `java_logic_isolation` 규칙 구체화, `egress_enforcement_owner` 노트.
+- `receipt_hmac` 기각(민수 판정) → §4 R-12, §3.3 행 삭제.
+- 매핑표 v1.37. CLAUDE.md 금지선 색인 N1·N2 갱신(같은 PR).
+
+### 이월
+- 구현 PR: Java 1부 코드, `docs/burp-extension.md`(로드 확인 수동 절차), Gradle wrapper `distributionSha256Sum` 고정 + 의존성 검증 메타데이터 커밋.
+- 2부(다음 개정): Java 마스커 동등성, 토큰 강화 상세, 클라이언트 동작, 오프라인 반입 절차, 회사 Burp(에디션·버전) 호환 확인.
