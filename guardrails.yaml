@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.36. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.37. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.36"
+derived_from: "docs/design-decision.md §3 매핑표 v1.37"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -42,7 +42,7 @@ guardrails:
     target_layer: "외부"
     status:
       state: unverifiable
-      note: "추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함"
+      note: "추론 서버 프로세스의 외부 연결(텔레메트리·업데이트·원격 다운로드) 포함. Burp 자체의 외부 연결(업데이트 확인 등)은 시스템 밖 도구 — OS·운영 통제가 실주체"
     verification_tests: []
     manifest_key: egress_enforcement_owner
   - id: local_llm_vs_egress
@@ -362,6 +362,30 @@ guardrails:
       - "tests/test_tools_no_send.py::test_empty_or_missing_target_is_an_error_not_a_pass"
       - "tests/test_tools_no_send.py::test_tools_send_check_is_load_bearing_under_verified_mutation"
     manifest_key: tools_no_external_send
+  - id: java_no_target_send
+    description: "Burp 확장은 대상 송신 API를 쓰지 않는다 — 사용하는 Montoya API를 허용 목록으로 고정(컨텍스트 메뉴·요청/응답 읽기·UI·로깅). 그 밖의 API 호출(http().sendRequest 계열, Repeater·Intruder·Scanner 전송, Collaborator, persistence·preferences 포함) = 위반"
+    target_layer: "아키텍처테스트"
+    status:
+      state: not_implemented
+      target: "Java 1부 구현 PR"
+    verification_tests: []
+    manifest_key: java_no_target_send
+  - id: java_loopback_only
+    description: "Burp 확장의 송신은 분석 서버 127.0.0.1 리터럴만(NO_PROXY 명시, 리다이렉트 비추종)"
+    target_layer: "아키텍처테스트"
+    status:
+      state: not_implemented
+      target: "Java 1부 구현 PR"
+    verification_tests: []
+    manifest_key: java_loopback_only
+  - id: java_build_egress
+    description: "Burp 확장 빌드 의존성 = Montoya API(compileOnly)만. HTTP 클라이언트·텔레메트리 라이브러리 0. Gradle wrapper distributionSha256Sum 고정 + 의존성 검증 메타데이터 커밋(해시까지 강제)"
+    target_layer: "아키텍처테스트"
+    status:
+      state: not_implemented
+      target: "Java 1부 구현 PR"
+    verification_tests: []
+    manifest_key: java_build_egress
   - id: engine_burp_isolation
     description: "엔진 Burp/Montoya import 0"
     target_layer: "아키텍처테스트"
@@ -375,7 +399,7 @@ guardrails:
       - "tests/test_architecture.py::test_empty_or_missing_package_is_an_error_not_a_pass"
     manifest_key: engine_burp_isolation
   - id: java_logic_isolation
-    description: "Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만)"
+    description: "Java에 분석·판정·프롬프트·취약점 로직 금지 (capture / transport / ui만) — 패키지 = capture/transport/ui만, 금지 토큰(category 리터럴·프롬프트 문구·판정 어휘), 의존성 허용 목록"
     target_layer: "아키텍처테스트"
     status:
       state: not_implemented
@@ -506,14 +530,6 @@ guardrails:
       - "tests/test_sanitization.py::test_rejection_audit_has_reason_codes_only_no_values_or_input_names"
       - "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema"
     manifest_key: sanitization_trust
-  - id: receipt_hmac
-    description: "영수증 HMAC 서명"
-    target_layer: "스키마·validator"
-    status:
-      state: not_implemented
-      target: "Java 연결 시"
-    verification_tests: []
-    manifest_key: receipt_hmac
   - id: secret_scan_hook
     description: "비밀값 커밋 금지"
     target_layer: "CI게이트"
