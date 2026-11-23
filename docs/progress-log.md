@@ -1740,3 +1740,60 @@ model_id는 `이름@sha256:<첫 파일 SHA-256>`이다(7B는 2분할 — 둘째 
 ### 평가 산출물 보관 절차(이번 PR)
 - 앞으로 보고서·감사 DB·집계는 고정 폴더에 둔다(`docs/inference-server.md` §5).
 - 집계 파일의 SHA-256은 progress-log에 기록한다.
+
+### 서빙 진단 결론 (2026-11-23)
+- 마지막 단계의 공통 조건
+  - 합성 입력, 기본 모드, `--no-cache-prompt`, `-v`. 서버 출력은 메모리에서만 다뤘다.
+  - `SENTINEL_LLM_MAX_TOKENS=2048`, `SENTINEL_LLM_DEADLINE_SECONDS=900`.
+  - 기동마다 방화벽 22/22/0, 스키마 변환 경고 0. 실행 후 로그 파일 0개를 확인했다.
+
+#### 1. 4B — 사고 구간을 문법에서 뺀 재판별(`--reasoning-format none`)
+- 인자 확인
+  - `--help` 원문: "controls whether thought tags are allowed and/or extracted from the response … none: leaves thoughts unparsed in `message.content` … (default: auto)".
+  - 소스 경로(커밋 `6f1e65437`): `none` → `COMMON_REASONING_FORMAT_NONE`(`chat.cpp:1027-1028`) → 서버 옵션(`server-context.cpp:1729`) → 요청 입력(`server-common.cpp:1469`) → autoparser의 `extract_reasoning = reasoning_format != NONE`(`chat-auto-parser-generator.cpp:104`).
+
+| 탐침 | 파서 덤프 reasoning 노드 | 문법 부착 근거(prefill 줄) | 생성 토큰 | 경과(초) | 클래스 | 스키마 밖 키 | JSON 앞 토큰 | JSON 뒤 텍스트 | llm_outcome |
+|---|---|---|---|---|---|---|---|---|---|
+| P0 | 없음 | 3 | 2048 | 425.3 | (미해석 출력) 비JSON 시작 | 12 | 196 | 있음(841토큰) | failed:unavailable(peg 500) |
+| P1 | 없음 | 3 | 2048 | 431.6 | (미해석 출력) 비JSON 시작 | 16 | 153 | 있음(885토큰) | failed:unavailable(peg 500) |
+
+- 판정(사전 고정 기준): reasoning 노드가 없는데도 위반이 있다 → 원인 미확정.
+- 관찰(해석 없음): 미해석 출력의 수치가 `--reasoning-format none`을 넣기 전과 같다(문자 수 5,526·5,670, 스키마 밖 키 12·16, JSON 앞 196토큰). 문법 구성이 바뀌었는데 출력이 달라지지 않았다.
+
+#### 2. 7B — JSON 뒤 텍스트의 정체
+- 2-1 정적 확인
+  - GGUF 메타데이터(표준 라이브러리로 읽음): EOS = 151645 `<|im_end|>`(CONTROL). EOT·EOG 키는 없다.
+  - EOG 집합은 로드할 때 만들어진다. `<|im_end|>`·`<|endoftext|>`는 텍스트 일치로 들어가고(`llama-vocab.cpp:3272`·`3279`), EOS도 들어간다(`3330-3331`).
+  - 실행 중 서버 출력의 EOG id 6개에 151645가 포함됐다.
+- 2-2 실행(7B P0): peg 500, 2048토큰, 586.3초. 문법 부착 근거는 prefill 줄 3이다.
+  - JSON 객체가 닫힌 뒤 구간: 7,105자 / 1,768토큰.
+  - 문자 클래스: 공백·개행 1,223 / 영문 4,914 / 한글 0 / 구두점·기호 968 / 기타 0.
+- 판정(사전 고정 기준): 비공백 문자가 있다 → 문법 종료 뒤 강제 실패. 원인 미확정.
+
+#### 확정된 사실
+- `--skip-chat-parsing`에서는 문법이 만들어지지 않는다(소스).
+- 기본 모드에서는 문법이 샘플러에 붙는다. 근거는 prefill 줄(4B·7B·Phi)과 Phi 응답의 생성 설정(문법 11,339자, lazy=false)이다.
+- 그런데도 위반이 난다.
+  - 4B: 스키마 밖 키, JSON 앞뒤 텍스트. `--reasoning-format none`으로 reasoning 구간을 빼도 같다.
+  - 7B: JSON 뒤 비공백 텍스트. `<|im_end|>`는 EOG다.
+  - Phi와 7B P1은 정상이었다.
+- 소스상 H1·H2·H4는 반박됐다. H5(사고 구간)는 4B 위반을 설명하지 못했다.
+- peg 500은 모두 생성이 예산(400 또는 2048)에 도달한 건이었다. 응답 본문에는 토큰 수가 없다.
+
+#### 미확정 사항
+- 문법이 붙어 있는데도 위반 출력이 나오는 이유.
+- 4B 출력이 문법 구성과 무관하게 같았던 이유.
+- 7B가 문법이 끝난 뒤 EOG가 아닌 토큰을 생성한 경로.
+
+#### 대응책 후보(미채택)
+- 사고 끄기 인자(`--reasoning-format none` / `--reasoning off`). 4B에는 효과가 관찰되지 않았다.
+- 예산 조정(max_tokens).
+- JSON 뒤 공백 처리.
+- `--skip-chat-parsing`. 생성 중 강제가 없다.
+- 실행 중 문법 적용 상태를 추가로 확인하는 방법.
+
+#### 상태
+- 서빙 트랙은 보류한다(민수 결정).
+- 재개 조건: 2차 선별의 새 사전 등록이 서빙 구성(사고 설정·예산·기동 인자)을 명시할 때.
+- test 측정 금지는 유지한다. 분류 결함이 해소되거나, 500 경로가 없음이 보일 때까지다.
+- (A)·코드·기동 절차는 바꾸지 않았다.
