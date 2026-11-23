@@ -51,8 +51,9 @@ llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-web
 ### 문법 강제 탐침 (llama.cpp 버전을 바꿀 때)
 
 전송 스키마의 키워드를 서버 문법이 실제로 강제하는지는 서버 버전마다 다르다. 버전을 바꾸면 `pattern`·`additionalProperties`
-탐침을 다시 돌린다. b12119는 작은 스키마·짧은 출력(max_tokens 48~96)에서만 확인했다. 전송 스키마 전체·400토큰에서는 생성 중 강제가
-관찰되지 않았다(서빙 진단 0단계). 원인 미확인 — 진단 중. 탐침은 합성 지시문만 쓴다 — dev·test 데이터를 넣지 않는다.
+탐침을 다시 돌린다. b12119는 작은 스키마·짧은 출력(max_tokens 48~96)에서만 강제를 확인했다. 기본 모드에서도 생성 중 강제가
+일관되지 않다 — 판별 실험(전송 스키마 전체, max_tokens 2048)에서 6건 중 3건이 위반했다. 소스상 경로와 맞지 않으며 원인 진단 중이다.
+탐침은 합성 지시문만 쓴다 — dev·test 데이터를 넣지 않는다.
 일부러 제약을 어기는 답을 유도하고, 출력이 제약을 지키면 '강제됨'이다.
 
 한계(정직 표기): `make verify`는 실서버를 보지 않는다. 이 두 확인은 기계 강제가 아니라 수동 절차다(`llm_contract_conveyed`는
@@ -74,6 +75,26 @@ llama-server.exe -m <모델.gguf> --host 127.0.0.1 --port <N> --offline --no-web
 선별 실행은 `--rerun-env-failures`를 붙인다. 환경 실패 건만 1회 다시 돌리고 보고서 `reruns`에 처음·다시 결과를 남긴다.
 
 평가는 `make eval EVAL_ARGS="--dataset datasets/S/v2 --split dev --serving-conditions <파일>"`다. 서빙 조건 파일은 `server_version`·`threads`·`context`·`parallel`·`cpu`를 담은 JSON이고 rule_llm에서 필수다(§6.3 J9). 동결 대상이 아니라 측정 조건 기록이다.
+
+### 평가 산출물 보관
+
+보고서(`--out-dir`)·감사 DB(`SENTINEL_AUDIT_DB`)·집계는 다음을 모두 만족하는 고정 폴더에 둔다.
+
+- 레포 밖이다(레포에 반입하지 않는다).
+- 세션 스크래치패드·임시 폴더(`%TEMP%`·`AppData\Local\Temp` 아래) 밖이다. 세션 임시 폴더는 사라질 수 있다.
+- OneDrive 등 클라우드 동기화 폴더 밖이다(N1 — 동기화는 외부 전송이다).
+
+예: `%USERPROFILE%\sentinel-eval\<실행 이름>\` — 추론 서버 폴더와 같은 층이다.
+
+후보 경로가 동기화 대상이 아님을 실행 전에 확인한다(PowerShell).
+
+1. `$env:OneDrive`, `$env:OneDriveCommercial`, `$env:OneDriveConsumer`가 비어 있거나, 후보 경로가 그 아래가 아닌가.
+2. `Get-ItemProperty 'HKCU:\Software\Microsoft\OneDrive\Accounts\*' | Select-Object UserFolder` — 후보 경로가 어느 UserFolder 아래도 아닌가.
+3. `Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'`의 Desktop·Personal(문서)이
+   동기화 폴더로 옮겨진 경우(알려진 폴더 이동), 후보 경로가 그 아래가 아닌가.
+4. 다른 동기화 클라이언트(회사 배포 도구 포함)가 있으면 그 동기화 루트도 같은 방식으로 확인한다.
+
+실행이 끝나면 집계 파일의 SHA-256(`Get-FileHash -Algorithm SHA256`)을 progress-log에 기록한다.
 
 ## 6. 끝낸 뒤
 
