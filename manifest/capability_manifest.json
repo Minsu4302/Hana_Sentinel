@@ -373,6 +373,10 @@
         "tests/test_java_boundary.py::test_java_step_preflight_passes_with_jdk21_and_cached_distribution",
         "tests/test_java_boundary.py::test_java_step_preflight_fails_instead_of_skipping_or_downloading",
         "tests/test_java_boundary.py::test_java_step_runs_gradle_offline",
+        "tests/test_java_boundary.py::test_wrapper_distribution_hash_matches_gradle_folder_rule",
+        "tests/test_java_boundary.py::test_tampered_wrapper_script_is_never_executed",
+        "tests/test_java_boundary.py::test_changed_distribution_url_fails_before_any_execution",
+        "tests/test_java_boundary.py::test_untouched_wrapper_runs_gradle_offline_as_control",
         "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
       ]
     },

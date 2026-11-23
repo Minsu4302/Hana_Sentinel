@@ -1840,6 +1840,24 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 ### 깨진 가정 / 사실 기록
 - 스크래치패드 소실이 재발했다(`dl/gradle`·`dl/jdk`·`dl/montoya`). 원인은 세션 임시 폴더 정리로 판단하지만 미확정이다.
 
+### 리뷰 반영 — verify 실행 전 검사 순서
+- `gradlew`·`gradlew.bat`의 sha256을 고정했다(커밋본 = 리뷰된 값, `.gitattributes`로 줄바꿈 고정).
+- verify Java 단계는 Gradle을 실행하기 전에 다음을 확인한다. 어긋나면 gradlew를 실행하지 않는다.
+  - wrapper 고정값: distributionUrl, distributionSha256Sum, wrapper jar sha, gradlew/gradlew.bat sha
+  - auto-download 끔
+- 캐시 확인은 고정 distributionUrl에서 나온 폴더(URL의 MD5를 36진수로 표기, 개발 PC 실제 폴더 이름과 일치)와 `.ok` 표지까지 본다.
+- 위조 거부:
+  - 실행되면 표식 파일을 쓰는 가짜 gradlew → 사전 점검이 실패하고, 표식 파일은 생기지 않는다.
+  - distributionUrl 변경 → 실행 전에 실패한다.
+- 변이 확인: 사전 점검의 wrapper 검사를 빼면 가짜 스크립트가 실행되어 테스트가 실패한다.
+
+### 2부 0단계에서 정할 것(기록만)
+- 금지 토큰 일반어 14개의 처리. 원칙은 세 가지다.
+  - 손으로 쓴 면제는 금지한다.
+  - 정본에서 기계로 뽑고 범위를 한정한다(예: §2.2 전송 스키마 필드 이름 → transport 패키지만).
+  - (A) 2부 개정에 명시한다.
+- Gson을 배포 jar에 넣는 방법(플러그인 'java'만 허용하는 조건 안에서).
+
 ### Burp 수동 로드 확인
 - 민수가 Burp Community 2024.12.1에서 확인했다(2026-11-23). jar는 `sentinel-burp-extension-0.1.0.jar`다.
   - Installed 목록에 이름 Sentinel이 있고 Loaded가 체크돼 있다.

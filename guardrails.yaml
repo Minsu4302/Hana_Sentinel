@@ -394,7 +394,7 @@ guardrails:
       - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
     manifest_key: java_loopback_only
   - id: java_build_egress
-    description: "Burp 확장 의존성 — 정확한 좌표 허용 목록 — 런타임 = {montoya-api(compileOnly), gson, error_prone_annotations}(gson·error_prone_annotations는 배포 jar에 포함), 테스트 = 허용 목록(JUnit 등). 목록 밖 좌표가 하나라도 있으면 위반. 버전은 후보이며 구현 PR에서 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0. 툴체인 자동 다운로드 끔(org.gradle.java.installations.auto-download=false), 툴체인 resolver 플러그인·플러그인 저장소·추가 저장소 0(저장소는 mavenCentral() 하나), 외부 Gradle 플러그인 0. make verify의 Java 단계는 gradlew --offline — JDK 21·wrapper 배포판 캐시가 없으면 실패(내려받지 않음)"
+    description: "Burp 확장 의존성 — 정확한 좌표 허용 목록 — 런타임 = {montoya-api(compileOnly), gson, error_prone_annotations}(gson·error_prone_annotations는 배포 jar에 포함), 테스트 = 허용 목록(JUnit 등). 목록 밖 좌표가 하나라도 있으면 위반. 버전은 후보이며 구현 PR에서 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0. 툴체인 자동 다운로드 끔(org.gradle.java.installations.auto-download=false), 툴체인 resolver 플러그인·플러그인 저장소·추가 저장소 0(저장소는 mavenCentral() 하나), 외부 Gradle 플러그인 0. make verify의 Java 단계는 gradlew --offline — JDK 21·wrapper 배포판 캐시가 없으면 실패(내려받지 않음). gradlew·gradlew.bat sha256 고정, verify는 실행 전에 확인(wrapper 고정값·auto-download 끔이 어긋나면 gradlew를 실행하지 않고, 캐시는 고정 distributionUrl에서 나온 폴더인지까지 본다)"
     target_layer: "아키텍처테스트"
     status:
       state: enforced
@@ -409,6 +409,10 @@ guardrails:
       - "tests/test_java_boundary.py::test_java_step_preflight_passes_with_jdk21_and_cached_distribution"
       - "tests/test_java_boundary.py::test_java_step_preflight_fails_instead_of_skipping_or_downloading"
       - "tests/test_java_boundary.py::test_java_step_runs_gradle_offline"
+      - "tests/test_java_boundary.py::test_wrapper_distribution_hash_matches_gradle_folder_rule"
+      - "tests/test_java_boundary.py::test_tampered_wrapper_script_is_never_executed"
+      - "tests/test_java_boundary.py::test_changed_distribution_url_fails_before_any_execution"
+      - "tests/test_java_boundary.py::test_untouched_wrapper_runs_gradle_offline_as_control"
       - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
     manifest_key: java_build_egress
   - id: engine_burp_isolation

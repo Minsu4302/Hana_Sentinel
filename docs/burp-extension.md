@@ -46,11 +46,13 @@ gradlew.bat --no-daemon build
 
 ## 4. make verify의 Java 단계(네트워크 0)
 
-`make verify`는 `tools/java_build.py`로 `gradlew --offline --no-daemon build`를 돌린다. 시작할 때 다음을 확인하고, 하나라도 없으면 실패로 끝낸다.
-조용히 건너뛰거나 내려받지 않는다.
+`make verify`는 `tools/java_build.py`로 `gradlew --offline --no-daemon build`를 돌린다. Gradle을 실행하기 전에 다음을 차례로 확인하고,
+하나라도 어긋나면 gradlew를 실행하지 않고 실패로 끝낸다. 조용히 건너뛰거나 내려받지 않는다.
 
-- `JAVA_HOME` — JDK 21(javac 포함)
-- `GRADLE_USER_HOME` — wrapper 배포판 캐시(gradle-9.9.1)
+1. wrapper 고정값: distributionUrl, distributionSha256Sum, wrapper jar sha256, `gradlew`·`gradlew.bat` sha256, 그리고 `gradle.properties`의 auto-download 끔.
+   변조된 실행 스크립트는 실행되기 전에 걸린다.
+2. `JAVA_HOME` — JDK 21(javac 포함)
+3. `GRADLE_USER_HOME` — 고정 distributionUrl에서 나온 배포판 캐시 폴더(`wrapper\dists\gradle-9.9.1-bin\<URL 해시>\`)에 풀린 배포판과 `.ok` 표지
 
 금지선 4키는 `tests/test_java_boundary.py`가 Java 소스·빌드 파일 텍스트를 정적으로 검사한다(Montoya를 import하지 않는다).
 범위는 레포 Java 소스·빌드 파일 텍스트다. Burp 자체와 바이트코드 수준은 범위 밖이다.

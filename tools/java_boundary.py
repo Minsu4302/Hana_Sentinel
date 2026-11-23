@@ -42,6 +42,9 @@ BUILD_FILES: Final = {"build.gradle", "settings.gradle"}
 GRADLE_DISTRIBUTION_URL: Final = "https://services.gradle.org/distributions/gradle-9.9.1-bin.zip"
 GRADLE_DISTRIBUTION_SHA256: Final = "d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
 GRADLE_WRAPPER_JAR_SHA256: Final = "621008afc4f5d59357fcf06ffa644dd5aade5e091bdc363742710445f73cdaf8"
+# wrapper 실행 스크립트 — 커밋되어 리뷰된 바이트(.gitattributes: gradlew LF, gradlew.bat CRLF). verify는 실행 전에 대조한다.
+GRADLEW_SHA256: Final = "a5a5c199ba02189ae8c46a334223371a20599d9c298ef65e7540ede4a3f72d59"
+GRADLEW_BAT_SHA256: Final = "f17917f8dbe61182b149273ee78090fec1197442c3f38276af907bfa5190db16"
 AUTO_DOWNLOAD_OFF: Final = "org.gradle.java.installations.auto-download=false"
 
 # ── java_no_target_send: MontoyaApi에서 시작하는 호출 허용 목록 + import 허용 목록(2부의 요청/응답 읽기 포함)
@@ -421,10 +424,9 @@ def build_egress_violations(project: Path) -> list[Violation]:
         v("plugin_repository", "settings.gradle")
     if re.search(r"foojay|toolchainManagement|\btoolchain\b|org\.gradle\.toolchains", build + settings, re.I):
         v("toolchain_resolver", "build/settings")
+    out.extend(wrapper_violations(project))  # auto-download 끔·wrapper 고정값(verify가 실행 전에도 부른다)
     props_p = project / "gradle.properties"
     props = props_p.read_text(encoding="utf-8") if props_p.is_file() else ""
-    if not any(line.strip().replace(" ", "") == AUTO_DOWNLOAD_OFF for line in props.splitlines()):
-        v("toolchain_auto_download", "gradle.properties")
     if re.search(r"^\s*systemProp\.(?:https?\.proxy|gradle\.wrapperUser)", props, re.M) or "org.gradle.toolchains" in props:
         v("toolchain_resolver", "gradle.properties")
     # 좌표 허용 목록(부분집합), 동적 버전 금지
@@ -459,7 +461,22 @@ def build_egress_violations(project: Path) -> list[Violation]:
                 v("metadata_no_sha256", f"{g}:{a}:{ver}")
         if root.find("g:trusted-artifacts", ns) is not None or root.find("g:configuration/g:trusted-artifacts", ns) is not None:
             v("metadata_trusted_bypass")
-    # wrapper: 배포판 URL·sha 고정, wrapper jar 공식 체크섬
+    return out
+
+
+def _sha256(path: Path) -> str | None:
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def wrapper_violations(project: Path) -> list[Violation]:
+    """Gradle을 실행하기 전에 확인할 것: 배포판 URL·sha, wrapper jar·gradlew·gradlew.bat sha, 툴체인 자동 다운로드 끔.
+    make verify의 Java 단계가 gradlew를 실행하기 전에 이 함수를 부른다 — 위반이 있으면 실행하지 않는다."""
+    out = []
+    v = lambda code, where="": out.append(Violation(BUILD_EGRESS, code, where))  # noqa: E731
+    props_p = project / "gradle.properties"
+    props = props_p.read_text(encoding="utf-8") if props_p.is_file() else ""
+    if not any(line.strip().replace(" ", "") == AUTO_DOWNLOAD_OFF for line in props.splitlines()):
+        v("toolchain_auto_download", "gradle.properties")
     wp = project / "gradle" / "wrapper" / "gradle-wrapper.properties"
     wprops = {}
     if wp.is_file():
@@ -473,10 +490,23 @@ def build_egress_violations(project: Path) -> list[Violation]:
         v("wrapper_sha_missing")
     elif wprops["distributionSha256Sum"] != GRADLE_DISTRIBUTION_SHA256:
         v("wrapper_sha_mismatch")
-    jar = project / "gradle" / "wrapper" / "gradle-wrapper.jar"
-    if not jar.is_file() or hashlib.sha256(jar.read_bytes()).hexdigest() != GRADLE_WRAPPER_JAR_SHA256:
+    if _sha256(project / "gradle" / "wrapper" / "gradle-wrapper.jar") != GRADLE_WRAPPER_JAR_SHA256:
         v("wrapper_jar_mismatch")
+    if _sha256(project / "gradlew") != GRADLEW_SHA256:
+        v("gradlew_script_mismatch", "gradlew")
+    if _sha256(project / "gradlew.bat") != GRADLEW_BAT_SHA256:
+        v("gradlew_script_mismatch", "gradlew.bat")
     return out
+
+
+def wrapper_distribution_hash(url: str = GRADLE_DISTRIBUTION_URL) -> str:
+    """Gradle wrapper가 배포판 캐시 폴더 이름에 쓰는 값: URL 문자열의 MD5를 36진수로 표기."""
+    n = int.from_bytes(hashlib.md5(url.encode("utf-8")).digest(), "big")  # noqa: S324 — 보안 용도 아님(폴더 이름 규칙)
+    digits, s = "0123456789abcdefghijklmnopqrstuvwxyz", ""
+    while n:
+        n, r = divmod(n, 36)
+        s = digits[r] + s
+    return s or "0"
 
 
 def all_violations(project: Path) -> list[Violation]:
