@@ -1863,3 +1863,38 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
   - Installed 목록에 이름 Sentinel이 있고 Loaded가 체크돼 있다.
   - Output 탭에 `Sentinel extension loaded`가 있다.
   - Errors 탭은 비어 있다.
+
+---
+
+## Java 2부 계약 — (A) v1.48 (Issue #139, 문서 + 키, 코드 0)
+
+### 결정(민수, 2부 0단계 판정)
+- M1 절단: 2부 PR-1에서 참조 마스커에 절단을 넣는다. 큐 10을 해소했다 — `TRUNCATION_MARK`(§2.6) + Body 불변식 7, 새 필드 없음.
+- M2 base64: Java는 항상 omitted로 보낸다. base64는 동등성 범위 밖이고, 참조 마스커와의 차이는 §2.9에 한계로 적었다.
+- M3 정책: JSON 데이터 파일이 정본이다(Python이 읽음, Java는 빌드 리소스). PATTERNS는 Python ③ 전용이다.
+- M4 정규 직렬화: §2.10을 신설했다. 현재 pydantic 출력에서 관찰한 것을 근거로 썼다 — 선언 순서, 공백 없음, 제어문자 `\u00XX` 소문자, `/`·비ASCII 그대로, null·기본값 출력, UTC `Z`. 정본은 §2.10이다.
+- M5 라벨 배치 = Envelope 1개다. 요청 사이의 연결은 P1로 넘긴다.
+- M6 토큰: 서버가 기동마다 만들어 콘솔에 1회 출력하고, 확장은 비밀번호 입력란으로 받아 메모리에만 둔다. 환경변수 방식은 2부 PR-2에서 폐기한다.
+- M7 클라이언트: 기본값 2·120초(Python 기본값과 기계 대조), 응답 상한 1 MiB.
+- object_id: `object_id_rules` 이름 glob(query·form·json). 경로 세그먼트는 사내 심의 전에 해소할 한계다. v1.46 큐를 닫았다.
+- UI: 단일 표시 함수 `ui.PlainText`. JEditorPane 계열은 전면 금지한다.
+- 구문 파싱: 원시 바이트에서 순수 Java로 한다.
+- 금지 토큰 면제 R1·R2′(§3.2 `java_logic_isolation`).
+
+### 키
+| 키 | 상태 → 대상 |
+|---|---|
+| `java_masker_parity` | not_implemented → 2부 PR-1 |
+| `java_jar_contents` | not_implemented → 2부 PR-1 |
+| `java_client_bounds` | not_implemented → 2부 PR-2 |
+| `java_capture_human_selected` | not_implemented → 2부 PR-2 |
+| `java_ui_plain_text` | not_implemented → 2부 PR-3 |
+| `java_offline_import` | unverifiable(외부·수동, 절차 문서는 2부 PR-4) |
+| `token_hardening` | not_implemented → 2부 PR-2(규칙 구체화) |
+| `java_no_target_send`·`java_loopback_only`·`java_logic_isolation`·`masked_span_integrity` | enforced 유지. 확장분은 상태 칸에 대상 PR(PR-1·PR-2)을 적었다 |
+
+### 민수 확인 대기
+- 회사 Burp 에디션·버전 문자열, 반입 매체.
+
+### 작업 기록
+- 첫 커밋(`fb580d5`)에서 이 절이 빠졌다. 같은 명령 안의 기록 단계가 실패했는데, 명령을 실패 시 멈추는 체인으로 잇지 않아 커밋·verify·푸시가 이어졌다. 보완 커밋으로 넣었다.
