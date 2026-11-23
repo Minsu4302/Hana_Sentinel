@@ -13,17 +13,22 @@ endif
 export PYTHONUTF8 := 1
 export PYTHONIOENCODING := utf-8
 
-.PHONY: verify verify-start verify-hooks verify-test secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve eval
+.PHONY: verify verify-start verify-hooks verify-java verify-test secret-scan guardrails-check test guardrails-sync manifest install-dev install-hooks serve eval
 
 ## verify: 스탬프 삭제 → 시크릿 전수 스캔 → 가드레일 정합(guardrails.yaml↔(A) §3, manifest↔재파생) → pre-push 훅 확인
+##         → Java 단계(burp-extension/ gradlew --offline build — JDK 21·wrapper 배포판 캐시가 없으면 실패, 내려받지 않음)
 ##         → pytest(+ enforced 검증 노드 수집·통과 자기검증) → 통과하면 .verify-stamp 기록(pre-push 훅이 대조)
-verify: verify-start secret-scan guardrails-check verify-hooks verify-test
+verify: verify-start secret-scan guardrails-check verify-hooks verify-java verify-test
 
 verify-start:
 	$(PYTHON) tools/verify_stamp.py start
 
 verify-hooks:
 	$(PYTHON) tools/verify_stamp.py check-hooks
+
+## verify-java: JAVA_HOME(JDK 21)·GRADLE_USER_HOME 필요(docs/burp-extension.md). 검증 중 네트워크 0.
+verify-java:
+	$(PYTHON) tools/java_build.py
 
 verify-test:
 	$(PYTHON) tools/verify_stamp.py test

@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.37",
+  "spec": "docs/design-decision.md §3 매핑표 v1.38",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -331,22 +331,50 @@
       ]
     },
     "java_no_target_send": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Java 1부 구현 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖",
+      "verification_tests": [
+        "tests/test_java_boundary.py::test_real_project_has_no_target_send_or_bypass",
+        "tests/test_java_boundary.py::test_target_send_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_field_held_api_with_allowed_calls_passes_as_control",
+        "tests/test_java_boundary.py::test_field_held_api_cannot_reach_target_tools",
+        "tests/test_java_boundary.py::test_bypass_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_bypass_in_any_package_is_rejected",
+        "tests/test_java_boundary.py::test_bypass_words_in_comments_are_not_code",
+        "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "java_loopback_only": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Java 1부 구현 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부에는 클라이언트 코드가 0 — 실증은 위조 픽스처",
+      "verification_tests": [
+        "tests/test_java_boundary.py::test_real_project_is_loopback_only",
+        "tests/test_java_boundary.py::test_compliant_loopback_client_in_transport_passes_as_control",
+        "tests/test_java_boundary.py::test_loopback_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_network_code_in_entry_point_is_rejected",
+        "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "java_build_egress": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Java 1부 구현 PR",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖",
+      "verification_tests": [
+        "tests/test_java_boundary.py::test_real_project_build_egress",
+        "tests/test_java_boundary.py::test_build_egress_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_metadata_file_removed_is_rejected",
+        "tests/test_java_boundary.py::test_wrapper_jar_replaced_is_rejected",
+        "tests/test_java_boundary.py::test_extra_build_script_is_rejected",
+        "tests/test_java_boundary.py::test_real_metadata_and_wrapper_match_the_official_checksum_table",
+        "tests/test_java_boundary.py::test_java_step_preflight_passes_with_jdk21_and_cached_distribution",
+        "tests/test_java_boundary.py::test_java_step_preflight_fails_instead_of_skipping_or_downloading",
+        "tests/test_java_boundary.py::test_java_step_runs_gradle_offline",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "engine_burp_isolation": {
       "status": "enforced",
@@ -360,10 +388,18 @@
       ]
     },
     "java_logic_isolation": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "Java 연결 시",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖",
+      "verification_tests": [
+        "tests/test_java_boundary.py::test_real_project_logic_isolation",
+        "tests/test_java_boundary.py::test_forbidden_tokens_come_from_every_canonical_source",
+        "tests/test_java_boundary.py::test_logic_isolation_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_extra_type_in_entry_point_file_is_rejected",
+        "tests/test_java_boundary.py::test_forbidden_token_from_each_source_is_rejected",
+        "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "input_schema_gate": {
       "status": "enforced",

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.4.xsd">
+   <configuration>
+      <verify-metadata>true</verify-metadata>
+      <verify-signatures>false</verify-signatures>
+   </configuration>
+   <components>
+      <component group="net.portswigger.burp.extensions" name="montoya-api" version="2024.12">
+         <artifact name="montoya-api-2024.12.jar">
+            <sha256 value="7e6dffb645188492dfb5f512075c9196250efa18b673dfa270ee22fa20e16c5c" origin="Gradle 생성, Maven Central .sha256과 대조 일치(2026-11-23)"/>
+         </artifact>
+         <artifact name="montoya-api-2024.12.module">
+            <sha256 value="5489cf5301cf6f2f204b2a92c00049362002541609622108b05ed0cd5248ec67" origin="Gradle 생성, Maven Central .sha256과 대조 일치(2026-11-23)"/>
+         </artifact>
+      </component>
+   </components>
+</verification-metadata>

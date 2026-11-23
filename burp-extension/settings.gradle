@@ -1,0 +1,2 @@
+// Sentinel Burp 확장 — 저장소 선언은 build.gradle의 mavenCentral() 하나뿐이다(java_build_egress).
+rootProject.name = 'sentinel-burp-extension'

@@ -1,0 +1,4 @@
+# gradlew는 LF(유닉스 셸), .bat은 CRLF, wrapper jar는 바이너리
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
