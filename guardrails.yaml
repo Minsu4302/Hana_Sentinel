@@ -379,7 +379,7 @@ guardrails:
     verification_tests: []
     manifest_key: java_loopback_only
   - id: java_build_egress
-    description: "Burp 확장 의존성 — 런타임: Montoya API(compileOnly) + Gson 1개(버전 고정, 배포 jar에 포함. 전이 의존성은 애노테이션 전용만). 테스트: 허용 목록(JUnit 등)에 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0"
+    description: "Burp 확장 의존성 — 정확한 좌표 허용 목록 — 런타임 = {montoya-api(compileOnly), gson, error_prone_annotations}(gson·error_prone_annotations는 배포 jar에 포함), 테스트 = 허용 목록(JUnit 등). 목록 밖 좌표가 하나라도 있으면 위반. 버전은 후보이며 구현 PR에서 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0"
     target_layer: "아키텍처테스트"
     status:
       state: not_implemented

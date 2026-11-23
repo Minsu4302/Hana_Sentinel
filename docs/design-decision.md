@@ -75,7 +75,7 @@
 > **v1.43 (매핑표 v1.36):** 재실행 전 확인 — 게이트 검사의 전달(코드 PR). §2.8 게이트 검사마다 전달 수단 + 해석 조건 4건(json kind·truncated·locus 대응·occurrence 단위)을 출력 규칙으로 / 해석 실패 거부 감사의 위치(locus·body kind까지) + §3.5 `llm_contract_conveyed` 범위를 '초안 계약 + 게이트 검사'로.
 > **v1.44 (매핑표 v1.36 유지):** 선별 실행 무효 기록(문서만). §2.8 LLM 초안은 advisory_signals를 만들지 않는다(명시) / §6.2 이 무효 처리의 재실행이 v1.41 규칙의 1회다.
 > **v1.45 (매핑표 v1.36 유지):** 1차 선별 최종 결과 기록(문서만). §6.2 1차 선별 최종 결과: 선정 없음 — 이후 선별은 새 사전 등록으로만.
-> **v1.46 (매핑표 v1.37):** Java 연결 1부 — 경계·송신(문서 + 키 등재, 코드 0). §2.9 신설(Burp Extension(Java) 계약 — 책임·캡처·UI·저장·Pro 비의존·로드 확인 수동 절차) + §1.3 ⓐ 해석 한 줄(Montoya 대상 송신 API·Collaborator) + ⓑ 해석 강제 매핑에 Java 확장 + §3.1 신규 `java_no_target_send`·`java_loopback_only`·`java_build_egress`(not_implemented → Java 1부 구현 PR) + §3.2 `java_logic_isolation` 규칙 구체화 + §3.1 `egress_enforcement_owner` 노트(Burp 자체의 외부 연결) + §3.3 `receipt_hmac` 삭제 → §4 R-12 기각 + §1.4 N1·N2(비고에 java_* not_implemented) + 부록 Java 빌드 기준. 리뷰 반영(같은 v1.46): Java 의존성에 Gson 1개(런타임, 배포 jar 포함)·테스트 허용 목록, §2.9 transport JSON은 Gson, 2부 반입 목록에 Gson.
+> **v1.46 (매핑표 v1.37):** Java 연결 1부 — 경계·송신(문서 + 키 등재, 코드 0). §2.9 신설(Burp Extension(Java) 계약 — 책임·캡처·UI·저장·Pro 비의존·로드 확인 수동 절차) + §1.3 ⓐ 해석 한 줄(Montoya 대상 송신 API·Collaborator) + ⓑ 해석 강제 매핑에 Java 확장 + §3.1 신규 `java_no_target_send`·`java_loopback_only`·`java_build_egress`(not_implemented → Java 1부 구현 PR) + §3.2 `java_logic_isolation` 규칙 구체화 + §3.1 `egress_enforcement_owner` 노트(Burp 자체의 외부 연결) + §3.3 `receipt_hmac` 삭제 → §4 R-12 기각 + §1.4 N1·N2(비고에 java_* not_implemented) + 부록 Java 빌드 기준. 리뷰 반영(같은 v1.46): Java 의존성에 Gson 1개(런타임, 배포 jar 포함)·테스트 허용 목록, §2.9 transport JSON은 Gson, 2부 반입 목록에 Gson. 리뷰 반영 2(같은 v1.46): `java_build_egress`를 정확한 좌표 허용 목록(런타임 montoya-api·gson·error_prone_annotations / 테스트 허용 목록)으로, §2.9 2부 목록에 Java 엄격 JSON 판정 동등성.
 >   - 감사 추적: 설계 대화의 J4·J8·J9 응고(J6·J7·J10은 2부). 규범 본문에는 이 라벨을 두지 않는다(§6.3의 J1~J9와 다른 라벨이다).
 > 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06, v1.37 개정: 2026-11-06, v1.38 개정: 2026-11-06, v1.39 개정: 2026-11-06, v1.40 개정: 2026-11-09, v1.41 개정: 2026-11-10, v1.42 개정: 2026-11-10, v1.43 개정: 2026-11-10, v1.44 개정: 2026-11-10, v1.45 개정: 2026-11-16, v1.46 개정: 2026-11-16)
 
@@ -468,9 +468,10 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
   - ui: 렌더링만 한다 — status·evidence·limitations(뷰 잘림·환각 플래그)·needs_review·next_steps(텍스트), LLM 실패 시 '깨끗함 아님'. v1에는 Repeater 등 다른 도구로 보내는 기능이 없다.
 - 저장: 확장 코드는 분석 결과·토큰을 저장하지 않는다(Montoya persistence·preferences API 미사용 — `java_no_target_send` 허용 목록에서 제외). Burp 자신이 쓰는 설정(레지스트리 등)은 시스템 밖이며, 0단계 관찰에서 확장 흔적 0건.
 - Pro 전용 API에 의존하지 않는다(Community·Pro 공통 동작).
-- 송신·빌드 경계: 대상 송신 API 미사용(§1.3 ⓐ 해석, `java_no_target_send`), 송신은 분석 서버 루프백만(`java_loopback_only`), 의존성은 런타임 Montoya API(compileOnly)·Gson 1개, 테스트는 허용 목록만(`java_build_egress`).
+- 송신·빌드 경계: 대상 송신 API 미사용(§1.3 ⓐ 해석, `java_no_target_send`), 송신은 분석 서버 루프백만(`java_loopback_only`), 의존성은 정확한 좌표 허용 목록만 — 런타임 montoya-api(compileOnly)·gson·error_prone_annotations, 테스트는 허용 목록(`java_build_egress`).
 - Burp 로드 확인은 수동 절차다(`docs/burp-extension.md`, 구현 PR에서 작성). make verify는 Burp를 띄우지 않는다(Java 단위·정적 검사·2부 동등성 테스트만).
 - 2부(다음 개정): Java 마스커와 Python 마스커의 동등성(make verify에서 매번), 토큰 강화 상세(메모리에만 보관, 서버 기동마다 생성), 클라이언트 동작(읽기 타임아웃 ≥ (대기 상한+1)×기한+여유, 503 busy 자동 재시도 없음, 로그에 사유 코드만), 오프라인 반입 절차.
+  - Java의 엄격 JSON(§2.6) 판정이 Python과 같아야 한다(중복 키·비표준 수치 등). Gson 설정을 포함해 동등성 테스트 범위에 넣는다.
 
 ---
 
@@ -528,7 +529,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | tools/ 전체(하위 패키지 자동 열거)에 송신·소켓 import, 동적 import, tests 패키지 import 0(테스트 가드 경유 세탁 금지) | 아키텍처 테스트 | enforced(정적 범위 — tools/ 직접 import. 개발 의존성 내부·하위 프로세스는 범위 밖) | `tools_no_external_send` |
 | Burp 확장은 대상 송신 API를 쓰지 않는다 — 사용하는 Montoya API를 허용 목록으로 고정(컨텍스트 메뉴·요청/응답 읽기·UI·로깅). 그 밖의 API 호출(http().sendRequest 계열, Repeater·Intruder·Scanner 전송, Collaborator, persistence·preferences 포함) = 위반 | 아키텍처 테스트 | not_implemented → Java 1부 구현 PR | `java_no_target_send` |
 | Burp 확장의 송신은 분석 서버 127.0.0.1 리터럴만(NO_PROXY 명시, 리다이렉트 비추종) | 아키텍처 테스트 | not_implemented → Java 1부 구현 PR | `java_loopback_only` |
-| Burp 확장 의존성 — 런타임: Montoya API(compileOnly) + Gson 1개(버전 고정, 배포 jar에 포함. 전이 의존성은 애노테이션 전용만). 테스트: 허용 목록(JUnit 등)에 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0 | 아키텍처 테스트 | not_implemented → Java 1부 구현 PR | `java_build_egress` |
+| Burp 확장 의존성 — 정확한 좌표 허용 목록 — 런타임 = {montoya-api(compileOnly), gson, error_prone_annotations}(gson·error_prone_annotations는 배포 jar에 포함), 테스트 = 허용 목록(JUnit 등). 목록 밖 좌표가 하나라도 있으면 위반. 버전은 후보이며 구현 PR에서 고정. 모든 의존성은 verification metadata로 해시까지 강제 + Gradle wrapper distributionSha256Sum 고정. HTTP 클라이언트·텔레메트리 라이브러리 0 | 아키텍처 테스트 | not_implemented → Java 1부 구현 PR | `java_build_egress` |
 
 ### 3.2 A. 입력경계
 | 규칙 | 목표층위 | 상태 | manifest 키 |
