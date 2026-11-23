@@ -1798,3 +1798,68 @@ model_id는 `이름@sha256:<첫 파일 SHA-256>`이다(7B는 2분할 — 둘째 
 - 재개 조건: 2차 선별의 새 사전 등록이 서빙 구성(사고 설정·예산·기동 인자)을 명시할 때.
 - test 측정 금지는 유지한다. 분류 결함이 해소되거나, 500 경로가 없음이 보일 때까지다.
 - (A)·코드·기동 절차는 바꾸지 않았다.
+
+---
+
+## Java 연결 1부 구현 (Issue #137, (A) v1.47)
+
+### 한 일
+- `burp-extension/`: Gradle 프로젝트 1개(Java 17 대상, JDK 21, Gradle 9.9.1 wrapper).
+  - 진입점 1개(`sentinel.burp.SentinelExtension` — 확장 이름 설정 + 로드 사실 한 줄)와 capture/transport/ui 골격(package-info)만 있다. 전송 코드는 0이다.
+  - 의존성은 montoya-api 2024.12(compileOnly) 하나다. JUnit은 넣지 않았다(Java 단위 테스트 없음).
+- 금지선 4키와 공통 우회 차단을 Python 아키텍처 테스트(`tests/test_java_boundary.py`, 검사기 `tools/java_boundary.py`)로 강제한다.
+  - Java 소스·빌드 파일 텍스트만 본다. Montoya는 import하지 않는다.
+  - 키마다 위조 픽스처 거부, 준수 대조, 변이 확인 1건이 있다.
+- make verify에 Java 단계(`tools/java_build.py`)를 넣었다. `gradlew --offline --no-daemon build`이고, JDK 21이나 wrapper 배포판 캐시가 없으면 실패한다(내려받지 않음).
+- (A) v1.47(매핑표 v1.38): 4키를 not_implemented에서 enforced로 승격했다(정적 범위 노트). `java_logic_isolation` 진입점 규칙, §2.9 ui 문장, §1.4 비고를 함께 고쳤다.
+
+### 체크섬 대조(독립 출처)
+| 대상 | 레포 값 | 독립 출처 | 결과 |
+|---|---|---|---|
+| wrapper `distributionSha256Sum` | `d8a18a7a…20ba228` | services.gradle.org `gradle-9.9.1-bin.zip.sha256` | 일치 |
+| `gradle-wrapper.jar` | `621008af…f73cdaf8`(계산) | services.gradle.org `gradle-9.9.1-wrapper.jar.sha256` | 일치 |
+| verification-metadata: montoya-api-2024.12.jar | `7e6dffb6…20e16c5c` | Maven Central `.sha256` | 일치 |
+| verification-metadata: montoya-api-2024.12.module | `5489cf53…5248ec67` | Maven Central `.sha256` | 일치 |
+
+Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메타데이터에 기록된 아티팩트는 위 2개뿐이다.
+
+### 금지 토큰(Python 정본에서 기계 추출)
+- category 4: `Category`
+- 판정 어휘 40: `FindingStatus`·`ClaimBasis`·`Corroboration`·`AnomalyFlag`·`analysis_status`, llm_outcome(`ok`·`rejected`·`failed:<사유>`), `LLM_FAILURE_REASONS`, 출력 거부 사유 코드
+- 프롬프트 문구 20: 템플릿의 4어절 이상 줄
+- 규칙 함수 이름 4: `rule_engine.RULES`
+- 오탐 우려(빼지 않고 보고): `ok`, `timeout`, `truncated`, `completed`, `matched`, `unmatched`, `observed`, `inferred`, `confirmed`, `rejected`, `unavailable`, `oversize`, `verifying`, `unverified`
+  - 특히 `truncated`는 §2.2 Transaction 스키마 필드 이름이다. 2부 transport가 JSON을 만들 때 이 키 이름을 써야 하므로 충돌이 예상된다.
+  - `timeout`도 HTTP 클라이언트 설정 이름으로 흔히 쓰인다.
+
+### 보관 위치 이동
+- 다운로드 원본과 `GRADLE_USER_HOME`을 레포 밖 `%USERPROFILE%\sentinel-java\`로 옮겼다. 위치는 `archive\`, `jdk-21.0.13+9\`, `gradle-home\`다.
+  - OneDrive 비대상을 확인했다: OneDrive 환경변수·계정·알려진 폴더 이동이 없다.
+- 원본은 스크래치패드에서 사라져 다시 받았다. 대상은 JDK zip, Gradle zip, montoya jar·pom·module이다. 해시는 모두 기록값·공식값과 일치한다.
+
+### 깨진 가정 / 사실 기록
+- 스크래치패드 소실이 재발했다(`dl/gradle`·`dl/jdk`·`dl/montoya`). 원인은 세션 임시 폴더 정리로 판단하지만 미확정이다.
+
+### 리뷰 반영 — verify 실행 전 검사 순서
+- `gradlew`·`gradlew.bat`의 sha256을 고정했다(커밋본 = 리뷰된 값, `.gitattributes`로 줄바꿈 고정).
+- verify Java 단계는 Gradle을 실행하기 전에 다음을 확인한다. 어긋나면 gradlew를 실행하지 않는다.
+  - wrapper 고정값: distributionUrl, distributionSha256Sum, wrapper jar sha, gradlew/gradlew.bat sha
+  - auto-download 끔
+- 캐시 확인은 고정 distributionUrl에서 나온 폴더(URL의 MD5를 36진수로 표기, 개발 PC 실제 폴더 이름과 일치)와 `.ok` 표지까지 본다.
+- 위조 거부:
+  - 실행되면 표식 파일을 쓰는 가짜 gradlew → 사전 점검이 실패하고, 표식 파일은 생기지 않는다.
+  - distributionUrl 변경 → 실행 전에 실패한다.
+- 변이 확인: 사전 점검의 wrapper 검사를 빼면 가짜 스크립트가 실행되어 테스트가 실패한다.
+
+### 2부 0단계에서 정할 것(기록만)
+- 금지 토큰 일반어 14개의 처리. 원칙은 세 가지다.
+  - 손으로 쓴 면제는 금지한다.
+  - 정본에서 기계로 뽑고 범위를 한정한다(예: §2.2 전송 스키마 필드 이름 → transport 패키지만).
+  - (A) 2부 개정에 명시한다.
+- Gson을 배포 jar에 넣는 방법(플러그인 'java'만 허용하는 조건 안에서).
+
+### Burp 수동 로드 확인
+- 민수가 Burp Community 2024.12.1에서 확인했다(2026-11-23). jar는 `sentinel-burp-extension-0.1.0.jar`다.
+  - Installed 목록에 이름 Sentinel이 있고 Loaded가 체크돼 있다.
+  - Output 탭에 `Sentinel extension loaded`가 있다.
+  - Errors 탭은 비어 있다.
