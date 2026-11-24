@@ -248,7 +248,7 @@ def build(catalog: Catalog, out_dir: Path) -> list[str]:
         group = [_raw_tx(c, refs[c.case_id], tokens) for c in catalog.cases if c.masking_mode == mode]
         if group:
             raw = RawEnvelope.model_validate_json(json.dumps({"schema_version": "1.0", "transactions": group}))
-            files.update(masker.mask(raw, mode))
+            files.update(masker.mask(raw, mode, batch="run"))  # 데이터셋 생성 배치 — S v2 생성 조건((A) §2.3)
     label_bytes = _label_doc(catalog, refs)
     try:
         label_file = LabelFile.model_validate_json(label_bytes)

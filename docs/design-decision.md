@@ -1,4 +1,4 @@
-# (A) 설계확정서 v1.48 — Sentinel Harness
+# (A) 설계확정서 v1.49 — Sentinel Harness
 
 > **정본 선언:** 이 문서(레포 `docs/design-decision.md`)가 (A) 설계확정서의 **유일 정본**이다.
 > 불변식·금지선·스키마의 '결정된 값'은 여기 FROZEN 블록이 정본이고, (B)·CLAUDE.md·`guardrails.yaml`·manifest는 전부 여기서 파생·추출된다. 값 변경은 이 문서 한 곳에서만.
@@ -7,7 +7,7 @@
 >
 > **문서 성격:** 합의기록형. 사람(미래의 민수, 사내 보안 심의관, AI 연구소)이 읽는다. "무엇을 정했나"와 **"왜 그렇게 정했나"**(트레이드오프·기각 대안 포함)를 담는다. 실행용 건조한 사양은 (B) `docs/claude-code-handoff.md`에 있다.
 >
-> **버전:** v1.48 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트 + v1.32 결선 L2 승격 + v1.33 L3 선행 계약 + v1.34 결선 L3 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
+> **버전:** v1.49 = {범위(+ 금지선 강제 매핑 §1.4) + 데이터계약(+ExecutionResponse, redacted_kinds 명확화, 출력 계약 보정·버전 규칙, 공용 타입 §2.6·본문 마스킹 표기·라벨 규칙, 정규 노드 주소 CNA·중복 처리, 마스킹 전 원본 RawTransaction) + 가드레일 매핑표 v1.21(통합점검 구멍5 반영 + v1.3 교정 + v1.4 이월처 재조정·tools/ 규칙 + v1.5 출력 게이트 4키 승격 + v1.6 마스킹·라벨·마스커 독립성 키 + v1.7 Evidence 위치 해석 승격 + v1.8 정규 주소·path 쿼리 금지 키 + v1.9 path 쿼리 금지 승격 + v1.10 본문 마스킹 표기 승격 + v1.11 평가 키 + v1.12 원본 타입 격리 키 + v1.13 마스커 격리 승격 + v1.14 라벨·CNA 승격 + v1.15 데이터셋 동결 키 + v1.16 평가 하네스 승격 + v1.17 tools 송신 기준선 + v1.18 색인 동기화 검사 + v1.19 상태 열 머리 + v1.20 색인 설명 문구 검사 + v1.21 completed 경로 키 + v1.22 completed 경로 승격 + v1.23 completed 경로 불변 범위 노트 + v1.24 층 B 러너 노트 + v1.25 S v2 동결 키 + v1.26 S v2 생성기 승격 + v1.27 어댑터 송신 경로 키 + v1.28 어댑터 승격 + v1.29 결선 키 + v1.30 결선 L1 승격 + v1.31 푸시 게이트 + v1.32 결선 L2 승격 + v1.33 L3 선행 계약 + v1.34 결선 L3 승격)} + 평가 프로토콜 §6. 4번(LLM 전략)은 이후 증분.
 > **버전 이력:** v1.0(범위+데이터계약+가드레일 골격) → **v1.2**(통합점검 구멍5: ① evidence 불변식 1:1 분해, ② manifest SSOT 파생키 `manifest_derivation`, ③ ⓓⓔⓖ 매핑표 추적, ④ `audit_write_failure` 자리, ⑤ `ExecutionResponse` 정식 편입).
 > **v1.3:** PR#3(claude_md_sync_check 추가 · secret_scan_hook 범위 명시) + N3 정본 공백 메움(java_logic_isolation 행 추가)
 > **v1.4:** redacted_kinds를 종류별 카운트 맵으로 명확화(W1-06) + 본문 내부 마스킹 표기는 Java 연결 시 설계 숙제로 명시(W1-06에서 드러남)
@@ -79,7 +79,8 @@
 >   - 감사 추적: 설계 대화의 J4·J8·J9 응고(J6·J7·J10은 2부). 규범 본문에는 이 라벨을 두지 않는다(§6.3의 J1~J9와 다른 라벨이다).
 > **v1.47 (매핑표 v1.38):** Java 1부 구현(코드 PR — v1.32 관례대로 승격을 같은 PR에). §3.1 `java_no_target_send`·`java_loopback_only`·`java_build_egress`, §3.2 `java_logic_isolation` 승격(not_implemented → enforced, 정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖). `java_logic_isolation` 규칙: capture/transport/ui + 루트 패키지의 진입점 클래스 1개(등록·연결만), 금지 토큰 = category 리터럴·프롬프트 문구·판정 어휘·규칙 함수 이름(Python 정본에서 기계 추출). §2.9 ui: 표시 문자열과 구분은 서버 응답에서 받는다. §1.4 N1·N2·N3 비고 갱신. 빌드: montoya-api 2024.12(compileOnly)만, wrapper·의존성 해시 고정, 툴체인 자동 다운로드 끔, make verify의 Java 단계는 오프라인. 리뷰 반영(같은 v1.47): gradlew·gradlew.bat sha256 고정, verify는 Gradle 실행 전에 wrapper 고정값을 확인.
 > **v1.48 (매핑표 v1.39):** Java 2부 계약(문서 + 키, 코드 0). §2.2 큐 10 해소(절단 표지 상수 + Body 불변식 7, 새 필드 없음) · §2.3 정책 정본 = JSON 데이터 파일(Python이 읽음, Java는 빌드 리소스), 라벨 배치 = Envelope 1개, object_id '민감' 판정 = object_id_rules 이름 glob(v1.46 큐 해소, 경로 세그먼트는 한계) · §2.6 TRUNCATION_MARK · §2.9 2부 계약(마스커 코어·동등성·base64 omitted·원시 바이트 구문 파싱·capture 흐름·토큰·클라이언트·UI 단일 표시 함수·구현 순서·Montoya 버전 정책·오프라인 반입) · §2.10 정규 직렬화 신설 · §3 신규 `java_masker_parity`·`java_jar_contents`(→ 2부 PR-1), `java_client_bounds`·`java_capture_human_selected`(→ 2부 PR-2), `java_ui_plain_text`(→ 2부 PR-3), `java_offline_import`(unverifiable) · `token_hardening` 구체화(→ 2부 PR-2) · `java_no_target_send`·`java_loopback_only`·`java_logic_isolation`(R1·R2′)·`masked_span_integrity` 규칙 확장(enforced 유지, 확장분은 상태 칸에 대상 PR) · §1.4 N1·N2·N3·N7. 리뷰 반영(같은 v1.48): 데이터 계약 버전 — Envelope schema_version 1.0 유지(규칙 해석: 절단 표기는 1.0에서 큐 10으로 열어 둔 미정의 영역이었고, truncated=true를 만든 생산자가 지금까지 없으며, 동결본 S v1·S v2에 truncated=true가 0건이다 — 기계 집계 S v1 본문 12·S v2 본문 240). SanitizationPolicy의 policy_version은 정책 파일 내용이 바뀌는 2부 PR-1에서 올린다. base64 본문이 상한을 넘으면 omitted. §1.4 N1에서 `java_client_bounds` 제외(견고성 키 — `llm_adapter_bounds` 선례). 2부 PR-1에 §2.10 적합성·동결본 truncated 회귀 테스트.
-> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06, v1.37 개정: 2026-11-06, v1.38 개정: 2026-11-06, v1.39 개정: 2026-11-06, v1.40 개정: 2026-11-09, v1.41 개정: 2026-11-10, v1.42 개정: 2026-11-10, v1.43 개정: 2026-11-10, v1.44 개정: 2026-11-10, v1.45 개정: 2026-11-16, v1.46 개정: 2026-11-16, v1.47 개정: 2026-11-23, v1.48 개정: 2026-11-23)
+> **v1.49 (매핑표 v1.40):** 2부 PR-1a — 동등성의 기준(Python 참조 구현) 고정(코드 PR, 신규 키·승격 없음). §2.2 size_bytes 정의 정정 — 현행 생산자(참조 마스커)·동결본에 맞춤. 무효가 되는 인스턴스 0(동결본 utf8 252본문 중 마스킹 23건 모두 마스킹 후 바이트, 나머지 229건은 구분 불가로 정의 충족). schema_version 1.0 유지. 근거: 원본 크기는 가린 값의 길이 정보를 Java 경계 밖으로 내보낸다(§2.3 원본값 경계 원칙). · §2.2 절단 규칙(UTF-8 바이트, 앞뒤 예산, 코드포인트 경계, FILLER 통째 버림) · §2.3 배치 범위(참조 마스커 기본 transaction, 데이터셋 생성기 run — S v1·S v2 생성 조건), 정책 정본 파일 이행(sanitization-policy-2), object_id_rules 빈 목록·비어 있지 않으면 거부(kind 확장은 큐), ③ 절단 본문 구간 재스캔 · `masked_span_integrity` 불변식 7 증명(미구현 표기 제거) · `sanitization_trust` 구간 재스캔 노트.
+> 확정일: 2026-10-22 (v1.3 개정: 2026-10-23, v1.4 개정: 2026-10-23, v1.5 개정: 2026-10-26, v1.6 개정: 2026-10-26, v1.7 개정: 2026-10-26, v1.8 개정: 2026-10-26, v1.9 개정: 2026-10-26, v1.10 개정: 2026-10-26, v1.11 개정: 2026-10-26, v1.12 개정: 2026-10-27, v1.13 개정: 2026-10-27, v1.14 개정: 2026-10-27, v1.15 개정: 2026-10-27, v1.16 개정: 2026-10-29, v1.17 개정: 2026-10-29, v1.18 개정: 2026-11-02, v1.19 개정: 2026-11-02, v1.20 개정: 2026-11-03, v1.21 개정: 2026-11-03, v1.22 개정: 2026-11-03, v1.23 개정: 2026-11-03, v1.24 개정: 2026-11-04, v1.25 개정: 2026-11-04, v1.26 개정: 2026-11-04, v1.27 개정: 2026-11-04, v1.28 개정: 2026-11-04, v1.29 개정: 2026-11-04, v1.30 개정: 2026-11-05, v1.31 개정: 2026-11-05, v1.32 개정: 2026-11-05, v1.33 개정: 2026-11-05, v1.34 개정: 2026-11-05, v1.35 개정: 2026-11-05, v1.36 개정: 2026-11-06, v1.37 개정: 2026-11-06, v1.38 개정: 2026-11-06, v1.39 개정: 2026-11-06, v1.40 개정: 2026-11-09, v1.41 개정: 2026-11-10, v1.42 개정: 2026-11-10, v1.43 개정: 2026-11-10, v1.44 개정: 2026-11-10, v1.45 개정: 2026-11-16, v1.46 개정: 2026-11-16, v1.47 개정: 2026-11-23, v1.48 개정: 2026-11-23, v1.49 개정: 2026-11-24)
 
 ---
 
@@ -212,7 +213,7 @@ Transaction
 
 Param  = { name, value: str|MaskedRef, location(query|form) }                # MaskedRef → §2.6
 Header = { name, value: str|MaskedRef }
-Body   = { content_type, size_bytes(원본크기), truncated(bool),
+Body   = { content_type, size_bytes(마스킹 후·절단 전 크기 — 아래 정의), truncated(bool),
            encoding(utf8|base64|omitted), content(str|null),
            masked_spans: [MaskedSpan] = [] }                                   # MaskedSpan → §2.6
 ```
@@ -222,6 +223,8 @@ Body   = { content_type, size_bytes(원본크기), truncated(bool),
   - 근거: 같은 쿼리 값을 req_line.path와 req_param 두 방식으로 가리킬 수 있는 경로를 막는다(CNA 중복 원천). 계약 문구만 두고 검증하지 않으면 'Java가 분리한다'는 영수증을 믿는 것과 같다(R-11 계열, 단일 실패점). Python이 재검증한다.
 - `host` 가명화 여부는 TransactionSchema가 아니라 SanitizationPolicy가 결정(관심사 분리).
 - **body truncation 상한:** req 64KB / resp 256KB(config화). 초과 시 `truncated=true` + head+tail 일부 보존(에러·민감필드가 응답 꼬리에 자주 옴). truncated에서 파생된 finding은 자동으로 `limitations`에 "본문 일부만 분석됨" 플래그.
+  - 절단 규칙(v1.49): 단위는 UTF-8 바이트이고 저장 content 전체(표지 포함) ≤ 상한(요청 65536·응답 262144). 앞부분 ≤ ⌊(상한 − |TRUNCATION_MARK|)/2⌋바이트, 뒷부분 ≤ 나머지 예산. 경계는 코드포인트 경계로 안쪽으로 줄이고, FILLER에 걸치면 그 FILLER 전체를 잘린 영역에 넣는다. Java 동등성 범위다.
+- **size_bytes(v1.49 정의):** utf8 = 마스킹 후·절단 전 content의 UTF-8 바이트 수 / base64 = 디코드한 바이트 수(마스킹하지 않으므로 원본과 같음) / omitted = 0(encoding으로 빈 본문과 구분). 근거: 원본 크기는 가린 값의 길이 정보를 Java 경계 밖으로 내보낸다(§2.3 원본값 경계 원칙). Java 동등성 범위다.
 - **multipart/바이너리:** 텍스트 파트(파일명·주장 content-type·동반 JSON)는 구조화 보존, 바이너리 파트만 `omitted`. `omitted = 본문 미전송 + Java 원본 즉시 폐기`.
 - **본문 내부 민감값의 마스킹 표기:** §2.6 masked_spans로 정의됨(아래 Body 불변식). tools/ fixture 마스커가 참조 구현이다. (현재 구현: 평문 민감 패턴이면 fail-closed 거부.) 헤더 값·경로의 부분 마스킹은 미정의 — 큐 11. 현재는 fail-closed.
 - **Body 불변식 (③이 검증한다):**
@@ -273,15 +276,21 @@ SanitizationReceipt   # 각 Transaction.meta에 필수
   - action(redact / pseudonymize): 지금은 둘 다 'FILLER + span'으로 같게 처리한다. 차이는 미정(큐).
   - text 본문의 정규식 matcher는 아직 없다. 규칙 값(어떤 이름을 가리나)은 정본이 아닌 설정값이다.
 - **정책은 데이터 파일로 둔다.** 정본은 레포의 JSON 정책 파일 1개다. Python(③의 header_rules 보조 검사·fixture 마스커)은 이 파일을 읽는다(모듈 → 데이터 방향). Java는 같은 파일을 빌드 리소스로 jar에 넣고, 그 해시는 jar 검증(`java_jar_contents`) 대상이다. ③의 정책 패턴(PATTERNS)은 Python ③ 전용이라 이 파일에 넣지 않는다. fixture 마스커(참조 구현)와 Java가 같은 정책 파일을 해석한다. 정책 파일 내용이 바뀌는 2부 PR-1(object_id_rules 추가·데이터 파일 정본화)에서 policy_version을 올린다. fixture 마스커가 픽스처에 대해 Java의 1차 역할을 대신한다. 마스커는 엔진의 `sanitization_check`를 재사용하지 않는다(독립성 — R-11 정신).
+  - 이행(v1.49): 정본 파일은 `src/sentinel/sanitization_policy.json`(policy_version `sanitization-policy-2`)이다. Python 모듈은 구조(모델)와 로더만 두고 규칙 값을 다시 적지 않는다. 동결본에 기록된 이전 값(`python-recheck-1`)은 그대로다.
 - **키·매핑 테이블:** 프로세스 메모리 전용. 디스크·로그·예외 메시지 기록 금지. **일관성 범위 = 분석 배치 단위**(→ 키 영속화 불필요, 평가 재현성과 보안 트레이드오프 해소).
   - 배치 = Envelope 1개(요청 하나). HMAC 배치 키는 요청마다 새로 만들고 처리가 끝나면 메모리에서 지운다. 요청 사이의 라벨 연결은 P1(배치 분석)로 넘긴다.
+    - 참조 마스커는 배치 범위를 명시 인자로 받는다(기본 transaction — Java 동등성의 기준). 데이터셋 생성기는 여러 트랜잭션을 한 배치로 마스킹할 수 있다(S v1·S v2의 생성 조건, P1 배치의 선행 사용). 생성기 밖에서 이 배치를 쓰면 정적 검사가 잡는다.
+    - 한계: S v1·S v2의 host 번호·relation 라벨은 실행 단위로 매겨져 운영(요청 단위)과 분포가 다르다.
 - **기본 모드 = strict_redaction.** relation_preserving은 IDOR/BOLA 세션에서만 opt-in.
 - **2단계 적용:** Java(1차, 전송 보호 — 정책 파일 전체 해석: 헤더 규칙, body_rules json·form, 라벨 규칙) + Python(2차 방어선 — ③ 독립 재검증: 정책 패턴 재스캔, 발견하면 거부, 치환하지 않음). 재검증은 1차를 대체하지 않는다.
   - object_id '민감' 판정(v1.46 큐 해소): 정책 파일 `object_id_rules`의 이름 glob 목록(`query:`·`form:`·`json:`)에 맞는 값만 민감으로 보고 가명화한다. Java와 참조 마스커는 matcher 해석기만 두고 판정 리터럴을 두지 않는다(N3). `object_id_policy=keep`이면 목록을 적용하지 않는다.
+    - v1.49: `object_id_rules`는 빈 목록으로 시작한다. 비어 있지 않으면 생산자가 거부한다(fail-closed). 가명화할 때의 MaskedRef.kind(닫힌 목록 token|cookie|pii|host 밖)와 영수증 redacted_kinds는 미정 — 별도 (A) 개정 큐.
     - 한계(사내 심의 전 해소): 경로 세그먼트의 객체 ID(예: `/users/7`)는 v1에서 다루지 않는다.
 
 > **신뢰 경계 (★구현 전 반드시):** `applied==true`는 요청자가 쓰는 주장일 뿐이다. **Python은 '마스킹됐다는 주장'을 믿지 말고 '마스킹됐음을 스스로 재검증'한다.** 수신 데이터에 토큰·쿠키·키 생문자열이 남았는지 Python이 독립 재스캔 → 발견 시 `applied` 값과 무관하게 거부(영수증≠데이터면 데이터를 믿고 거부). **전송 전 보호(Java, 1차)와 수신 후 재검증(Python, 2차 방어선)은 다른 보장이며, 재검증은 1차를 대체하지 않는다.** 패턴 검사는 '정책에 정의된 패턴'만 탐지하며 '모든 비밀값 부재'를 증명하지 않는다(불투명 세션 ID는 일반 문자열과 구분 불가).
 > - 값 재스캔은 masked_spans가 가리키는 위치의 FILLER를 걷어낸 본문에 대해 수행한다. 이는 선언된 span 위치를 값과 무관하게 건너뛰는 것이 아니다 — span 위치가 정확히 FILLER임은 masked_span_integrity(불변식 3)가 독립으로 검증하며, FILLER가 아니면 거부된다. 두 검사가 함께 성립해야 통과한다.
+> - 절단된 본문은 TRUNCATION_MARK 앞·뒤 구간을 따로 재스캔한다. 표지를 가로지르는 매칭은 원본에 없는 텍스트에 대한 매칭이므로 판정 근거가 아니다. 표지 위치의 신뢰는 불변식 7이 먼저 보장한다. 원본을 표지에서 먼저 나눈 뒤 구간마다 FILLER를 걷어낸다(걷어낸 뒤 나누면 FILLER 양옆이 이어져 표지가 새로 생길 수 있다). 불변식 7을 어기면 나누지 않고 전체를 재스캔한다(거부는 불변식 7이 한다).
+>   - 한계: 마스킹되지 않은 생 비밀값이 절단 경계에 걸치면 남은 조각을 ③이 잡지 못할 수 있다. 조각 탐지는 정책 패턴 검사의 기존 한계와 같은 성격이다. 1차 보장은 생산자의 마스킹 → 절단 순서와 Java 동등성(`java_masker_parity`)이다.
 
 ### 2.4 AnalysisResultSchema (출력 — LLM 환각을 계약으로 차단)
 ```
@@ -481,7 +490,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
     - JSON 직렬화·파싱은 Gson으로 한다. 출력 바이트는 §2.10 정규 직렬화를 따른다.
     - 마스커 코어는 transport 패키지의 순수 Java다. transport.* 전체에 Montoya import 0, 마스커 코어에 java.net 0 — Burp 없이 실행된다.
     - base64 본문은 항상 omitted로 보낸다(원본값은 Java 경계를 넘지 않는다). 한계: 참조 마스커는 base64를 정책 패턴으로 스캔해 걸릴 때만 omitted로 바꾸므로 두 구현이 다르다 — base64는 동등성 범위 밖이다.
-    - 동등성(`java_masker_parity`): make verify마다 실행 중 생성한 N5 더미 RawEnvelope에 대해 Java 코어 출력 = fixture 마스커 출력(§2.10, 바이트 일치). 범위: 헤더 규칙, body_rules json·form, object_id_rules, 라벨 규칙(두 모드), 마스킹 → 절단(Body 불변식 7), 엄격 JSON 판정(Gson 설정 포함), 코드포인트 오프셋(UTF-16 변환), host 가명, 유출 검사 거부. 원본 파일은 커밋하지 않는다. 하네스는 테스트 소스(배포 jar 밖)에 두고, Python 테스트가 오프라인 빌드 산출물을 하위 프로세스로 실행한다.
+    - 동등성(`java_masker_parity`): make verify마다 실행 중 생성한 N5 더미 RawEnvelope에 대해 Java 코어 출력 = fixture 마스커 출력(§2.10, 바이트 일치). 범위: 헤더 규칙, body_rules json·form, object_id_rules(빈 목록 / 비어 있지 않으면 거부), 라벨 규칙(두 모드), 마스킹 → 절단(Body 불변식 7), size_bytes(§2.2 정의), 엄격 JSON 판정(Gson 설정 포함), 코드포인트 오프셋(UTF-16 변환), host 가명, 유출 검사 거부. 원본 파일은 커밋하지 않는다. 하네스는 테스트 소스(배포 jar 밖)에 두고, Python 테스트가 오프라인 빌드 산출물을 하위 프로세스로 실행한다.
     - 송신은 transport의 송신 클래스 1개에서만 한다(`java_loopback_only`). 전송은 동등성(2부 PR-1)이 enforced가 된 뒤에만 연결한다.
   - ui: 렌더링만 한다 — status·evidence·limitations(뷰 잘림·환각 플래그)·needs_review·next_steps(텍스트), LLM 실패 시 '깨끗함 아님'. v1에는 Repeater 등 다른 도구로 보내는 기능이 없다.
     - UI 표시 문자열과 구분은 서버 응답에서 받는다. Java는 status·결과 값으로 분기하지 않는다.
@@ -512,7 +521,7 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 
 ---
 
-## 3. 가드레일 — 강제 매핑표 v1.39 (FROZEN)
+## 3. 가드레일 — 강제 매핑표 v1.40 (FROZEN)
 
 > 이 표가 **가드레일의 단일 출처(SSOT)**다. capability manifest는 이 표에서 기계 파생되며(`manifest_derivation`), 생성물과 정본의 일치를 make verify(로컬 게이트)가 검증한다. 서버측 CI는 없다.
 > **manifest 상태 4종:** `enforced`(선언된 필수검증이 실제 실행·통과한 경우만) | `not_implemented`(예정 시점 명시) | `disabled` | `unverifiable`(통제가 외부 의존 — OS격리·레포설정 — 이라 시스템 자가확인 불가. '있는 척' 아니라 '책임 밖임을 정직 표시').
@@ -596,14 +605,14 @@ RawBody   = { content_type, encoding(utf8|base64|omitted), content(str|null) } #
 | 규칙 | 목표층위 | 상태 | manifest 키 |
 |---|---|---|---|
 | 원본 생문자열 유입 불가(MaskedRef 타입) | 타입 레벨 | enforced | `maskedref_typing` |
-| Sanitization 독립 재검증 | 테스트 | enforced(값 재검증) | `sanitization_trust` |
+| Sanitization 독립 재검증 | 테스트 | enforced(값 재검증. 절단 본문은 불변식 7 통과 뒤 표지 앞·뒤 구간을 따로 재스캔 — 경계에 걸친 생 비밀값 조각은 한계) | `sanitization_trust` |
 | 비밀값 커밋 금지 | CI(pre-commit) | enforced(클라이언트 훅 + make verify 전수스캔; 서버측 CI 강제는 미구현) | `secret_scan_hook` |
 | 원본 트래픽 미기록(기능 부재) | 테스트 | enforced | `no_raw_persistence` |
 | 감사 로그 존재 | 테스트 | enforced | `audit_log_present` |
 | 인증실패 로그 위생 | 테스트 | enforced | `authfail_log_hygiene` |
 | 감사 기록 실패 시 fail-closed | 테스트 | enforced(범위 — LLM 감사. 수용 요청 감사 등 나머지는 미구현) | `audit_write_failure` |
 | LLM 호출마다 입력 뷰·원출력의 SHA-256, 크기, 소요 시간, llm_outcome, prompt_version, model_id를 남긴다. 내용은 남기지 않는다 | 테스트 | enforced(실제 호출 경로 — 스텁 서버로 증명) | `llm_io_audit` |
-| Body 불변식 1~7을 ③에서 검증(7 = 절단 표지) | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안. 불변식 7은 미구현 → 2부 PR-1) | `masked_span_integrity` |
+| Body 불변식 1~7을 ③에서 검증(7 = 절단 표지) | validator+테스트 | enforced(검증 함수 단위 — ③, 불변식 5는 같은 kind 안) | `masked_span_integrity` |
 | Java 마스커 코어 출력 = fixture 마스커 출력(§2.10 정규 직렬화 바이트 일치), make verify마다 실행 중 생성한 N5 더미로. 범위: 헤더 규칙·body_rules json·form·object_id_rules·라벨 두 모드·마스킹→절단·엄격 JSON·코드포인트 오프셋·host 가명·유출 검사 거부(base64 제외) | 테스트 | not_implemented → 2부 PR-1 | `java_masker_parity` |
 | 라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님 | 테스트 | enforced(relation_preserving 출력에만 — strict는 label=null이라 대상 아님) | `label_consistency` |
 

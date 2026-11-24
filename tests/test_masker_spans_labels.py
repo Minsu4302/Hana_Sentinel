@@ -26,6 +26,7 @@ import tools.fixture_masker.masker as masker
 from sentinel.common_types import FILLER
 from sentinel.pipeline.schema_gate import parse_envelope
 from tools.fixture_masker.masker import MaskerRejected
+from tools.fixture_masker.raw import RawEnvelope
 from tools.mutation_guard import assert_loaded_from, copy_with_mutation
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -173,8 +174,8 @@ def test_masker_refuses_to_emit_json_spans_breaking_body_invariants(tmp_path, mo
 def test_masker_refuses_spans_on_base64_body_invariant1(tmp_path, monkeypatch):
     real = masker._body
 
-    def bug(b, run, globs):
-        out = real(b, run, globs)
+    def bug(b, run, globs, side):
+        out = real(b, run, globs, side)
         out.update(encoding="base64", content=base64.b64encode(b"x").decode(),
                    masked_spans=[{"at": {"kind": "text", "range": {"start": 0, "end": 8}},
                                   "ref": run.masked("v" + secrets.token_hex(4), "token")}])
@@ -212,12 +213,33 @@ def test_relation_mode_labels_are_a_bijection_over_many_distinct_values(tmp_path
     assert len(set(by_value.values())) == len(values)
 
 
-def test_labels_are_scoped_to_one_run(tmp_path):
+def test_labels_and_hosts_are_scoped_to_one_transaction_by_default(tmp_path):
+    """(A) §2.3 배치 = Envelope 1개: 같은 실행의 두 번째 트랜잭션도 라벨·host 번호를 처음부터 다시 매긴다."""
     shared = _tok()
-    tx = lambda: _tx(headers=[{"name": "X-Api-Key", "value": shared}])  # noqa: E731
-    [a] = _mask(tmp_path, [_tx(headers=[{"name": "X-Api-Key", "value": _tok()}]), tx()], "relation_preserving")[1:]
-    [b] = _mask(tmp_path, [tx()], "relation_preserving")
-    assert a["request"]["headers"][0]["value"]["label"] == "ref_02" and b["request"]["headers"][0]["value"]["label"] == "ref_01"
+    first, second = _mask(tmp_path, [_tx(headers=[{"name": "X-Api-Key", "value": _tok()}]),
+                                     _tx(headers=[{"name": "X-Api-Key", "value": shared}])], "relation_preserving")
+    assert first["request"]["headers"][0]["value"]["label"] == second["request"]["headers"][0]["value"]["label"] == "ref_01"
+    assert first["request"]["host"] == second["request"]["host"] == "masked-host-01.invalid"
+
+
+def test_run_batch_shares_labels_and_hosts_across_transactions_for_dataset_builders(tmp_path):
+    """run 배치(데이터셋 생성기 전용): 호출 전체가 한 배치 — S v1·S v2의 생성 조건."""
+    shared = _tok()
+    txs = [_tx(headers=[{"name": "X-Api-Key", "value": _tok()}]), _tx(headers=[{"name": "X-Api-Key", "value": shared}]),
+           _tx(headers=[{"name": "X-Api-Key", "value": shared}])]
+    raw = RawEnvelope.model_validate_json(json.dumps({"schema_version": "1.0", "transactions": txs}))
+    outs = [json.loads(data)["transactions"][0] for _name, data in masker.mask(raw, "relation_preserving", batch="run")]
+    by_id = {o["meta"]["transaction_id"]: o for o in outs}
+    a, b, c = (by_id[t["meta"]["transaction_id"]] for t in txs)
+    assert [x["request"]["headers"][0]["value"]["label"] for x in (a, b, c)] == ["ref_01", "ref_02", "ref_02"]
+    assert [x["request"]["host"] for x in (a, b, c)] == [f"masked-host-0{i}.invalid" for i in (1, 2, 3)]
+
+
+def test_unknown_batch_is_rejected():
+    raw = RawEnvelope.model_validate_json(json.dumps({"schema_version": "1.0", "transactions": [_tx()]}))
+    with pytest.raises(MaskerRejected) as exc:
+        masker.mask(raw, "strict_redaction", batch="session")
+    assert exc.value.code == "unknown_batch"
 
 
 @pytest.mark.parametrize("bug", ["same_value_new_label", "different_values_one_label"])

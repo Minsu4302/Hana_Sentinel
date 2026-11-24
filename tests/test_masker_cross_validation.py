@@ -88,7 +88,7 @@ def test_base64_bodies_are_judged_omitted_or_preserved(tmp_path):
     s_body = json.loads(secret)["transactions"][0]["request"]["body"]
     c_body = json.loads(clean)["transactions"][0]["request"]["body"]
     assert (s_body["encoding"], s_body["content"], s_body["masked_spans"], s_body["truncated"]) == ("omitted", None, [], False)
-    assert s_body["size_bytes"] > 0  # 원본(디코드) 크기
+    assert s_body["size_bytes"] == 0  # (A) §2.2 size_bytes 정의(v1.49): omitted는 0
     raw_clean = cats["base64_clean_preserved"]["request"]["body"]["content"]
     assert (c_body["encoding"], c_body["content"]) == ("base64", raw_clean)
 

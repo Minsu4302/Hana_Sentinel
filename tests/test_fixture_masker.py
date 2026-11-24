@@ -378,7 +378,7 @@ _T = "tests/test_fixture_masker.py::"
 _M = ("tools/fixture_masker/masker.py", "tools.fixture_masker.masker")
 _A = ("tools/arch_boundary.py", "tools.arch_boundary")
 MUTATIONS = {
-    "leak_guard_off": (*_M, "    if _leaked(serialized, run.originals):\n", "    if False:\n",
+    "leak_guard_off": (*_M, "        if _leaked(texts, run.originals):\n", "        if False:\n",
                        [_T + "test_leak_guard_rejects_transform_bug_and_writes_nothing",
                         _T + "test_masked_value_also_present_in_unmasked_place_is_rejected_fail_closed"]),
     "exception_chain_kept": (*_M, '        except Exception:\n            raise MaskerRejected("transform_failed") from None',

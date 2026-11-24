@@ -1912,3 +1912,55 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 
 ### 작업 기록
 - 첫 커밋(`fb580d5`)에서 이 절이 빠졌다. 같은 명령 안의 기록 단계가 실패했는데, 명령을 실패 시 멈추는 체인으로 잇지 않아 커밋·verify·푸시가 이어졌다. 보완 커밋으로 넣었다.
+
+---
+
+## 2부 PR-1a — 동등성의 기준(Python 참조 구현) 고정 (Issue #141, (A) v1.49)
+
+### 0단계
+- a. §2.10 적합성: 동결 Envelope 126개(S v1 6, S v2 120)를 §2.10대로 다시 직렬화했다. 126개 모두 바이트가 같고, 시각·UUID 표기 위반은 0건이다.
+- b. 결정적 재생성 비교: `d85b0fb` worktree와 PR 헤드를 비교했다. 테스트 전용 드라이버로 `uuid4`·`secrets`·생성기 `datetime.now`를 고정했고, 코드 경로에는 주입 지점이 없다.
+  - 1차 비교는 시계 미고정이었다(장치 결함, `frozen_at` 1경로). 1회 재실행했다.
+  - 재실행 결과(허용 차이는 `policy_version` 하나):
+
+| 생성기 | 파일 | 이름 일치 | 바이트 동일 | `policy_version`만 다름 | 그 밖의 차이 |
+|---|---|---|---|---|---|
+| S v2 | 121 | 예 | 1(labels.json) | 120(Envelope) | 0 |
+| S v1 | 7 | 예 | 1(labels.json) | 6(Envelope) | 0 |
+
+### 진행 중 판정(민수)
+- 배치 범위는 A안이다. 참조 마스커의 기본은 transaction이고, run은 데이터셋 생성기만 쓴다.
+  - S v1 빌더도 run을 쓴다(진행 중 확인).
+  - 생성기 밖에서 run을 쓰면 정적 검사가 잡는다.
+- object_id_rules: 빈 목록으로 두고, 비어 있지 않으면 생산자가 거부한다. MaskedRef kind 확장은 별도 (A) 개정 큐로 넘겼다.
+- 절단 알고리즘: UTF-8 바이트 반반, 코드포인트 경계, FILLER 통째 버림.
+- size_bytes 정의를 정정했다(1안 — (A)를 현행에 맞춤).
+  - 동결본 utf8 252본문 중 마스킹 23건이 모두 마스킹 후 바이트였다.
+  - 무효가 되는 인스턴스는 0이고 schema_version은 1.0을 유지한다.
+- ③ 재스캔 × 절단 표지: A안 — 불변식 7을 통과한 절단 본문만 표지 앞·뒤 구간으로 따로 재스캔한다.
+  - 계기: 절단 경계에서 FILLER를 통째로 버리면 `password=` 바로 뒤에 표지가 붙어, ③이 정상 데이터를 오거부했다(테스트로 재현).
+
+### 한 일
+- 정책 정본 파일 `src/sentinel/sanitization_policy.json`(policy_version `sanitization-policy-2`). 모듈은 로더만 두고, 규칙 목록을 코드에 다시 적으면 테스트가 잡는다.
+- §2.10 직렬화기 `src/sentinel/canonical_json.py`. 시각·UUID까지 직접 구현했고, 마스커 출력이 이것을 쓴다.
+- `TRUNCATION_MARK`(정의 한 곳, (A) 값 일치 테스트)
+- 참조 마스커:
+  - 배치 인자, object_id 거부
+  - 절단(json span → text span, 표지가 든 원본 → omitted, base64 상한 초과 → omitted)
+  - size_bytes 정의, 불변식 7 자체 검증
+  - 영수증 kind 집계(절단으로 버린 span도 센다)
+- ③:
+  - 불변식 7(`masked_span_integrity`) — 위조 5종과 변이 2종
+  - 구간 재스캔(`sanitization_trust`) — 위조·대조 7종과 변이 3종
+- 동결본 보호: 동결 Envelope에 truncated=true가 생기면 실패한다(`dataset_version_freeze`).
+
+### 깨진 가정 / 사실 기록
+- 참조 마스커는 지금까지 실행 단위로 배치를 썼다. 그래서 S v1·S v2의 host 번호와 relation 라벨은 실행 단위로 매겨져 있고, 운영(요청 단위)과 분포가 다르다((A) §2.3 한계로 기록).
+- size_bytes는 (A)의 "원본크기"와 달리 마스킹 후 바이트로 쓰이고 있었다. (A)를 현행에 맞췄다.
+- 기존 테스트 기대값을 바꾼 것 5건(이번 결정 때문): omitted size 0, 트랜잭션 단위 라벨, 불변식 4 픽스처에 표지 1개 추가, 마스커 변이 대상 줄 이동, `_body` 서명.
+
+### 이월(PR-1b)
+- Java 마스커 코어와 동등성(범위에 size_bytes 포함, object_id는 '빈 목록 / 거부'까지)
+- Gson·jar
+- R1·R2′
+- `java_masker_parity`·`java_jar_contents` 승격

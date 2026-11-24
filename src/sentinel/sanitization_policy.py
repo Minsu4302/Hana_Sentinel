@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import re
 from fnmatch import fnmatchcase
+from pathlib import Path
 from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+from sentinel import strict_json
 
 
 _CRED_NAMES = r"(?:password|passwd|pwd|secret|client_secret|api_key|apikey|access_token|refresh_token|id_token|auth_token|token)"
@@ -49,28 +52,34 @@ class BodyRule(_Strict):
     action: Literal["redact", "pseudonymize", "keep"]
 
 
+class ObjectIdRule(_Strict):
+    matcher: str  # (A) §2.3 — query:/form:/json: 이름 glob
+    action: Literal["pseudonymize"]
+
+
 class SanitizationPolicy(_Strict):
     policy_version: str
     mode: Literal["strict_redaction", "relation_preserving"] = "strict_redaction"
     header_rules: tuple[HeaderRule, ...]
     body_rules: tuple[BodyRule, ...] = ()
     object_id_policy: Literal["pseudonymize_if_sensitive", "keep"] = "pseudonymize_if_sensitive"
+    object_id_rules: tuple[ObjectIdRule, ...] = ()
 
     def requires_masked_header(self, name: str) -> bool:
         lowered = name.lower()
         return any(fnmatchcase(lowered, r.name_pattern.lower()) and r.action != "keep" for r in self.header_rules)
 
 
-# 초기 설정값(정본 결정 아님). 인증·세션·키를 실어 나르는 대표 헤더.
-DEFAULT_POLICY = SanitizationPolicy(
-    policy_version="python-recheck-1",
-    header_rules=tuple(HeaderRule(name_pattern=p, action="redact") for p in (
-        "authorization", "proxy-authorization", "cookie", "set-cookie",
-        "x-api-key", "*api-key*", "*apikey*", "*token*", "*secret*", "*session*",
-    )),
-    # 본문 규칙((A) §2.3 matcher 문법): json:<키 glob> = 모든 깊이의 이름 일치 멤버 중 문자열 값 노드 /
-    # form:<이름 glob> = 폼 본문 파라미터 값. 대소문자 무시. 소비자는 fixture 마스커(와 미래 Java) — ③은 쓰지 않는다.
-    body_rules=tuple(BodyRule(matcher=f"{kind}:{p}", action="redact") for kind in ("json", "form") for p in (
-        "password", "passwd", "pwd", "*token*", "*secret*", "*session*", "*api*key*", "*apikey*",
-    )),
-)
+# 정책 값의 정본은 데이터 파일 하나다((A) §2.3 — Python이 읽고, Java는 같은 파일을 빌드 리소스로 넣는다).
+# 이 모듈은 구조(모델)와 로더만 둔다. 규칙 값을 코드에 다시 적지 않는다. PATTERNS는 ③ 전용이라 파일에 없다.
+POLICY_PATH: Final = Path(__file__).with_name("sanitization_policy.json")
+
+
+def load_policy(path: Path = POLICY_PATH) -> SanitizationPolicy:
+    """정책 파일 → SanitizationPolicy. 엄격 JSON(중복 키·NaN 거부)이 아니거나 구조가 틀리면 예외(기동 거부)."""
+    text = Path(path).read_text(encoding="utf-8")
+    strict_json.parse(text)
+    return SanitizationPolicy.model_validate_json(text)
+
+
+DEFAULT_POLICY: Final = load_policy()

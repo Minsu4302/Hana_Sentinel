@@ -295,3 +295,30 @@ def test_each_freeze_check_is_load_bearing_under_verified_mutation(tmp_path, nam
     assert r.returncode == 1, f"변이 {name}가 살아남음\n{out}"
     for node in nodes:
         assert f"FAILED {node}" in out, f"{node}가 변이본에서 실패하지 않음\n{out}"
+
+
+# ── 동결본 보호: truncated=true가 생기면 실패((A) v1.48 리뷰 반영 — schema_version 1.0 유지의 전제) ──────────
+
+def truncated_bodies(root: Path) -> list[str]:
+    """root 아래 동결 Envelope에서 truncated=true인 본문 위치(파일 이름·측). 값은 담지 않는다."""
+    found = []
+    for path in sorted(root.rglob("*.json")):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        for tx in doc.get("transactions", []) if isinstance(doc, dict) else []:
+            found += [f"{path.name}:{side}" for side in ("request", "response") if tx[side]["body"]["truncated"] is True]
+    return found
+
+
+def test_frozen_envelopes_have_no_truncated_bodies():
+    for version in ("v1", "v2"):
+        assert truncated_bodies(REPO_ROOT / "datasets" / "S" / version) == [], version
+
+
+def test_a_truncated_body_planted_in_a_frozen_copy_is_caught(tmp_path):
+    src = sorted((REPO_ROOT / "datasets" / "S" / "v2" / "envelopes").glob("*.json"))[0]
+    dest = tmp_path / "v2" / src.name
+    dest.parent.mkdir(parents=True)
+    doc = json.loads(src.read_text(encoding="utf-8"))
+    doc["transactions"][0]["response"]["body"]["truncated"] = True
+    dest.write_text(json.dumps(doc), encoding="utf-8")
+    assert truncated_bodies(tmp_path / "v2") == [f"{src.name}:response"]

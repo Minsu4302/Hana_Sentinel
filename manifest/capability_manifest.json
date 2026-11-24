@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.39",
+  "spec": "docs/design-decision.md §3 매핑표 v1.40",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -531,7 +531,7 @@
     "sanitization_trust": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "값 재검증",
+      "note": "값 재검증. 절단 본문은 불변식 7 통과 뒤 표지 앞·뒤 구간을 따로 재스캔 — 경계에 걸친 생 비밀값 조각은 한계",
       "verification_tests": [
         "tests/test_sanitization.py::test_raw_secret_is_rejected_despite_applied_true_receipt",
         "tests/test_sanitization.py::test_http_lying_receipt_with_raw_token_is_rejected",
@@ -547,7 +547,10 @@
         "tests/test_sanitization.py::test_body_over_cap_is_rejected_and_at_cap_passes",
         "tests/test_sanitization.py::test_oversized_http_request_is_rejected_before_parsing",
         "tests/test_sanitization.py::test_rejection_audit_has_reason_codes_only_no_values_or_input_names",
-        "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema"
+        "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema",
+        "tests/test_masked_spans.py::test_segment_rescan_rejects",
+        "tests/test_masked_spans.py::test_segment_rescan_passes_as_control",
+        "tests/test_masked_spans.py::test_each_masked_span_check_is_load_bearing_under_verified_mutation"
       ]
     },
     "secret_scan_hook": {
@@ -642,7 +645,7 @@
     "masked_span_integrity": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "검증 함수 단위 — ③, 불변식 5는 같은 kind 안. 불변식 7은 미구현 → 2부 PR-1",
+      "note": "검증 함수 단위 — ③, 불변식 5는 같은 kind 안",
       "verification_tests": [
         "tests/test_masked_spans.py::test_rejects_body_invariant_violation",
         "tests/test_masked_spans.py::test_kind_order_json_before_text",
@@ -660,7 +663,10 @@
         "tests/test_masked_spans.py::test_shared_definition_modules_import_nothing_else_from_sentinel",
         "tests/test_masked_spans.py::test_span_rejection_audit_has_no_path_range_or_content_values",
         "tests/test_masked_spans.py::test_each_masked_span_check_is_load_bearing_under_verified_mutation",
-        "tests/test_sanitization.py::test_omitted_body_with_content_is_rejected"
+        "tests/test_sanitization.py::test_omitted_body_with_content_is_rejected",
+        "tests/test_masked_spans.py::test_valid_truncated_body_with_spans_outside_the_mark_is_accepted_as_control",
+        "tests/test_masked_spans.py::test_truncation_mark_constant_equals_the_canonical_value_in_A",
+        "tests/test_masked_spans.py::test_truncation_mark_is_defined_only_in_common_types"
       ]
     },
     "java_masker_parity": {
@@ -676,7 +682,8 @@
       "verification_tests": [
         "tests/test_masker_spans_labels.py::test_relation_mode_same_value_same_label_across_header_body_and_param",
         "tests/test_masker_spans_labels.py::test_relation_mode_labels_are_a_bijection_over_many_distinct_values",
-        "tests/test_masker_spans_labels.py::test_labels_are_scoped_to_one_run",
+        "tests/test_masker_spans_labels.py::test_labels_and_hosts_are_scoped_to_one_transaction_by_default",
+        "tests/test_masker_spans_labels.py::test_run_batch_shares_labels_and_hosts_across_transactions_for_dataset_builders",
         "tests/test_masker_spans_labels.py::test_label_self_check_rejects_inconsistent_relation_labels",
         "tests/test_masker_spans_labels.py::test_hmac_key_is_fresh_per_run_and_discarded_at_the_end",
         "tests/test_masker_spans_labels.py::test_hmac_key_is_discarded_even_when_the_run_fails",
@@ -1053,7 +1060,9 @@
         "tests/test_dataset_freeze.py::test_builder_never_overwrites_a_frozen_dataset",
         "tests/test_dataset_freeze.py::test_first_freeze_covers_the_minimum_structure",
         "tests/test_dataset_freeze.py::test_frozen_files_hold_no_raw_transaction_or_n5_markers",
-        "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+        "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation",
+        "tests/test_dataset_freeze.py::test_frozen_envelopes_have_no_truncated_bodies",
+        "tests/test_dataset_freeze.py::test_a_truncated_body_planted_in_a_frozen_copy_is_caught"
       ]
     },
     "dataset_engine_regression": {
