@@ -102,7 +102,7 @@ def build(out_dir: Path = DEFAULT_OUT) -> list[str]:
     for mode in ("strict_redaction", "relation_preserving"):
         group = [s for s in specs if s["mode"] == mode]
         raw = RawEnvelope.model_validate_json(json.dumps({"schema_version": "1.0", "transactions": [s["tx"] for s in group]}))
-        files.update(masker.mask(raw, mode))
+        files.update(masker.mask(raw, mode, batch="run"))  # 데이터셋 생성 배치 — S v1 생성 조건((A) §2.3)
     versions = {**current_versions(), "labelfile_schema": "1.0"}  # S v1은 1.0으로 동결됐다
     labels = {"schema_version": "1.0", "dataset_id": DATASET_ID,
               "frozen_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),

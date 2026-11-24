@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import json
 import logging
 import os
@@ -23,7 +24,7 @@ from pathlib import Path
 import pytest
 
 import sentinel.schema
-from sentinel.common_types import FILLER, MaskedRef
+from sentinel.common_types import FILLER, TRUNCATION_MARK, MaskedRef
 from sentinel.pipeline.sanitization_check import SanitizationRejected, verify_sanitization
 from sentinel.pipeline.schema_gate import SchemaRejected, parse_envelope
 from tests.test_schema import T0, _env, _raw
@@ -198,7 +199,7 @@ INVARIANT_VIOLATIONS = {
                                {"masked_span_unresolvable"}),
     # 4: json ⇒ content 전체가 엄격 JSON
     "inv4_not_json": (dict(content=f"x {FILLER}", spans=[_json("")]), {"masked_span_json_unparseable"}),
-    "inv4_truncated": (dict(content=json.dumps({"a": FILLER}), spans=[_json("/a")], truncated=True),
+    "inv4_truncated": (dict(content=json.dumps({"a": FILLER, "t": TRUNCATION_MARK}), spans=[_json("/a")], truncated=True),
                        {"masked_span_json_unparseable"}),
     "inv4_duplicate_key": (dict(content=f'{{"a": "{FILLER}", "a": "{FILLER}"}}', spans=[_json("/a")]),
                            {"masked_span_json_unparseable"}),
@@ -218,6 +219,16 @@ INVARIANT_VIOLATIONS = {
                                    {"masked_span_order"}),
     "inv6_json_path_descending": (dict(content=json.dumps({"a": FILLER, "b": FILLER}), spans=[_json("/b"), _json("/a")]),
                                   {"masked_span_order"}),
+    # 7: 절단 표지(§2.6 TRUNCATION_MARK) — truncated ⇒ utf8 ∧ 정확히 1개 / ¬truncated ⇒ 0개 / FILLER span과 겹침 금지
+    "inv7_truncated_without_mark": (dict(content="head and tail", spans=[], truncated=True), {"truncation_mark_count"}),
+    "inv7_two_marks": (dict(content=f"head{TRUNCATION_MARK}mid{TRUNCATION_MARK}tail", spans=[], truncated=True),
+                       {"truncation_mark_count"}),
+    "inv7_mark_without_truncated": (dict(content=f"head{TRUNCATION_MARK}tail", spans=[]),
+                                    {"truncation_mark_without_truncated"}),
+    "inv7_mark_overlaps_filler_span": (dict(content=f"ab{TRUNCATION_MARK}cd", spans=[_text(4)], truncated=True),
+                                       {"truncation_mark_overlaps_filler", "masked_span_not_filler"}),
+    "inv7_truncated_not_utf8": (dict(content=base64.b64encode(b"head tail").decode(), spans=[], encoding="base64",
+                                     truncated=True), {"truncated_not_utf8"}),
 }
 
 
@@ -225,6 +236,69 @@ INVARIANT_VIOLATIONS = {
 def test_rejects_body_invariant_violation(name):
     kwargs, expected = INVARIANT_VIOLATIONS[name]
     assert _codes(_with_body(kwargs.pop("content"), kwargs.pop("spans"), **kwargs)) == expected
+
+
+def test_valid_truncated_body_with_spans_outside_the_mark_is_accepted_as_control():
+    """7 대조: 표지 1개, FILLER span은 표지 앞뒤(겹치지 않음) — 통과."""
+    content = f"a={FILLER}&b{TRUNCATION_MARK}c=1&d={FILLER}"
+    tail = content.index("d=") + 2
+    _passes(_with_body(content, [_text(2), _text(tail)], truncated=True))
+
+
+# ── 절단 본문의 구간 재스캔((A) §2.3 — 불변식 7 통과 뒤에만 표지 앞·뒤를 따로) ─────────────
+M = TRUNCATION_MARK
+BEARER = "bearer " + "abcdefghijklmnop"  # auth_scheme_credential 정책 패턴에 걸리는 더미
+SEGMENT_REJECTS = {
+    # (a)(b) 생 비밀값 패턴이 한 구간 안에 통째로 있으면 구간 재스캔이 잡는다
+    "segment_secret_in_head": (dict(content=f"x {BEARER} {M} tail", spans=[], truncated=True), {"auth_scheme_credential"}),
+    "segment_secret_in_tail": (dict(content=f"head {M} {BEARER} x", spans=[], truncated=True), {"auth_scheme_credential"}),
+    # (e) 불변식 7을 어기면 나누지 않는다 — 불변식 7이 거부하고, 전체 재스캔이 표지를 가로지르는 패턴도 본다
+    "inv7_two_marks_rescanned_whole": (dict(content=f"password={M}secret{M}x", spans=[], truncated=True),
+                                       {"truncation_mark_count", "credential_form_field"}),
+    "inv7_overlap_rescanned_whole": (dict(content=f"password={M}x", spans=[_text(9)], truncated=True),
+                                     {"truncation_mark_overlaps_filler", "credential_form_field"}),
+}
+
+
+@pytest.mark.parametrize("name", sorted(SEGMENT_REJECTS))
+def test_segment_rescan_rejects(name):
+    kwargs, expected = SEGMENT_REJECTS[name]
+    assert expected <= _codes(_with_body(kwargs.pop("content"), kwargs.pop("spans"), **kwargs))
+
+
+SEGMENT_PASSES = {
+    # (c) FILLER를 통째로 버린 절단: "password=" 바로 뒤 표지 — 표지를 가로지르는 매칭은 판정 근거가 아니다
+    "form_name_then_mark": dict(content=f"pad=a&password={M}&q=bbbb", spans=[], truncated=True),
+    # (d) JSON: `"password": "` + 표지 + 뒤쪽 `"` — 표지를 가로질러 credential_json_field가 걸리면 안 된다
+    "json_member_then_mark": dict(content='{"password": "' + M + 'rest", "x": "y"}', spans=[], truncated=True,
+                                  ctype="application/json"),
+    # 구간 안의 선언된 FILLER는 기존 규칙대로 걷어낸다(뒤 구간 오프셋 포함)
+    "fillers_stripped_in_both_segments": dict(content=f"password={FILLER}&a=1{M}b=2&token={FILLER}",
+                                              spans=[_text(9), _text(len(f"password={FILLER}&a=1{M}b=2&token="))],
+                                              truncated=True),
+}
+
+
+@pytest.mark.parametrize("name", sorted(SEGMENT_PASSES))
+def test_segment_rescan_passes_as_control(name):
+    kwargs = dict(SEGMENT_PASSES[name])
+    _passes(_with_body(kwargs.pop("content"), kwargs.pop("spans"), **kwargs))
+
+
+def test_truncation_mark_constant_equals_the_canonical_value_in_A():
+    text = (REPO_ROOT / "docs" / "design-decision.md").read_text(encoding="utf-8")
+    values = re.findall(r'^TRUNCATION_MARK\s+=\s+"([^"]*)"', text, flags=re.M)
+    assert values == [TRUNCATION_MARK] == ["[[TRUNCATED]]"]
+    assert FILLER not in TRUNCATION_MARK and TRUNCATION_MARK not in FILLER
+
+
+def test_truncation_mark_is_defined_only_in_common_types():
+    for path in (REPO_ROOT / "src" / "sentinel").rglob("*.py"):
+        if path.name == "common_types.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        assert '"[[TRUNCATED]]"' not in text and "'[[TRUNCATED]]'" not in text, path
+        assert not re.search(r"^\s*TRUNCATION_MARK\s*[:=]", text, flags=re.M), path
 
 
 def test_kind_order_json_before_text():
@@ -333,6 +407,20 @@ MUTATIONS = {
                  [_INV + "[inv5_node_and_range_same_node]", _INV + "[inv5_duplicate_text_range]"]),
     "inv6_off": (*_MSC, "    if any(a > b for a, b in zip(keys, keys[1:])):", "    if False:",
                  [_INV + "[inv6_text_start_descending]", _INV + "[inv6_json_path_descending]"]),
+    "inv7_off": (*_MSC, "    marks = _truncation_mark(body, where)  # 불변식 7 — span 유무와 무관\n", "    marks = []\n",
+                 [_INV + "[inv7_truncated_without_mark]", _INV + "[inv7_two_marks]",
+                  _INV + "[inv7_mark_without_truncated]", _INV + "[inv7_truncated_not_utf8]"]),
+    "segment_split_off": (*_MSC, "    return [head, tail]\n", "    return rescan_view(body)\n",
+                          [_T + "test_segment_rescan_passes_as_control[form_name_then_mark]",
+                           _T + "test_segment_rescan_passes_as_control[json_member_then_mark]"]),
+    "segment_tail_scan_skipped": (*_MSC, "    return [head, tail]\n", "    return [head]\n",
+                                  [_T + "test_segment_rescan_rejects[segment_secret_in_tail]"]),
+    "segment_inv7_gate_off": (*_MSC, '    if not body.truncated or _truncation_mark(body, "rescan"):\n',
+                              "    if not body.truncated:\n",
+                              [_T + "test_segment_rescan_rejects[inv7_two_marks_rescanned_whole]",
+                               _T + "test_segment_rescan_rejects[inv7_overlap_rescanned_whole]"]),
+    "inv7_overlap_off": (*_MSC, '            return [f"truncation_mark_overlaps_filler@{where}"]\n', "            pass\n",
+                         [_INV + "[inv7_mark_overlaps_filler_span]"]),
     # 재스캔: span 위치를 값과 무관하게 통째 건너뛰기 → span에 선언된 생문자열이 재스캔을 피한다
     "rescan_skips_span_regardless_of_value": (*_MSC, "    return value == FILLER  # 값이 정확히 FILLER일 때만",
                                               "    return True  #",

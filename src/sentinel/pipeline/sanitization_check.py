@@ -108,7 +108,7 @@ def check_transaction(tx: Transaction, where: str, policy: SanitizationPolicy) -
     for side, body, cap in (("request", tx.request.body, REQ_BODY_CAP), ("response", tx.response.body, RESP_BODY_CAP)):
         found += check_body(body, f"{where}.{side}.body", cap)
         found += masked_span_check.check_body_invariants(body, f"{where}.{side}.body")
-        dump[side]["body"]["content"] = masked_span_check.rescan_view(body)
+        dump[side]["body"]["content"] = masked_span_check.rescan_segments(body)  # 절단 본문은 표지 앞·뒤 구간(§2.3)
     for side, headers in (("request", tx.request.headers), ("response", tx.response.headers)):
         for i, h in enumerate(headers):
             if isinstance(h.value, str) and policy.requires_masked_header(h.name):

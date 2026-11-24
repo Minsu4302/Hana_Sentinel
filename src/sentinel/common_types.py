@@ -53,6 +53,7 @@ MaskKind = Literal["token", "cookie", "pii", "host"]
 MaskLabel = Annotated[str, StringConstraints(pattern=r"^ref_[0-9]{2,4}$")]
 
 FILLER: Final = "[MASKED]"  # (A) §2.6 — ASCII 고정 리터럴. kind·라벨 없음(마스킹 권위는 masked_spans 사이드카)
+TRUNCATION_MARK: Final = "[[TRUNCATED]]"  # (A) §2.6 — ASCII 고정 리터럴. 절단 본문에 정확히 1개(§2.2 Body 불변식 7)
 
 
 class MaskedRef(_Common):

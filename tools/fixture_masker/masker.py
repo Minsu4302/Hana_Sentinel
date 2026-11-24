@@ -24,7 +24,13 @@
   독립성의 실체는 이 판정 로직이다. base64 디코드·퍼센트 디코드 자체는 표준 라이브러리라 양쪽이 같다(독립 아님 — 정직 표기).
   변형 범위는 ③과 같게 맞춘다: utf-8(errors=replace) 텍스트 + '%'·'+'가 있으면 퍼센트(+) 디코드 변형.
   변형 규칙은 '언제 어떤 표준 함수를 부르나'라 데이터로 빼지 않았다 — 같은 변형을 본다는 것은 동등성 테스트가 고정한다.
-- size_bytes는 마스킹 뒤 content로 산출, truncated=false(절단하지 않음 — §2.2 절단은 마스킹 뒤).
+- size_bytes((A) §2.2 정의): utf8 = 마스킹 후·절단 전 content의 UTF-8 바이트 수 / base64 = 디코드 바이트 수 / omitted = 0.
+- 절단((A) §2.2, 마스킹 뒤): 저장 content(표지 포함) ≤ 상한(요청 64KiB·응답 256KiB, UTF-8 바이트). 앞 ≤ ⌊(상한−|표지|)/2⌋,
+  뒤 ≤ 나머지, 코드포인트 경계로 안쪽 축소, FILLER에 걸치면 그 FILLER 통째로 잘린 영역에. '앞 + TRUNCATION_MARK + 뒤'로 저장하고
+  남은 span은 text range span으로 바꾼다. 원본에 표지가 이미 있으면 omitted, base64가 상한을 넘으면 omitted.
+- 배치((A) §2.3): 기본 transaction — Envelope 1개마다 HMAC 키·매핑 테이블·host 번호를 새로 만든다(Java 동등성의 기준).
+  run은 데이터셋 생성기만 쓴다(S v1·S v2 생성 조건). object_id_rules가 비어 있지 않으면 거부한다(kind 미정).
+- 출력 바이트는 (A) §2.10 정규 직렬화(`sentinel.canonical_json`).
 
 독립성(`masker_independence`, R-11): 엔진 검증 파이프라인(`sentinel.pipeline`)을 쓰지 않는다. 엔진의 공용 정의
 (`schema`·`common_types`·`strict_json`·정책 데이터)는 쓴다 — 검증 로직이 아니다.
@@ -47,7 +53,8 @@ from urllib.parse import unquote_plus
 from pydantic import ValidationError
 
 from sentinel import strict_json
-from sentinel.common_types import FILLER
+from sentinel import canonical_json
+from sentinel.common_types import FILLER, TRUNCATION_MARK
 from sentinel.sanitization_policy import DEFAULT_POLICY, PATTERNS
 from sentinel.schema import Envelope
 from tools.fixture_masker.raw import RAW_SCHEMA_VERSION, RawBody, RawEnvelope, RawHeader, RawTransaction
@@ -56,6 +63,11 @@ log = logging.getLogger("fixture_masker")
 
 Mode = Literal["strict_redaction", "relation_preserving"]
 MODES: Final = ("strict_redaction", "relation_preserving")
+# 배치 범위((A) §2.3): transaction = Envelope 1개(요청 하나)마다 HMAC 키·라벨·host 번호를 새로 — 기본값이며 Java 동등성의 기준.
+# run = 한 번의 mask() 호출 전체 — 데이터셋 생성기(tools/dataset)만 쓴다(S v1·S v2의 생성 조건, P1 배치의 선행 사용).
+BATCHES: Final = ("transaction", "run")
+# 절단 상한((A) §2.2) — 저장 content(표지 포함)의 UTF-8 바이트 수 상한
+TRUNCATE_LIMIT: Final = {"request": 64 * 1024, "response": 256 * 1024}
 REPO_ROOT: Final = Path(__file__).resolve().parents[2]
 POLICY: Final = DEFAULT_POLICY
 FORM_CONTENT_TYPE: Final = "application/x-www-form-urlencoded"
@@ -70,11 +82,14 @@ REASON_CODES: Final = (
     "unknown_schema_version",
     "raw_schema_invalid",     # RawEnvelope 위반(마스킹 산출물 필드 혼입 포함)
     "unknown_mode",
+    "unknown_batch",          # 배치 범위가 transaction/run이 아님
     "policy_matcher_unknown", # body_rules matcher가 json:/form: 문법이 아님
+    "object_id_rules_unsupported",  # object_id_rules가 비어 있지 않음 — 가명화 kind 미정(별도 (A) 개정) 전까지 fail-closed
     "body_unparseable",       # JSON이라고 선언했는데 엄격 JSON이 아님 — 비밀 위치를 찾을 수 없다(fail-closed)
     "transform_failed",
     "label_space_exhausted",
     "span_invariant_violated",  # 출력 masked_spans가 Body 불변식 1~6을 어김
+    "truncation_invariant_violated",  # 출력이 Body 불변식 7(절단 표지)을 어김
     "label_rule_violated",      # strict인데 라벨 / relation인데 원본값 ↔ 라벨이 일대일이 아님
     "masked_value_leaked",    # 마스킹한 원본 값이 출력에 남음 — 아무것도 쓰지 않음
     "output_build_failed",
@@ -145,6 +160,7 @@ class _Run:
         self.table: dict[bytes, str] = {}                # HMAC(키, 원본값) → 라벨
         self.emitted: list[tuple[bytes, str | None]] = []  # 출력한 MaskedRef마다 (HMAC, 라벨) — 자체 검증용
         self.originals: list[str] = []                   # 유출 검사용
+        self.kinds: list[str] = []                       # 마스킹한 값마다 kind — 영수증 redacted_kinds(절단으로 버린 span도 센다)
         self.hosts = 0
         self.count = 0
 
@@ -166,6 +182,7 @@ class _Run:
         digest = self._digest(original)
         label = self._label(digest)
         self.emitted.append((digest, label))
+        self.kinds.append(kind)
         self.count += 1
         return {"masked": True, "label": label, "kind": kind}
 
@@ -230,8 +247,71 @@ def _mask_form(content: str, globs: list[str], run: _Run) -> tuple[str, list[dic
     return "&".join(parts), spans
 
 
-def _body(b: RawBody, run: _Run, globs: dict[str, list[str]]) -> dict[str, Any]:
+def _filler_intervals(content: str, spans: list[dict]) -> list[tuple[int, int, dict]]:
+    """각 span의 FILLER가 저장 content(코드포인트)에서 차지하는 구간. json span은 문자열 토큰의 따옴표 안쪽."""
+    json_at = {}
+    if any(s["at"]["kind"] == "json" for s in spans):
+        json_at = {p: (start + 1, end - 1) for p, _key, start, end in strict_json.string_value_spans(content)}
+    out = []
+    for s in spans:
+        if s["at"]["kind"] == "text":
+            rng = s["at"]["range"]
+            out.append((rng["start"], rng["end"], s))
+        else:
+            start, end = json_at[s["at"]["path"]]
+            out.append((start, end, s))
+    return sorted(out, key=lambda t: t[0])
+
+
+def _truncate(content: str, spans: list[dict], limit: int) -> tuple[str, list[dict], bool]:
+    """(A) §2.2 절단 — 마스킹 뒤. 저장 content(표지 포함) ≤ limit UTF-8 바이트. 앞 ≤ ⌊(limit−|표지|)/2⌋바이트, 뒤 ≤ 나머지.
+    경계는 코드포인트 경계로 안쪽으로 줄이고, FILLER에 걸치면 그 FILLER 전체를 잘린 영역에 넣는다(반쪽 FILLER 금지).
+    절단 본문은 JSON이 아니므로 남는 span은 모두 text range span(FILLER 구간)으로 바꾼다."""
+    if len(content.encode("utf-8")) <= limit:
+        return content, spans, False
+    budget = limit - len(TRUNCATION_MARK.encode("ascii"))
+    head_budget, tail_budget = budget // 2, budget - budget // 2
+    head = used = 0
+    for ch in content:
+        size = len(ch.encode("utf-8"))
+        if used + size > head_budget:
+            break
+        used, head = used + size, head + 1
+    tail, used = len(content), 0
+    for ch in reversed(content):
+        size = len(ch.encode("utf-8"))
+        if used + size > tail_budget:
+            break
+        used, tail = used + size, tail - 1
+    fillers = _filler_intervals(content, spans)
+    for start, end, _ in fillers:
+        if start < head < end:
+            head = start
+        if start < tail < end:
+            tail = end
+    shift = head + len(TRUNCATION_MARK) - tail
+    kept = []
+    for start, end, span in fillers:
+        if end <= head:
+            new_start = start
+        elif start >= tail:
+            new_start = start + shift
+        else:
+            continue  # 잘린 영역 안의 FILLER — 통째로 버린다(영수증 개수에는 남는다)
+        kept.append({"at": {"kind": "text", "range": {"start": new_start, "end": new_start + len(FILLER)}}, "ref": span["ref"]})
+    return content[:head] + TRUNCATION_MARK + content[tail:], kept, True
+
+
+def _omitted(b: RawBody) -> dict[str, Any]:
+    # (A) §2.2 불변식 2' + size_bytes 정의: omitted는 0
+    return {"content_type": b.content_type, "size_bytes": 0, "truncated": False, "encoding": "omitted",
+            "content": None, "masked_spans": []}
+
+
+def _body(b: RawBody, run: _Run, globs: dict[str, list[str]], side: str) -> dict[str, Any]:
     content, spans = b.content, []
+    if b.encoding == "utf8" and content is not None and TRUNCATION_MARK in content:
+        return _omitted(b)  # 원본에 표지 문자열이 이미 있음 — 표지 위조·모호성 방지((A) §2.2 불변식 7)
     if b.encoding == "utf8" and content is not None:
         try:
             strict_json.parse(content)
@@ -247,16 +327,21 @@ def _body(b: RawBody, run: _Run, globs: dict[str, list[str]]) -> dict[str, Any]:
     if b.encoding == "base64" and content is not None:
         decoded = base64.b64decode(content, validate=True)  # 디코드 불가 → transform_failed
         if _finds_secret(decoded.decode("utf-8", errors="replace")):  # 디코드 바이트는 이 함수 밖으로 나가지 않는다
-            return {"content_type": b.content_type, "size_bytes": len(decoded), "truncated": False,
-                    "encoding": "omitted", "content": None, "masked_spans": []}  # (A) §2.2 불변식 2'
+            return _omitted(b)  # (A) §2.2 불변식 2'
+        if len(content) > TRUNCATE_LIMIT[side]:
+            return _omitted(b)  # base64는 절단하지 않는다 — 상한을 넘으면 omitted((A) §2.2, 표지는 utf8에만)
+        # size_bytes 정의((A) §2.2): base64 = 디코드한 바이트 수(마스킹하지 않으므로 원본과 같음)
         return {"content_type": b.content_type, "size_bytes": len(decoded), "truncated": False, "encoding": "base64",
                 "content": content, "masked_spans": []}
     if b.encoding == "omitted" or content is None:
-        size = 0
-    else:
-        size = len(content.encode("utf-8"))
-    return {"content_type": b.content_type, "size_bytes": size, "truncated": False, "encoding": b.encoding,
-            "content": None if b.encoding == "omitted" else content, "masked_spans": spans}
+        return _omitted(b) if b.encoding == "omitted" else {
+            "content_type": b.content_type, "size_bytes": 0, "truncated": False, "encoding": b.encoding,
+            "content": None, "masked_spans": spans}
+    # size_bytes 정의((A) §2.2): utf8 = 마스킹 후·절단 전 content의 UTF-8 바이트 수
+    size = len(content.encode("utf-8"))
+    content, spans, truncated = _truncate(content, spans, TRUNCATE_LIMIT[side])
+    return {"content_type": b.content_type, "size_bytes": size, "truncated": truncated, "encoding": b.encoding,
+            "content": content, "masked_spans": spans}
 
 
 def _finds_secret(text: str) -> bool:
@@ -271,13 +356,13 @@ def _transaction(tx: RawTransaction, run: _Run, globs: dict[str, list[str]]) -> 
     run.originals.append(req.host)
     run.hosts += 1
     headers = [_header(h, run) for h in req.headers]
-    req_body = _body(req.body, run, globs)
+    req_body = _body(req.body, run, globs, "request")
     params = [{"name": p.name, "location": p.location,
                "value": run.masked(p.value, "token") if p.location == "form" and _matches(p.name, globs["form"])
                else p.value}
               for p in req.query_params]
     resp_headers = [_header(h, run) for h in resp.headers]
-    resp_body = _body(resp.body, run, globs)
+    resp_body = _body(resp.body, run, globs, "response")
     out = {
         "meta": {"transaction_id": str(tx.meta.transaction_id), "captured_at": tx.meta.captured_at.isoformat(),
                  "origin_ref": tx.meta.origin_ref, "sanitization": None},
@@ -285,12 +370,9 @@ def _transaction(tx: RawTransaction, run: _Run, globs: dict[str, list[str]]) -> 
                     "port": req.port, "path": req.path, "query_params": params, "headers": headers, "body": req_body},
         "response": {"status": resp.status, "headers": resp_headers, "body": resp_body, "elapsed_ms": resp.elapsed_ms},
     }
-    refs = [h["value"] for h in headers + resp_headers if isinstance(h["value"], dict)]
-    refs += [p["value"] for p in params if isinstance(p["value"], dict)]
-    refs += [s["ref"] for b in (req_body, resp_body) for s in b["masked_spans"]]
     kinds = {"token": 0, "cookie": 0, "pii": 0, "host": 0}
-    for ref in refs:
-        kinds[ref["kind"]] += 1
+    for kind in run.kinds[start:]:  # 이 트랜잭션에서 마스킹한 값 — 절단으로 버린 span도 redacted_count와 같이 센다
+        kinds[kind] += 1
     out["meta"]["sanitization"] = {"applied": True, "failed": False, "policy_version": POLICY.policy_version,
                                    "redacted_count": run.count - start, "redacted_kinds": kinds}
     return out
@@ -345,6 +427,20 @@ def _spans_ok(body: dict) -> bool:
     return keys == sorted(keys)
 
 
+def _truncation_ok(body: dict) -> bool:
+    """Body 불변식 7((A) §2.2) — 엔진 ③과 따로 구현한다(R-11)."""
+    content = body["content"]
+    marks = content.count(TRUNCATION_MARK) if isinstance(content, str) else 0
+    if not body["truncated"]:
+        return marks == 0
+    if body["encoding"] != "utf8" or marks != 1:
+        return False
+    lo = content.index(TRUNCATION_MARK)
+    hi = lo + len(TRUNCATION_MARK)
+    return all(not (s["at"].get("range") and s["at"]["range"]["start"] < hi and lo < s["at"]["range"]["end"])
+               for s in body["masked_spans"])
+
+
 def _labels_ok(run: _Run) -> bool:
     if run.mode == "strict_redaction":
         return all(label is None for _, label in run.emitted)
@@ -393,21 +489,20 @@ def _leaked(serialized: list[str], originals: list[str]) -> bool:
     return any(n in leaf for text in serialized for leaf in _string_leaves(json.loads(text)) for n in needles)
 
 
-def mask(raw: RawEnvelope, mode: str = "strict_redaction") -> list[tuple[str, bytes]]:
-    """(파일 이름, 마스킹된 Envelope 바이트) 목록. 자체 검증을 모두 통과한 것만 돌려준다."""
-    if mode not in MODES:
-        raise MaskerRejected("unknown_mode")
-    globs = _body_globs()
+def _mask_batch(transactions: list[RawTransaction], mode: str, globs: dict[str, list[str]]) -> list[tuple[str, bytes]]:
+    """한 배치 = HMAC 키·매핑 테이블·host 번호 하나. 배치가 끝나면(성공·실패 무관) 키·테이블·원본 값을 버린다."""
     run = _Run(mode)
     try:
         try:
-            drafts = [_transaction(tx, run, globs) for tx in raw.transactions]
+            drafts = [_transaction(tx, run, globs) for tx in transactions]
         except MaskerRejected:
             raise
         except Exception:
             raise MaskerRejected("transform_failed") from None  # 원 예외 메시지에 원본 조각이 있을 수 있다 — 체인을 끊는다
         if not all(_spans_ok(d[side]["body"]) for d in drafts for side in ("request", "response")):
             raise MaskerRejected("span_invariant_violated")
+        if not all(_truncation_ok(d[side]["body"]) for d in drafts for side in ("request", "response")):
+            raise MaskerRejected("truncation_invariant_violated")
         if not _labels_ok(run):
             raise MaskerRejected("label_rule_violated")
         try:
@@ -416,13 +511,30 @@ def mask(raw: RawEnvelope, mode: str = "strict_redaction") -> list[tuple[str, by
                 for d in drafts]
         except ValidationError:
             raise MaskerRejected("output_build_failed") from None
-        serialized = [e.model_dump_json() for e in envelopes]
-        if _leaked(serialized, run.originals):
+        try:
+            serialized = [canonical_json.dumps(e) for e in envelopes]  # (A) §2.10 — 라이브러리 직렬화가 아니라 정의대로
+        except canonical_json.CanonicalError:
+            raise MaskerRejected("output_build_failed") from None
+        texts = [s.decode("utf-8") for s in serialized]
+        if _leaked(texts, run.originals):
             raise MaskerRejected("masked_value_leaked")
-        return [(f"{e.transactions[0].meta.transaction_id}.json", s.encode("utf-8"))
-                for e, s in zip(envelopes, serialized)]
+        return [(f"{e.transactions[0].meta.transaction_id}.json", s) for e, s in zip(envelopes, serialized)]
     finally:
         run.discard()  # 성공·실패와 무관하게 키·매핑 테이블·원본 값을 버린다
+
+
+def mask(raw: RawEnvelope, mode: str = "strict_redaction", batch: str = "transaction") -> list[tuple[str, bytes]]:
+    """(파일 이름, 마스킹된 Envelope 바이트) 목록. 자체 검증을 모두 통과한 것만 돌려준다.
+    batch: transaction(기본 — 트랜잭션마다 새 배치, Java 동등성의 기준) / run(데이터셋 생성기 전용 — 호출 전체가 한 배치)."""
+    if mode not in MODES:
+        raise MaskerRejected("unknown_mode")
+    if batch not in BATCHES:
+        raise MaskerRejected("unknown_batch")
+    if POLICY.object_id_rules:
+        raise MaskerRejected("object_id_rules_unsupported")
+    globs = _body_globs()
+    groups = [list(raw.transactions)] if batch == "run" else [[tx] for tx in raw.transactions]
+    return [item for group in groups for item in _mask_batch(group, mode, globs)]
 
 
 # ── 출력 ──────────────────────────────────────────────────────────

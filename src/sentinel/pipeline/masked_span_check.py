@@ -1,7 +1,9 @@
 """파이프라인 ③ 본문 마스킹 표기 검증 — `masked_span_integrity`. (A) §2.2 Body 불변식, §2.3, §2.6 MaskedSpan.
 
 두 가지를 독립으로 제공한다(`sanitization_check`가 둘 다 부른다):
-- `check_body_invariants`: 선언된 masked_spans가 Body 불변식 1~6에 맞는지.
+- `check_body_invariants`: 선언된 masked_spans가 Body 불변식 1~7에 맞는지.
+    7  절단 표지(§2.6 TRUNCATION_MARK): truncated ⇒ encoding == utf8 ∧ 표지 정확히 1개 / ¬truncated ⇒ 0개 /
+       표지는 어떤 FILLER span과도 겹치거나 걸치지 않는다. span 유무와 무관하게 본다.
     1  masked_spans ≠ [] ⇒ encoding == utf8 ∧ content ≠ null
     2  at.kind == text ⇒ range 필수
     2' encoding == omitted ⇒ content == null ∧ masked_spans == [] ∧ truncated == false
@@ -25,7 +27,7 @@ import json
 from typing import Any
 
 from sentinel import strict_json
-from sentinel.common_types import FILLER
+from sentinel.common_types import FILLER, TRUNCATION_MARK
 from sentinel.schema import Body
 
 
@@ -42,6 +44,25 @@ def _is_filler_at(value: Any, rng) -> bool:
     return rng.end - rng.start == len(FILLER) and value[rng.start:rng.end] == FILLER
 
 
+def _truncation_mark(body: Body, where: str) -> list[str]:
+    """불변식 7: truncated ⇒ utf8이고 표지 정확히 1개 / 아니면 0개 / 표지는 어떤 FILLER span과도 겹치거나 걸치지 않는다."""
+    content = body.content if isinstance(body.content, str) else None
+    count = content.count(TRUNCATION_MARK) if content is not None else 0
+    if not body.truncated:
+        return [f"truncation_mark_without_truncated@{where}"] if count else []
+    if body.encoding != "utf8" or content is None:
+        return [f"truncated_not_utf8@{where}"]
+    if count != 1:
+        return [f"truncation_mark_count@{where}"]
+    start = content.index(TRUNCATION_MARK)
+    end = start + len(TRUNCATION_MARK)
+    for span in body.masked_spans:
+        rng = span.at.range
+        if span.at.kind == "text" and rng is not None and rng.start < end and start < rng.end:
+            return [f"truncation_mark_overlaps_filler@{where}"]
+    return []
+
+
 def check_body_invariants(body: Body, where: str) -> list[str]:
     spans = body.masked_spans
     if body.encoding == "omitted":  # 불변식 2' — omitted가 우선한다
@@ -49,12 +70,13 @@ def check_body_invariants(body: Body, where: str) -> list[str]:
         found += [f"omitted_with_masked_spans@{where}"] if spans else []
         found += [f"omitted_truncated@{where}"] if body.truncated else []
         return found
+    marks = _truncation_mark(body, where)  # 불변식 7 — span 유무와 무관
     if not spans:
-        return []
+        return marks
     if body.encoding != "utf8" or body.content is None:  # 불변식 1
-        return [f"masked_span_requires_utf8_content@{where}"]
+        return marks + [f"masked_span_requires_utf8_content@{where}"]
 
-    found: list[str] = []
+    found: list[str] = list(marks)
     doc: Any = None
     json_ok = False
     if any(s.at.kind == "json" for s in spans):  # 불변식 4
@@ -102,6 +124,28 @@ def _overlaps(spans, where: str) -> list[str]:
 
 def _strippable(value: Any) -> bool:
     return value == FILLER  # 값이 정확히 FILLER일 때만 걷어낸다(위치 건너뛰기 아님)
+
+
+def rescan_segments(body: Body) -> str | list[str] | None:
+    """값 재스캔이 볼 본문((A) §2.3). 절단된 본문은 불변식 7이 성립할 때만(표지 정확히 1개, FILLER span과 비겹침)
+    원본 content를 표지 앞·뒤 두 구간으로 나누고, 각 구간에서 선언된 FILLER만 걷어낸다. 표지를 가로지르는 매칭은 원본에 없는
+    텍스트에 대한 매칭이라 판정 근거가 아니다. 불변식 7을 어기면 나누지 않는다(전체를 본다 — 거부는 불변식 7이 한다).
+    나누기를 먼저 하고 걷어내기를 나중에 한다: 걷어낸 뒤 나누면 FILLER 양옆 조각이 이어져 새 표지가 생길 수 있다."""
+    if not body.truncated or _truncation_mark(body, "rescan"):
+        return rescan_view(body)
+    content = body.content
+    start = content.index(TRUNCATION_MARK)
+    end = start + len(TRUNCATION_MARK)
+    head, tail = content[:start], content[end:]
+    cuts = sorted({(s.at.range.start, s.at.range.end) for s in body.masked_spans
+                   if s.at.kind == "text" and s.at.range is not None
+                   and _strippable(content[s.at.range.start:s.at.range.end])}, reverse=True)
+    for lo, hi in cuts:  # 불변식 7이 비겹침을 보장 — 각 FILLER는 한 구간 안에 있다
+        if hi <= start:
+            head = head[:lo] + head[hi:]
+        elif lo >= end:
+            tail = tail[:lo - end] + tail[hi - end:]
+    return [head, tail]
 
 
 def rescan_view(body: Body) -> str | None:

@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.39. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.40. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.39"
+derived_from: "docs/design-decision.md §3 매핑표 v1.40"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -588,7 +588,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "값 재검증"
+      note: "값 재검증. 절단 본문은 불변식 7 통과 뒤 표지 앞·뒤 구간을 따로 재스캔 — 경계에 걸친 생 비밀값 조각은 한계"
     verification_tests:
       - "tests/test_sanitization.py::test_raw_secret_is_rejected_despite_applied_true_receipt"
       - "tests/test_sanitization.py::test_http_lying_receipt_with_raw_token_is_rejected"
@@ -605,6 +605,9 @@ guardrails:
       - "tests/test_sanitization.py::test_oversized_http_request_is_rejected_before_parsing"
       - "tests/test_sanitization.py::test_rejection_audit_has_reason_codes_only_no_values_or_input_names"
       - "tests/test_sanitization.py::test_recheck_is_never_reached_without_token_or_valid_schema"
+      - "tests/test_masked_spans.py::test_segment_rescan_rejects"
+      - "tests/test_masked_spans.py::test_segment_rescan_passes_as_control"
+      - "tests/test_masked_spans.py::test_each_masked_span_check_is_load_bearing_under_verified_mutation"
     manifest_key: sanitization_trust
   - id: secret_scan_hook
     description: "비밀값 커밋 금지"
@@ -706,7 +709,7 @@ guardrails:
     target_layer: "스키마·validator"
     status:
       state: enforced
-      note: "검증 함수 단위 — ③, 불변식 5는 같은 kind 안. 불변식 7은 미구현 → 2부 PR-1"
+      note: "검증 함수 단위 — ③, 불변식 5는 같은 kind 안"
     verification_tests:
       - "tests/test_masked_spans.py::test_rejects_body_invariant_violation"
       - "tests/test_masked_spans.py::test_kind_order_json_before_text"
@@ -725,6 +728,9 @@ guardrails:
       - "tests/test_masked_spans.py::test_span_rejection_audit_has_no_path_range_or_content_values"
       - "tests/test_masked_spans.py::test_each_masked_span_check_is_load_bearing_under_verified_mutation"
       - "tests/test_sanitization.py::test_omitted_body_with_content_is_rejected"
+      - "tests/test_masked_spans.py::test_valid_truncated_body_with_spans_outside_the_mark_is_accepted_as_control"
+      - "tests/test_masked_spans.py::test_truncation_mark_constant_equals_the_canonical_value_in_A"
+      - "tests/test_masked_spans.py::test_truncation_mark_is_defined_only_in_common_types"
     manifest_key: masked_span_integrity
   - id: java_masker_parity
     description: "Java 마스커 코어 출력 = fixture 마스커 출력(§2.10 정규 직렬화 바이트 일치), make verify마다 실행 중 생성한 N5 더미로. 범위: 헤더 규칙·body_rules json·form·object_id_rules·라벨 두 모드·마스킹→절단·엄격 JSON·코드포인트 오프셋·host 가명·유출 검사 거부(base64 제외)"
@@ -743,7 +749,8 @@ guardrails:
     verification_tests:
       - "tests/test_masker_spans_labels.py::test_relation_mode_same_value_same_label_across_header_body_and_param"
       - "tests/test_masker_spans_labels.py::test_relation_mode_labels_are_a_bijection_over_many_distinct_values"
-      - "tests/test_masker_spans_labels.py::test_labels_are_scoped_to_one_run"
+      - "tests/test_masker_spans_labels.py::test_labels_and_hosts_are_scoped_to_one_transaction_by_default"
+      - "tests/test_masker_spans_labels.py::test_run_batch_shares_labels_and_hosts_across_transactions_for_dataset_builders"
       - "tests/test_masker_spans_labels.py::test_label_self_check_rejects_inconsistent_relation_labels"
       - "tests/test_masker_spans_labels.py::test_hmac_key_is_fresh_per_run_and_discarded_at_the_end"
       - "tests/test_masker_spans_labels.py::test_hmac_key_is_discarded_even_when_the_run_fails"
@@ -1142,6 +1149,8 @@ guardrails:
       - "tests/test_dataset_freeze.py::test_first_freeze_covers_the_minimum_structure"
       - "tests/test_dataset_freeze.py::test_frozen_files_hold_no_raw_transaction_or_n5_markers"
       - "tests/test_dataset_freeze.py::test_each_freeze_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_dataset_freeze.py::test_frozen_envelopes_have_no_truncated_bodies"
+      - "tests/test_dataset_freeze.py::test_a_truncated_body_planted_in_a_frozen_copy_is_caught"
     manifest_key: dataset_version_freeze
   - id: dataset_engine_regression
     description: "동결 데이터셋의 Envelope가 엔진의 실제 ②③을 계속 통과(동결 자산 회귀 보호, 모드 무관)"

@@ -1,0 +1,113 @@
+{
+  "policy_version": "sanitization-policy-2",
+  "header_rules": [
+    {
+      "name_pattern": "authorization",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "proxy-authorization",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "cookie",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "set-cookie",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "x-api-key",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "*api-key*",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "*apikey*",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "*token*",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "*secret*",
+      "action": "redact"
+    },
+    {
+      "name_pattern": "*session*",
+      "action": "redact"
+    }
+  ],
+  "body_rules": [
+    {
+      "matcher": "json:password",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:passwd",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:pwd",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:*token*",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:*secret*",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:*session*",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:*api*key*",
+      "action": "redact"
+    },
+    {
+      "matcher": "json:*apikey*",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:password",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:passwd",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:pwd",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:*token*",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:*secret*",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:*session*",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:*api*key*",
+      "action": "redact"
+    },
+    {
+      "matcher": "form:*apikey*",
+      "action": "redact"
+    }
+  ],
+  "object_id_policy": "pseudonymize_if_sensitive",
+  "object_id_rules": []
+}
