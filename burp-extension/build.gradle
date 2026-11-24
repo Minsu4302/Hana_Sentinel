@@ -1,5 +1,6 @@
-// Sentinel Burp 확장 1부 — (A) §2.9, §3.1 java_build_egress.
-// 의존성은 montoya-api(compileOnly)만이다. 툴체인·외부 플러그인·추가 저장소를 두지 않는다.
+// Sentinel Burp 확장 — (A) §2.9, §3.1 java_build_egress.
+// 의존성: montoya-api(compileOnly), gson(implementation), error_prone_annotations(compileOnly — gson이 참조하는 애너테이션.
+// 런타임 불필요를 실측했다(2부 PR-1b 0단계 c) — 런타임 클래스패스와 jar에서 뺀다). 툴체인·외부 플러그인·추가 저장소를 두지 않는다.
 // 빌드 JDK는 21, 바이트코드 대상은 Java 17이다(options.release).
 plugins {
     id 'java'
@@ -13,9 +14,27 @@ repositories {
 
 dependencies {
     compileOnly 'net.portswigger.burp.extensions:montoya-api:2024.12'
+    implementation 'com.google.code.gson:gson:2.15.0'
+    compileOnly 'com.google.errorprone:error_prone_annotations:2.50.0'
+}
+
+// gson pom이 끌어오는 error_prone_annotations를 런타임 클래스패스에서 뺀다(compileOnly에만 둔다).
+configurations.runtimeClasspath.exclude group: 'com.google.errorprone', module: 'error_prone_annotations'
+configurations.testRuntimeClasspath.exclude group: 'com.google.errorprone', module: 'error_prone_annotations'
+
+// 테스트 소스는 동등성 하네스(main 클래스)뿐이고 JUnit 테스트가 없다 — 실행은 Python 테스트(java_masker_parity)가 한다.
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
     options.encoding = 'UTF-8'
+}
+
+// 정책 정본은 레포의 데이터 파일 하나다((A) §2.3). 사본을 커밋하지 않고 빌드가 리소스로 넣는다.
+processResources {
+    from(file('../src/sentinel/sanitization_policy.json')) {
+        into 'sentinel/burp/transport/masker'
+    }
 }
