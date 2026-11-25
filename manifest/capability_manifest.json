@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.42",
+  "spec": "docs/design-decision.md §3 매핑표 v1.43",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -195,7 +195,7 @@
     "token_hardening": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2부 PR-2",
+      "target": "2부 PR-2b",
       "verification_tests": []
     },
     "no_autopatch_apply": {
@@ -333,7 +333,7 @@
     "java_no_target_send": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2a",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_has_no_target_send_or_bypass",
         "tests/test_java_boundary.py::test_target_send_fixture_is_rejected",
@@ -351,7 +351,7 @@
     "java_loopback_only": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부에는 클라이언트 코드가 0 — 실증은 위조 픽스처. 송신 클래스 1개로 좁힌 규칙은 미구현 → 2부 PR-2",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부에는 클라이언트 코드가 0 — 실증은 위조 픽스처. 송신 클래스 1개로 좁힌 규칙은 미구현 → 2부 PR-2b",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_is_loopback_only",
         "tests/test_java_boundary.py::test_compliant_loopback_client_in_transport_passes_as_control",
@@ -400,13 +400,13 @@
     "java_client_bounds": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2부 PR-2",
+      "target": "2부 PR-2b",
       "verification_tests": []
     },
     "java_capture_human_selected": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2부 PR-2",
+      "target": "2부 PR-2a",
       "verification_tests": []
     },
     "java_ui_plain_text": {
@@ -435,7 +435,7 @@
     "java_logic_isolation": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. R1·R2′ 포함(v1.50) — 면제 집합은 정본 모델에서 기계 추출(현재 send = {truncated}, response = ∅), 판정 어휘는 주석도 검사한다, 응답 쪽 면제의 transport 응답 파싱 위치는 2부 PR-2에서 정한다",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. R1·R2′ 포함(v1.50) — 면제 집합은 정본 모델에서 기계 추출(현재 send = {truncated}, response = ∅), 판정 어휘는 주석도 검사한다, 응답 쪽 면제의 transport.response 적용은 미구현 → 2부 PR-2b — 현재 응답 쪽 면제 집합은 ∅",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_logic_isolation",
         "tests/test_java_boundary.py::test_forbidden_tokens_come_from_every_canonical_source",
@@ -712,6 +712,12 @@
         "tests/test_java_masker_parity.py::test_both_policy_loaders_refuse_bracket_and_non_ascii_globs",
         "tests/test_java_masker_parity.py::test_canonical_policy_passes_both_loaders_as_control"
       ]
+    },
+    "java_request_parse": {
+      "status": "not_implemented",
+      "effective_status": "not_implemented",
+      "target": "2부 PR-2a",
+      "verification_tests": []
     },
     "label_consistency": {
       "status": "enforced",
