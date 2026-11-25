@@ -2116,5 +2116,5 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 - 분할: v1.52 문서 → 2a → 2b.
 
 ### 확인 필요(2a Burp 수동 절차)
-- Repeater 응답 뷰어도 MESSAGE_VIEWER_RESPONSE로 들어올 수 있다. 이때 requestResponse()의 요청이 '고친 뒤 보내지 않은 편집기 요청'인지 '응답과 짝인 보낸 요청'인지 확인해야 한다. 짝이 어긋나면 ToolType으로 Repeater를 제외하는 (A) 개정이 필요하다.
+- Repeater 뷰어의 짝: 기본 거부로 닫았다(리뷰 반영 — Repeater 출처는 모든 경로 `repeater_source`). 열려면 수동 확인 후 (A) 개정이 필요하다.
 - HTTP/2 메시지의 Burp 텍스트 표현.
