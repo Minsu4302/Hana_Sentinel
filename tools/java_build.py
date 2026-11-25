@@ -11,6 +11,7 @@ gradlew를 실행하지 않고 실패로 끝낸다. 조용히 건너뛰지 않�
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -72,6 +73,20 @@ def run(env: dict[str, str], project: Path = PROJECT) -> int:
         return 1
     print("java-build: 통과 - gradlew --offline build")
     return 0
+
+
+def source_digest(project: Path = PROJECT) -> str:
+    """build.gradle의 sourceDigest 태스크가 build/source-digest.txt에 쓰는 것과 같은 목록(현재 소스 기준).
+    줄 = '<project 기준 상대 경로> <sha256>', 경로 순 정렬, 끝 개행. 대상 = src/**/*.java + 정책 정본 파일."""
+    files = list((project / "src").rglob("*.java")) + [project.parent / "src" / "sentinel" / "sanitization_policy.json"]
+    lines = [f"{Path(os.path.relpath(f, project)).as_posix()} {hashlib.sha256(f.read_bytes()).hexdigest()}" for f in files]
+    return "\n".join(sorted(lines)) + "\n"
+
+
+def stale_build(project: Path = PROJECT) -> bool:
+    """빌드 산출물이 현재 소스로 만든 것이 아니면 True(표지가 없거나 목록이 다름)."""
+    marker = project / "build" / "source-digest.txt"
+    return not marker.is_file() or marker.read_bytes().decode("utf-8") != source_digest(project)
 
 
 def main() -> int:

@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * SanitizationPolicy — (A) §2.3. 정본은 레포의 데이터 파일 하나(src/sentinel/sanitization_policy.json)이고, 빌드가 그 파일을
  * 이 패키지의 리소스로 넣는다(사본 커밋 없음). 구조 검사는 Python 모델(sentinel.sanitization_policy)과 같다:
- * 엄격 JSON, 모르는 필드 거부, 타입·열거값 검사. 추가로 glob에 '['가 있으면 거부한다(Glob이 지원하지 않는 문법 — fail-closed).
+ * 엄격 JSON, 모르는 필드 거부, 타입·열거값 검사, glob 패턴은 ASCII이고 '['·']' 없음(Python load_policy와 같은 정의 — fail-closed).
  * 정책이 틀리면 기동하지 않는다(PolicyInvalid).
  */
 public final class Policy {
@@ -113,12 +113,23 @@ public final class Policy {
             }
             String pattern = string(m.get(patternField));
             String action = string(m.get("action"));
-            if (!actions.contains(action) || pattern.indexOf('[') >= 0) {
+            if (!actions.contains(action) || !plainAsciiGlob(pattern)) {
                 throw new PolicyInvalid();
             }
             out.add(new Rule(pattern, action));
         }
         return List.copyOf(out);
+    }
+
+    /** glob 패턴 조건(Python load_policy와 같은 정의): ASCII만, '['·']' 없음. */
+    static boolean plainAsciiGlob(String pattern) {
+        for (int i = 0; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c > 0x7F || c == '[' || c == ']') {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String policyVersion() {

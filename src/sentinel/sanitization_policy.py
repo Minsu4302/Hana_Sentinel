@@ -75,11 +75,22 @@ class SanitizationPolicy(_Strict):
 POLICY_PATH: Final = Path(__file__).with_name("sanitization_policy.json")
 
 
+def glob_patterns(policy: SanitizationPolicy) -> list[str]:
+    """정책의 glob 패턴 전부(헤더 이름 패턴, body_rules·object_id_rules matcher)."""
+    return ([r.name_pattern for r in policy.header_rules] + [r.matcher for r in policy.body_rules]
+            + [r.matcher for r in policy.object_id_rules])
+
+
 def load_policy(path: Path = POLICY_PATH) -> SanitizationPolicy:
-    """정책 파일 → SanitizationPolicy. 엄격 JSON(중복 키·NaN 거부)이 아니거나 구조가 틀리면 예외(기동 거부)."""
+    """정책 파일 → SanitizationPolicy. 엄격 JSON(중복 키·NaN 거부)이 아니거나 구조가 틀리면 예외(기동 거부).
+    glob 패턴은 ASCII이고 '['·']'를 쓰지 않는다(Java 로더와 같은 정의 — Java glob은 '*'·'?'만 해석하고, ASCII라야
+    소문자화가 두 구현에서 같다). 어기면 기동 거부. 메시지에 값 없음."""
     text = Path(path).read_text(encoding="utf-8")
     strict_json.parse(text)
-    return SanitizationPolicy.model_validate_json(text)
+    policy = SanitizationPolicy.model_validate_json(text)
+    if any(not p.isascii() or "[" in p or "]" in p for p in glob_patterns(policy)):
+        raise ValueError("정책 glob 패턴은 ASCII이고 '['·']'를 쓰지 않는다")
+    return policy
 
 
 DEFAULT_POLICY: Final = load_policy()
