@@ -2,3 +2,5 @@
 gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+# 제3자 라이선스 원문은 받은 바이트 그대로(jar 검사가 해시를 대조한다)
+licenses/* -text

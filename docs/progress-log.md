@@ -2054,3 +2054,37 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 ### 이월
 - 1b-2(v1.51): jar 묶기, `java_jar_contents`, 재현 가능 빌드, 변이 4(jar 여분 항목)
 - 2부 PR-2: transport 응답 파싱 위치(R1 응답 쪽 면제)
+
+---
+
+## 2부 PR-1b-2 — 배포 jar + java_jar_contents (Issue #145, (A) v1.51) — 2부 PR-1 완료
+
+### 한 일
+- 기본 jar 태스크로 묶었다.
+  - 런타임 클래스패스(gson만)의 `com/google/gson/**`만 넣는다.
+  - `duplicatesStrategy = FAIL`, `preserveFileTimestamps = false`, `reproducibleFileOrder = true`
+  - 정책 리소스와 gson 라이선스 원문을 넣는다.
+- gson의 META-INF를 넣지 않는 근거:
+  - MANIFEST는 우리 것과 겹친다.
+  - pom·proguard는 실행에 쓰이지 않는다.
+  - Burp는 클래스패스로 로드하므로 `versions/9/module-info`의 모듈 선언이 쓰이지 않는다. 우리 jar는 Multi-Release가 아니다.
+- 라이선스: gson jar에는 라이선스 파일이 없다(pom·MANIFEST에 Apache-2.0 URL만 있다). apache.org 원문과 gson `gson-parent-2.15.0` 태그의 LICENSE를 받아 바이트가 같음을 확인했다(11358바이트, SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`). `burp-extension/licenses/`에 그대로 두었다(`-text`).
+- `tools/java_jar.py` + `tests/test_java_jar_contents.py`
+  - 허용 집합, error_prone·하네스 0, gson 항목 집합·바이트 = 고정 원본, 정책·라이선스 = 레포 정본, 고정 타임스탬프
+  - 위조 9종과 대조 1, 두 빌드 해시 일치, 변이 2종
+- 정책 로더(Python `load_policy`·Java `Policy`): glob 패턴에 `[`·`]`나 비ASCII가 있으면 기동을 거부한다(같은 정의, 위조 4종).
+- 산출물 신선도: 빌드가 `build/source-digest.txt`(소스 sha256 목록)를 남기고, 동등성 테스트가 대조한다(위조 3종).
+- (A) v1.51(매핑표 v1.42): `java_jar_contents` 승격, §2.3 glob 조건, §2.9 한계 문장·신선도·PR-1 완료, §1.4 N1
+
+### jar(이 PR head 빌드)
+- 크기 363588바이트, SHA-256 `adb920bf71d476ccf4a823a1046bd69d86f0258ae27a7efcf4124511683dc52b`
+- 항목 271개: 디렉터리 17, 우리 클래스 31, gson 220, MANIFEST 1, 정책 1, 라이선스 1
+
+### 깨진 가정 / 사실 기록
+- gson jar에 라이선스 파일이 없다(재배포에는 원문이 필요해 따로 받았다).
+- Windows에서 Python `write_text`는 개행을 CRLF로 바꾼다. 작업 폴더 파일은 CRLF이고 커밋은 autocrlf로 LF다. 패치 스크립트는 기존 개행을 지키도록 바이트로 읽고 쓴다.
+- 장치 실수 1건: 패치 문자열의 `\n`이 실제 개행으로 들어가 테스트 파일에 구문 오류가 났다. 수집 단계에서 걸렸고 고쳤다.
+
+### 한계
+- 재현성은 같은 개발 PC·같은 JDK·같은 Gradle에서 본 것이다. 사내 PC에서의 재현은 반입 절차(2부 PR-4)에서 다시 확인한다.
+- 신선도 표지는 build가 끝날 때의 소스 목록이다. Gradle을 `build` 없이 일부 태스크만 돌리면 표지가 갱신되지 않아 '오래됨'으로 판정한다(보수적).

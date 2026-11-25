@@ -29,6 +29,7 @@ import pytest
 
 from sentinel import sanitization_policy
 from sentinel.common_types import FILLER, TRUNCATION_MARK
+from tools import java_build
 from tools.fixture_masker import masker
 from tools.mutation_guard import MutationNotApplied, copy_with_mutation
 
@@ -79,6 +80,8 @@ def _build_classpath() -> list[Path]:
     for d in dirs:
         assert d.is_dir(), f"빌드 산출물 없음: {d.relative_to(REPO_ROOT)} — make verify의 Java 단계가 먼저 돌아야 한다"
     assert (dirs[2] / CORE_PKG / "ParityHarness.class").is_file()
+    assert not java_build.stale_build(PROJECT), ("빌드 산출물이 현재 소스로 만든 것이 아님(build/source-digest.txt 불일치) — "
+                                                 "make verify의 Java 단계를 먼저 돌린다")
     return dirs
 
 
@@ -667,3 +670,53 @@ def test_unmutated_copy_compiled_the_same_way_passes_as_control(tmp_path, corpus
                          jvm=[_xlog(log)])
     _assert_loaded_from(log, classes)
     assert compare([c[0] for c in corpus["cases"]], java, corpus["ref"]) == []
+
+
+# ─────────────────────────────── 산출물 신선도 표지(pytest만 따로 돌릴 때 오래된 빌드로 비교하지 않게)
+def test_build_artifacts_match_current_sources():
+    assert not java_build.stale_build(PROJECT)
+
+
+@pytest.mark.parametrize("change", ["java_source", "policy_file", "marker_missing"])
+def test_stale_build_is_detected(tmp_path, change):
+    """위조: 소스(Java·정책 정본)가 빌드 뒤에 바뀌었거나 표지가 없으면 '오래됨'으로 판정한다."""
+    project = tmp_path / "burp-extension"
+    shutil.copytree(PROJECT / "src", project / "src")
+    (project / "build").mkdir()
+    (tmp_path / "src" / "sentinel").mkdir(parents=True)
+    shutil.copyfile(sanitization_policy.POLICY_PATH, tmp_path / "src" / "sentinel" / "sanitization_policy.json")
+    (project / "build" / "source-digest.txt").write_bytes(java_build.source_digest(project).encode("utf-8"))
+    assert not java_build.stale_build(project)  # 대조: 같은 소스면 신선
+    if change == "java_source":
+        f = project / "src/main/java" / CORE_PKG / "Masker.java"
+        f.write_text(f.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    elif change == "policy_file":
+        f = tmp_path / "src" / "sentinel" / "sanitization_policy.json"
+        f.write_bytes(f.read_bytes() + b"\n")
+    else:
+        (project / "build" / "source-digest.txt").unlink()
+    assert java_build.stale_build(project)
+
+
+# ─────────────────────────────── 정책 로더: glob은 ASCII, '['·']' 없음(Python·Java 같은 정의 — 기동 거부)
+@pytest.mark.parametrize("pattern", ["x-[ab]pi-key", "x-api]key", "x-t\u00f6ken", "json:pass\u0077\u00f6rd"])
+def test_both_policy_loaders_refuse_bracket_and_non_ascii_globs(tmp_path, pattern):
+    base = json.loads(sanitization_policy.POLICY_PATH.read_text(encoding="utf-8"))
+    if pattern.startswith("json:"):
+        base["body_rules"] = [*base["body_rules"], {"matcher": pattern, "action": "redact"}]
+    else:
+        base["header_rules"] = [*base["header_rules"], {"name_pattern": pattern, "action": "redact"}]
+    bad = tmp_path / "policy-bad.json"
+    bad.write_text(json.dumps(base, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(ValueError):
+        sanitization_policy.load_policy(bad)
+    rng = random.Random(SEED + 9)
+    [line] = run_java([("strict_redaction", 1, _raw(_tx(rng, [])))], [bad])
+    assert line == "POLICY_INVALID"
+
+
+def test_canonical_policy_passes_both_loaders_as_control():
+    assert sanitization_policy.load_policy() == sanitization_policy.DEFAULT_POLICY
+    rng = random.Random(SEED + 10)
+    [line] = run_java([("strict_redaction", 0, _raw(_tx(rng, [])))])
+    assert line.startswith(("OK", "REJECT"))

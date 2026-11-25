@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.41. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.42. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.41"
+derived_from: "docs/design-decision.md §3 매핑표 v1.42"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -418,12 +418,20 @@ guardrails:
       - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
     manifest_key: java_build_egress
   - id: java_jar_contents
-    description: "배포 jar 항목 ⊆ 허용 집합(우리 클래스·Gson·정책 파일·MANIFEST·라이선스 — error_prone_annotations는 넣지 않는다(v1.50 실측)). 제3자 항목 바이트 = 해시 고정 원본 jar의 같은 항목, 정책 파일 해시 = 레포 정본 파일 해시. 플러그인 'java'의 기본 jar 태스크로만 묶는다"
+    description: "배포 jar 항목 ⊆ 허용 집합(우리 main 클래스·Gson(com/google/gson/**)·정책 파일·MANIFEST·라이선스 — error_prone_annotations는 넣지 않는다(v1.50 실측), 테스트 클래스(동등성 하네스) 0). 제3자 항목 바이트 = 해시 고정 원본 jar의 같은 항목, 정책 파일 해시 = 레포 정본 파일 해시. 플러그인 'java'의 기본 jar 태스크로만 묶는다(중복 경로 = 빌드 실패). 재현 가능 빌드: 타임스탬프·순서 고정, 같은 입력이면 jar 해시가 같다"
     target_layer: "아키텍처테스트"
     status:
-      state: not_implemented
-      target: "2부 PR-1b-2"
-    verification_tests: []
+      state: enforced
+      note: "범위 — make verify가 만든 배포 jar의 항목·바이트·타임스탬프, 그리고 레포 밖 임시 복사본 2곳의 오프라인 jar 해시 = 실제 jar 해시. gson의 META-INF(MANIFEST·pom·proguard·versions/9/module-info)는 넣지 않는다. 라이선스 = gson Apache-2.0 원문(apache.org·gson 2.15.0 태그 LICENSE 두 출처 바이트 일치). Burp가 jar를 어떻게 로드하는지는 범위 밖 — 수동 로드 절차"
+    verification_tests:
+      - "tests/test_java_jar_contents.py::test_real_jar_passes_every_check"
+      - "tests/test_java_jar_contents.py::test_real_jar_has_no_error_prone_no_harness_and_no_gson_meta_inf"
+      - "tests/test_java_jar_contents.py::test_jar_is_built_by_the_default_jar_task_only"
+      - "tests/test_java_jar_contents.py::test_jar_fixture_is_rejected"
+      - "tests/test_java_jar_contents.py::test_unchanged_rewrite_passes_as_control"
+      - "tests/test_java_jar_contents.py::test_missing_jar_or_license_folder_is_an_error_not_a_pass"
+      - "tests/test_java_jar_contents.py::test_two_builds_from_the_same_input_give_the_same_jar"
+      - "tests/test_java_jar_contents.py::test_jar_check_is_load_bearing_under_verified_mutation"
     manifest_key: java_jar_contents
   - id: java_client_bounds
     description: "Burp 확장 클라이언트: 읽기 타임아웃 ≥ (대기 상한+1)×기한+여유(기본값 2·120초 = Python 기본값, 기계 대조), 503 busy 자동 재시도 없음, 응답 상한 1 MiB(설정값), 응답 JSON 엄격 파싱(중복 키·비표준 수치 거부), 로그는 사유 코드만"
@@ -744,7 +752,7 @@ guardrails:
     target_layer: "테스트"
     status:
       state: enforced
-      note: "범위 — 실행 중 생성한 N5 더미 코퍼스(고정 시드 160 + 적대 사례) 위의 §2.10 바이트 일치. object_id는 '빈 목록 / 비어 있지 않으면 거부'까지, base64는 범위 밖 (Java는 항상 omitted — 따로 확인). 코퍼스 밖 입력의 일치는 증명하지 않는다. Java glob은 `*`·`?`만 — `[`가 든 정책은 Java가 기동 거부"
+      note: "범위 — 실행 중 생성한 N5 더미 코퍼스(고정 시드 160 + 적대 사례) 위의 §2.10 바이트 일치. object_id는 '빈 목록 / 비어 있지 않으면 거부'까지, base64는 범위 밖 (Java는 항상 omitted — 따로 확인). 코퍼스 밖 입력의 일치는 증명하지 않는다. 정책 glob은 ASCII·`[`·`]` 없음 — 두 로더가 기동 거부. 빌드 산출물은 소스 해시 목록과 대조한 뒤에만 쓴다"
     verification_tests:
       - "tests/test_java_masker_parity.py::test_java_core_output_equals_reference_masker_bytes"
       - "tests/test_java_masker_parity.py::test_corpus_reaches_every_area_it_claims"
@@ -763,6 +771,10 @@ guardrails:
       - "tests/test_java_boundary.py::test_lenient_json_fixture_is_rejected"
       - "tests/test_java_boundary.py::test_real_core_uses_only_the_strict_reader"
       - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      - "tests/test_java_masker_parity.py::test_build_artifacts_match_current_sources"
+      - "tests/test_java_masker_parity.py::test_stale_build_is_detected"
+      - "tests/test_java_masker_parity.py::test_both_policy_loaders_refuse_bracket_and_non_ascii_globs"
+      - "tests/test_java_masker_parity.py::test_canonical_policy_passes_both_loaders_as_control"
     manifest_key: java_masker_parity
   - id: label_consistency
     description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"

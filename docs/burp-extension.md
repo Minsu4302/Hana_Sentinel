@@ -14,6 +14,10 @@
   `com.google.code.gson:gson:2.15.0`(implementation), `com.google.errorprone:error_prone_annotations:2.50.0`(compileOnly —
   gson이 참조하는 애너테이션. 런타임 불필요를 실측해 런타임 클래스패스와 jar에서 뺀다).
 - 정책 파일은 레포의 `src/sentinel/sanitization_policy.json` 하나다. 빌드가 `transport/masker` 리소스로 넣는다(사본을 커밋하지 않는다).
+- 배포 jar(`build/libs/sentinel-burp-extension-0.1.0.jar`, 기본 jar 태스크): 우리 main 클래스 + 정책 리소스 + gson의
+  `com/google/gson/**` + `META-INF/licenses/gson-LICENSE.txt`(Apache-2.0 원문 — `burp-extension/licenses/`, apache.org와 gson 2.15.0
+  태그 LICENSE 두 출처의 바이트가 같음). gson의 META-INF(MANIFEST·pom·proguard·versions/9/module-info)는 넣지 않는다.
+  타임스탬프·순서를 고정해 같은 입력이면 같은 jar가 나온다. 검사는 `tests/test_java_jar_contents.py`(`java_jar_contents`).
 
 ## 2. 보관 위치(레포 밖, 한 번 준비)
 

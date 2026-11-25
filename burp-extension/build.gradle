@@ -38,3 +38,46 @@ processResources {
         into 'sentinel/burp/transport/masker'
     }
 }
+
+// 배포 jar — (A) §2.9·§3.1 java_jar_contents. 플러그인 'java'의 기본 jar 태스크만 쓴다.
+// 넣는 것: 우리 main 클래스 + 정책 리소스(processResources) + gson의 com/google/gson/** + gson 라이선스 원문(licenses/).
+// 넣지 않는 것: gson jar의 META-INF 전체.
+//   - MANIFEST.MF: 우리 MANIFEST와 겹친다.
+//   - maven pom·pom.properties·proguard 설정: 실행에 쓰이지 않는다.
+//   - META-INF/versions/9/module-info.class: Burp는 확장 jar를 클래스패스로 로드하므로 모듈 선언은 쓰이지 않는다.
+//     우리 jar는 Multi-Release가 아니어서 versions/ 아래는 읽히지도 않는다. 'com.google.gson' 모듈 선언이
+//     묶음 jar 전체를 가리키는 것처럼 보이는 오해도 막는다.
+// 같은 경로가 두 번 들어오면 빌드를 실패시킨다(FAIL). 타임스탬프·순서를 고정해 같은 입력이면 같은 바이트가 나온다.
+jar {
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from({ configurations.runtimeClasspath.collect { zipTree(it) } }) {
+        include 'com/google/gson/**'
+    }
+    from('licenses') {
+        into 'META-INF/licenses'
+    }
+}
+
+// 동등성 산출물 신선도 표지: build가 끝날 때 소스(Java 전체 + 정책 정본)의 sha256 목록을 build/source-digest.txt에 쓴다.
+// 동등성 테스트가 현재 소스와 대조한다 — pytest만 따로 돌릴 때 오래된 빌드 산출물로 비교하는 것을 막는다.
+def digestSources = fileTree('src') { include '**/*.java' } + files('../src/sentinel/sanitization_policy.json')
+tasks.register('sourceDigest') {
+    dependsOn 'classes', 'testClasses'
+    inputs.files(digestSources)
+    def out = layout.buildDirectory.file('source-digest.txt')
+    outputs.file(out)
+    doLast {
+        def base = projectDir.toPath()
+        def lines = digestSources.files.collect { f ->
+            def rel = base.relativize(f.toPath()).normalize().toString().replace('\\', '/')
+            def md = java.security.MessageDigest.getInstance('SHA-256')
+            rel + ' ' + md.digest(f.bytes).encodeHex().toString()
+        }.sort()
+        out.get().asFile.setText(lines.join('\n') + '\n', 'UTF-8')
+    }
+}
+tasks.named('build') {
+    dependsOn 'sourceDigest'
+}
