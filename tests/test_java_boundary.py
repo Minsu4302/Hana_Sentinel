@@ -613,6 +613,104 @@ def test_real_core_uses_only_the_strict_reader():
     assert "setStrictness(Strictness.STRICT)" in core and "new JsonReader(" in core
 
 
+# ─────────────────────────────── java_capture_human_selected·java_request_parse·2단계 허용 목록(2부 PR-2a)
+MENU = f"{PKG}/capture/ContextMenu.java"
+
+
+def test_real_project_capture_and_parse_core_rules():
+    assert jb.capture_violations(PROJECT) == []
+    assert jb.request_parse_violations(PROJECT) == []
+
+
+def _menu_with(old: str, new: str, tmp_path: Path) -> Path:
+    project = _copy(tmp_path)
+    _edit(project, MENU, old, new)
+    return project
+
+
+CAPTURE_FIXTURES = {
+    "selection_read_outside_provider": (f"{PKG}/transport/Peek.java", "package sentinel.burp.transport;\n\nfinal class Peek {\n"
+                                        "    Object f(burp.api.montoya.ui.contextmenu.ContextMenuEvent e) {\n"
+                                        "        return e.selectedRequestResponses();\n    }\n}\n", "capture_outside_provider"),
+    "editor_set_request": (f"{PKG}/capture/Edit.java", "package sentinel.burp.capture;\n\nfinal class Edit {\n"
+                           "    void f(Object m, Object r) {\n        ((Ed) m).setRequest(r);\n    }\n    interface Ed {}\n}\n",
+                           "capture_editor_mutation"),
+    "editor_set_response": (f"{PKG}/capture/Edit.java", "package sentinel.burp.capture;\n\nfinal class Edit {\n"
+                            "    void f(Ed m, Object r) {\n        m.setResponse(r);\n    }\n    interface Ed {}\n}\n",
+                            "capture_editor_mutation"),
+    "proxy_history_read": (f"{PKG}/capture/Hist.java", "package sentinel.burp.capture;\n\nfinal class Hist {\n"
+                           "    Object f(Src s) {\n        return s.proxy().history(null);\n    }\n    interface Src {}\n}\n",
+                           "capture_other_source"),
+    "site_map_read": (f"{PKG}/capture/Map1.java", "package sentinel.burp.capture;\n\nfinal class Map1 {\n"
+                      "    Object f(Src s) {\n        return s.siteMap();\n    }\n    interface Src {}\n}\n", "capture_other_source"),
+    "http_handler": (f"{PKG}/capture/Hook.java", "package sentinel.burp.capture;\n\nfinal class Hook {\n"
+                     "    void f(Src s) {\n        s.registerHttpHandler(null);\n    }\n    interface Src {}\n}\n", "capture_other_source"),
+    "timer_path": (f"{PKG}/capture/Tick.java", "package sentinel.burp.capture;\n\nfinal class Tick {\n"
+                   "    Object t = new java.util.Timer();\n}\n", "capture_scheduled_path"),
+    "scheduler_path": (f"{PKG}/transport/Tick.java", "package sentinel.burp.transport;\n\nfinal class Tick {\n"
+                       "    Object t = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();\n}\n",
+                       "capture_scheduled_path"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(CAPTURE_FIXTURES))
+def test_capture_fixture_is_rejected(tmp_path, name):
+    rel, text, expected = CAPTURE_FIXTURES[name]
+    project = _copy(tmp_path)
+    _write(project, rel, text)
+    assert expected in _codes(jb.capture_violations(project), jb.CAPTURE_SELECTED), name
+
+
+@pytest.mark.parametrize("name,old,new,expected", [
+    ("repeater_check_missing", "event.isFromTool(ToolType.REPEATER)", "false", "repeater_check_missing"),
+    ("selection_rule_missing", "String refusal = Selection.decide(", "String refusal = Other.decide(", "selection_rule_missing"),
+])
+def test_provider_without_repeater_or_selection_rule_is_rejected(tmp_path, name, old, new, expected):
+    project = _menu_with(old, new, tmp_path)
+    assert expected in _codes(jb.capture_violations(project), jb.CAPTURE_SELECTED), name
+
+
+PARSE_CORE_FIXTURES = {
+    "core_montoya_import": ("package sentinel.burp.capture.core;\n\nimport burp.api.montoya.MontoyaApi;\n\nfinal class X {}\n",
+                            "parse_core_montoya"),
+    "core_montoya_fqn": ("package sentinel.burp.capture.core;\n\nfinal class X {\n    burp.api.montoya.MontoyaApi a;\n}\n",
+                         "parse_core_montoya"),
+    "core_java_net": ("package sentinel.burp.capture.core;\n\nimport java.net.URI;\n\nfinal class X {}\n", "parse_core_java_net"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(PARSE_CORE_FIXTURES))
+def test_parse_core_fixture_is_rejected(tmp_path, name):
+    text, expected = PARSE_CORE_FIXTURES[name]
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/capture/core/X.java", text)
+    assert expected in _codes(jb.request_parse_violations(project), jb.REQUEST_PARSE), name
+
+
+SECOND_LEVEL_FIXTURES = {
+    "user_interface_other_member": ("        api.userInterface().swingUtils();", "montoya_second_level_not_allowed"),
+    "extension_other_member": ("        api.extension().filename();", "montoya_second_level_not_allowed"),
+    "logging_other_member": ("        api.logging().raiseErrorEvent(\"x\");", "montoya_second_level_not_allowed"),
+    "logging_reference_escape": ("        Object l = api.logging();", "montoya_second_level_not_allowed"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(SECOND_LEVEL_FIXTURES))
+def test_second_level_allowlist_fixture_is_rejected(tmp_path, name):
+    body, expected = SECOND_LEVEL_FIXTURES[name]
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/SentinelExtension.java", _entry_with(body))
+    assert expected in _codes(jb.no_target_send_violations(project), jb.NO_TARGET_SEND), name
+
+
+@pytest.mark.parametrize("call", ["rr.timingData()", "rr.copyToTempFile()", "svc.ipAddress()", "rr.annotations()",
+                                  "rr.withAnnotations(null)", "rr.contains(java.util.regex.Pattern.compile(\"x\"))"])
+def test_banned_montoya_member_is_rejected(tmp_path, call):
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/capture/Use.java", "package sentinel.burp.capture;\n\nfinal class Use {\n"
+           f"    void f(R rr, R svc) {{\n        Object x = {call};\n    }}\n    interface R {{}}\n}}\n")
+    assert "montoya_member_banned" in _codes(jb.no_target_send_violations(project), jb.NO_TARGET_SEND), call
+
 # ─────────────────────────────── 변이 확인(변이본 로드 표지 확인 후 결과 해석)
 STAMP = "java_boundary_probe"
 _DRIVER = """
@@ -644,6 +742,10 @@ MUTATIONS = {
                                [_T + "test_lenient_json_fixture_is_rejected[json_parser_parse_string]"]),
     "core_java_net_rule_off": (_JB, "        if _in_core(f, root) and re.search(", "        if False and re.search(",
                                [_T + "test_core_and_transport_fixture_is_rejected[core_java_net_import]"]),
+    "capture_repeater_check_off": (_JB, "            if not REPEATER_CHECK.search(code):\n", "            if False:\n",
+                                   [_T + "test_provider_without_repeater_or_selection_rule_is_rejected[repeater_check_missing-event.isFromTool(ToolType.REPEATER)-false-repeater_check_missing]"]),
+    "second_level_allowlist_off": (_JB, "            if not nxt or nxt.group(1) not in SECOND_LEVEL[m.group(1)]:\n", "            if False:\n",
+                                   [_T + "test_second_level_allowlist_fixture_is_rejected[logging_other_member]"]),
     "preflight_wrapper_check_removed": (_BUILD, "    problems = [f\"wrapper 고정값 위반: {v.code}\" for v in "
                                                 "java_boundary.wrapper_violations(project)]\n",
                                         "    problems = []\n",

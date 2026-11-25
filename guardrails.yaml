@@ -1,9 +1,9 @@
 # guardrails.yaml — 가드레일 기계 판독 SSOT (생성물: `make guardrails-sync`).
-# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.43. 값이 다르면 (A)가 정본이다.
+# 원천: (A) docs/design-decision.md §3 강제 매핑표 v1.44. 값이 다르면 (A)가 정본이다.
 # 손으로 바꿔도 되는 것: (A)가 enforced를 목표로 둔 키의 실제 승격(state: enforced + verification_tests)뿐.
 # enforced는 실제 통과 테스트가 있는 것만. 목표 시점 ≠ 현재 상태.
 schema_version: "1"
-derived_from: "docs/design-decision.md §3 매핑표 v1.43"
+derived_from: "docs/design-decision.md §3 매핑표 v1.44"
 guardrails:
   - id: egress_static_check
     description: "egress 정적 의존성 0(외부 HTTP 송신 의존성 0 + 허용목록 빔)"
@@ -363,11 +363,11 @@ guardrails:
       - "tests/test_tools_no_send.py::test_tools_send_check_is_load_bearing_under_verified_mutation"
     manifest_key: tools_no_external_send
   - id: java_no_target_send
-    description: "Burp 확장은 대상 송신 API를 쓰지 않는다 — 사용하는 Montoya API를 허용 목록으로 고정(컨텍스트 메뉴·요청/응답 읽기·UI·로깅: MontoyaApi에서 시작하는 호출은 extension()·logging()·userInterface()만, Montoya import도 허용 목록). 2단계 허용 목록: userInterface() → registerContextMenuItemsProvider·registerSuiteTab / extension() → setName·registerUnloadingHandler / logging() → logToOutput·logToError / 요청·응답 읽기 — HttpRequestResponse의 request·response·hasResponse·httpService, HttpService의 host·port·secure, 요청·응답의 toByteArray / 컨텍스트 메뉴 이벤트 — selectedRequestResponses·messageEditorRequestResponse·invocationType·isFrom·toolType·isFromTool, MessageEditorHttpRequestResponse의 requestResponse(읽기, v1.52). 금지 추가: copyToTempFile(원본을 디스크에 씀)·HttpService.ipAddress(DNS 조회)·keywordCounts·attributes(분석)·contains(Pattern)·Annotations 계열·setRequest·setResponse(편집기 상태 변경)·timingData(v1.52). transport.* Montoya import 0, 마스커 코어 java.net 0. 그 밖의 API 호출(http().sendRequest 계열, Repeater·Intruder·Scanner 전송, Collaborator, persistence·preferences, proxy()(자동 캡처), register*Handler 포함) = 위반. MontoyaApi 값의 별칭·전달 금지. 공통 우회 차단: 모든 Java 소스에 java.lang.reflect·Class.forName·MethodHandles·ServiceLoader·커스텀 ClassLoader·Runtime.exec·ProcessBuilder 0"
+    description: "Burp 확장은 대상 송신 API를 쓰지 않는다 — 사용하는 Montoya API를 허용 목록으로 고정(컨텍스트 메뉴·요청/응답 읽기·UI·로깅: MontoyaApi에서 시작하는 호출은 extension()·logging()·userInterface()만, Montoya import도 허용 목록). 2단계 허용 목록: userInterface() → registerContextMenuItemsProvider·registerSuiteTab / extension() → setName·registerUnloadingHandler / logging() → logToOutput·logToError / 요청·응답 읽기 — HttpRequestResponse의 request·response·hasResponse·httpService, HttpService의 host·port·secure, 요청·응답의 toByteArray / 컨텍스트 메뉴 이벤트 — selectedRequestResponses·messageEditorRequestResponse·invocationType·isFrom·toolType·isFromTool, MessageEditorHttpRequestResponse의 requestResponse(읽기, v1.52). 금지 추가: copyToTempFile(원본을 디스크에 씀)·HttpService.ipAddress(DNS 조회)·keywordCounts·attributes(분석)·contains(Pattern)·Annotations 계열·setRequest·setResponse(편집기 상태 변경)·timingData(v1.52). transport.* Montoya import 0, 마스커 코어 java.net 0. 그 밖의 API 호출(http().sendRequest 계열, Repeater·Intruder·Scanner 전송, Collaborator, persistence·preferences, proxy()(자동 캡처), register*Handler 포함 — 허용 목록의 extension().registerUnloadingHandler는 제외) = 위반. MontoyaApi 값의 별칭·전달 금지. 공통 우회 차단: 모든 Java 소스에 java.lang.reflect·Class.forName·MethodHandles·ServiceLoader·커스텀 ClassLoader·Runtime.exec·ProcessBuilder 0"
     target_layer: "아키텍처테스트"
     status:
       state: enforced
-      note: "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2a"
+      note: "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록(userInterface·extension·logging 뒤의 멤버)·금지 추가(copyToTempFile·ipAddress·keywordCounts·attributes·annotations·contains(Pattern)·setRequest·setResponse·timingData)까지 증명(v1.53)"
     verification_tests:
       - "tests/test_java_boundary.py::test_real_project_has_no_target_send_or_bypass"
       - "tests/test_java_boundary.py::test_target_send_fixture_is_rejected"
@@ -380,6 +380,8 @@ guardrails:
       - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
       - "tests/test_java_boundary.py::test_core_and_transport_fixture_is_rejected"
       - "tests/test_java_boundary.py::test_java_net_outside_core_is_not_the_core_rule"
+      - "tests/test_java_boundary.py::test_second_level_allowlist_fixture_is_rejected"
+      - "tests/test_java_boundary.py::test_banned_montoya_member_is_rejected"
     manifest_key: java_no_target_send
   - id: java_loopback_only
     description: "Burp 확장의 송신은 분석 서버 127.0.0.1 리터럴만(NO_PROXY 명시, 리다이렉트 비추종). HTTP 클라이언트 생성은 transport 패키지의 송신 클래스 1개에서만, java.net.http만(URLConnection·소켓·외부 클라이언트 라이브러리 금지), 목적지는 \"http://127.0.0.1:\" 리터럴로 시작(변수 호스트·localhost·userinfo 금지)"
@@ -445,9 +447,16 @@ guardrails:
     description: "캡처는 사람이 고른 요청만 — userInterface().registerContextMenuItemsProvider로 등록한 provider가 받은 선택 항목만 transport로 넘긴다. 그 밖의 캡처 경로(프록시·HTTP 핸들러·사이트맵·히스토리 읽기 등) 0. 선택 1건, 편집기 경로는 읽기 전용 뷰어(invocationType MESSAGE_VIEWER_*)만 — 편집 가능 편집기는 거부, Repeater 출처(isFromTool(REPEATER))는 모든 경로 거부(v1.52)"
     target_layer: "아키텍처테스트"
     status:
-      state: not_implemented
-      target: "2부 PR-2a"
-    verification_tests: []
+      state: enforced
+      note: "정적 범위 — 레포 Java 소스. 선택 원천은 ContextMenuItemsProvider 구현 파일에만, 편집기 상태 변경·다른 캡처 원천(proxy()·siteMap()·history·register*Handler)·타이머·스케줄러 0, provider는 Repeater 출처 판별과 선택 규칙(Selection.decide) 호출을 둔다. 선택 규칙 자체는 하네스로 전 조합 표를 확인. 사람이 실제로 메뉴를 눌렀는지·Burp 런타임 동작은 범위 밖 — 수동 절차"
+    verification_tests:
+      - "tests/test_java_boundary.py::test_real_project_capture_and_parse_core_rules"
+      - "tests/test_java_boundary.py::test_capture_fixture_is_rejected"
+      - "tests/test_java_boundary.py::test_provider_without_repeater_or_selection_rule_is_rejected"
+      - "tests/test_java_request_parse.py::test_selection_rule_table"
+      - "tests/test_java_request_parse.py::test_parser_and_selection_are_load_bearing_under_verified_java_mutation"
+      - "tests/test_java_request_parse.py::test_reason_codes_are_a_closed_list_disjoint_from_forbidden_tokens"
+      - "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
     manifest_key: java_capture_human_selected
   - id: java_ui_plain_text
     description: "서버 응답 유래 문자열은 단일 표시 함수(ui.PlainText)로만 Swing에 넘긴다. HTML을 해석하지 않는 컴포넌트(JTextArea·JTextField·그 위 렌더러)만, html.disable은 이중 방어. JEditorPane·JTextPane·HTMLEditorKit·setPage·리터럴 \"<html\" 금지. 텍스트를 받는 JLabel·버튼류·툴팁·탭 제목·JOptionPane·기본 셀 렌더러에 비리터럴 문자열 금지(PlainText 밖)"
@@ -777,12 +786,20 @@ guardrails:
       - "tests/test_java_masker_parity.py::test_canonical_policy_passes_both_loaders_as_control"
     manifest_key: java_masker_parity
   - id: java_request_parse
-    description: "Java 구문 파서(원시 바이트 → RawTransaction, §2.9 파서 규칙) 출력 = Python 명세 생성기의 기대 RawEnvelope(§2.10 표기 바이트 일치). 적대 사례: 중복·대소문자 헤더, obs-fold, chunked 정상·형식 오류, Content-Encoding, 잘못된 UTF-8, Content-Type 없음, absolute-form, `+`·잘못된 `%`, 빈 쿼리, 응답 없음"
+    description: "Java 구문 파서(원시 바이트 → RawTransaction, §2.9 파서 규칙) 출력 = Python 명세 생성기의 기대 RawEnvelope(§2.10 표기 바이트 일치). 적대 사례: 중복·대소문자 헤더, obs-fold, chunked 정상·형식 오류, Content-Encoding, 잘못된 UTF-8, Content-Type 없음, absolute-form, `+`·잘못된 `%`, 빈 쿼리, 응답 없음. 정적 하위 검사: 파서 코어(루트.capture.core) Montoya import 0·java.net 0"
     target_layer: "테스트"
     status:
-      state: not_implemented
-      target: "2부 PR-2a"
-    verification_tests: []
+      state: enforced
+      note: "범위 — 명세 생성기 코퍼스(무작위 120 + 적대 39) 위의 §2.10 바이트 일치와 거부 세부 종류, 종단(파싱 → 마스킹 = 참조 마스커, base64 제외). Burp가 실제로 넘기는 바이트 표현(HTTP/2 등)은 범위 밖 — 수동 절차"
+    verification_tests:
+      - "tests/test_java_request_parse.py::test_java_parser_output_equals_oracle_bytes"
+      - "tests/test_java_request_parse.py::test_corpus_reaches_every_parser_rule"
+      - "tests/test_java_request_parse.py::test_parse_then_mask_equals_reference_masker"
+      - "tests/test_java_request_parse.py::test_meta_format"
+      - "tests/test_java_request_parse.py::test_parser_and_selection_are_load_bearing_under_verified_java_mutation"
+      - "tests/test_java_request_parse.py::test_unmutated_copy_compiled_the_same_way_passes_as_control"
+      - "tests/test_java_boundary.py::test_real_project_capture_and_parse_core_rules"
+      - "tests/test_java_boundary.py::test_parse_core_fixture_is_rejected"
     manifest_key: java_request_parse
   - id: label_consistency
     description: "라벨 양방향 동치 — 생산자 강제, Python 런타임 보장 아님"

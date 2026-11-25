@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.43",
+  "spec": "docs/design-decision.md §3 매핑표 v1.44",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -333,7 +333,7 @@
     "java_no_target_send": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2a",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록(userInterface·extension·logging 뒤의 멤버)·금지 추가(copyToTempFile·ipAddress·keywordCounts·attributes·annotations·contains(Pattern)·setRequest·setResponse·timingData)까지 증명(v1.53)",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_has_no_target_send_or_bypass",
         "tests/test_java_boundary.py::test_target_send_fixture_is_rejected",
@@ -345,7 +345,9 @@
         "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
         "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation",
         "tests/test_java_boundary.py::test_core_and_transport_fixture_is_rejected",
-        "tests/test_java_boundary.py::test_java_net_outside_core_is_not_the_core_rule"
+        "tests/test_java_boundary.py::test_java_net_outside_core_is_not_the_core_rule",
+        "tests/test_java_boundary.py::test_second_level_allowlist_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_banned_montoya_member_is_rejected"
       ]
     },
     "java_loopback_only": {
@@ -404,10 +406,18 @@
       "verification_tests": []
     },
     "java_capture_human_selected": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2부 PR-2a",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "정적 범위 — 레포 Java 소스. 선택 원천은 ContextMenuItemsProvider 구현 파일에만, 편집기 상태 변경·다른 캡처 원천(proxy()·siteMap()·history·register*Handler)·타이머·스케줄러 0, provider는 Repeater 출처 판별과 선택 규칙(Selection.decide) 호출을 둔다. 선택 규칙 자체는 하네스로 전 조합 표를 확인. 사람이 실제로 메뉴를 눌렀는지·Burp 런타임 동작은 범위 밖 — 수동 절차",
+      "verification_tests": [
+        "tests/test_java_boundary.py::test_real_project_capture_and_parse_core_rules",
+        "tests/test_java_boundary.py::test_capture_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_provider_without_repeater_or_selection_rule_is_rejected",
+        "tests/test_java_request_parse.py::test_selection_rule_table",
+        "tests/test_java_request_parse.py::test_parser_and_selection_are_load_bearing_under_verified_java_mutation",
+        "tests/test_java_request_parse.py::test_reason_codes_are_a_closed_list_disjoint_from_forbidden_tokens",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "java_ui_plain_text": {
       "status": "not_implemented",
@@ -714,10 +724,19 @@
       ]
     },
     "java_request_parse": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2부 PR-2a",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "범위 — 명세 생성기 코퍼스(무작위 120 + 적대 39) 위의 §2.10 바이트 일치와 거부 세부 종류, 종단(파싱 → 마스킹 = 참조 마스커, base64 제외). Burp가 실제로 넘기는 바이트 표현(HTTP/2 등)은 범위 밖 — 수동 절차",
+      "verification_tests": [
+        "tests/test_java_request_parse.py::test_java_parser_output_equals_oracle_bytes",
+        "tests/test_java_request_parse.py::test_corpus_reaches_every_parser_rule",
+        "tests/test_java_request_parse.py::test_parse_then_mask_equals_reference_masker",
+        "tests/test_java_request_parse.py::test_meta_format",
+        "tests/test_java_request_parse.py::test_parser_and_selection_are_load_bearing_under_verified_java_mutation",
+        "tests/test_java_request_parse.py::test_unmutated_copy_compiled_the_same_way_passes_as_control",
+        "tests/test_java_boundary.py::test_real_project_capture_and_parse_core_rules",
+        "tests/test_java_boundary.py::test_parse_core_fixture_is_rejected"
+      ]
     },
     "label_consistency": {
       "status": "enforced",

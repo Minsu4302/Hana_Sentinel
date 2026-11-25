@@ -2118,3 +2118,37 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 ### 확인 필요(2a Burp 수동 절차)
 - Repeater 뷰어의 짝: 기본 거부로 닫았다(리뷰 반영 — Repeater 출처는 모든 경로 `repeater_source`). 열려면 수동 확인 후 (A) 개정이 필요하다.
 - HTTP/2 메시지의 Burp 텍스트 표현.
+
+---
+
+## 2부 PR-2a — 구문 파서 + meta + 메뉴 provider + 설정 탭, 송신 0 (Issue #149, (A) v1.53)
+
+### 한 일
+- `capture.core`(Montoya 0, java.net 0): RawParser((A) §2.9 v1.52 규칙 7항), Selection(순수 함수), MetaSource, Prepare(파싱 → 마스킹 → §2.10), Reasons(사유 코드 닫힌 목록)
+- `capture.ContextMenu`(Montoya 이벤트 어댑터): 사실값과 바이트만 꺼내고, 처리는 `transport.Worker`(동시 1·대기열 2)에서 한다. 로그에는 사유 코드와 크기만 남긴다.
+- `transport.Settings`(토큰 char[], 기본값 = Python 서버 기본값), `ui.SettingsTab`(리터럴 라벨만)
+- 진입점: 설정 탭·provider·언로드 핸들러(실행기 종료·토큰 지우기)
+- 오라클 `tests/test_java_request_parse.py`
+  - 명세 생성기(무작위 120 + 적대 39)와 Java 파서 하네스의 §2.10 바이트를 비교한다. 거부 세부 종류까지 대조한다.
+  - 종단 79건: 파싱 → 마스킹 = 참조 마스커
+  - 선택 규칙 전 조합 표, meta 형식
+  - 사유 코드 목록과 금지 토큰의 교집합 0, 설정 기본값 대조
+  - Java 변이 4종과 대조
+- 정적 검사(`tools/java_boundary.py`): `java_capture_human_selected`, 파서 코어 분리(`java_request_parse`), `java_no_target_send` 2단계 허용 목록·금지 멤버
+- (A) v1.53(매핑표 v1.44): `java_request_parse`·`java_capture_human_selected` 승격
+
+### 재량 결정
+- 선택 규칙을 Montoya와 분리된 순수 함수로 두었다. 이벤트 어댑터는 사실값만 넘긴다. Burp 없이 전 조합을 시험하기 위해서다.
+- 파서 거부에 내부 세부 종류를 두었다(로그는 parse_refused 하나). obs-fold 규칙이 실제로 작동하는지 증명하려면 필요하다.
+- 사유 코드 구현 목록에 `prepared`·`mask_refused`를 더했다.
+- 시작 줄도 헤더 값과 같은 정의(UTF-8 대체)로 디코드한다. 그래서 path의 비ASCII 원문 바이트는 그대로 문자가 되고, 잘못된 바이트는 U+FFFD가 된다.
+- Transfer-Encoding은 첫 헤더 값만 본다. chunked가 아니면 omitted다.
+- 줄 끝은 CRLF만 받는다(맨 CR·LF는 거부).
+- 기존 정적 규칙의 `register\w*Handler` 금지가 허용 목록의 `registerUnloadingHandler`까지 잡았다. 이 이름만 빼도록 정규식을 고쳤다((A) 규칙 칸에도 명시).
+
+### 깨진 가정 / 사실 기록
+- 오라클 생성기 결함 1건: 원문 query 조각 변형에 공백을 남겨 요청 줄이 깨졌다(seed 9건). 생성기를 고치고 다시 돌렸다.
+- `burp.api.montoya.http.HttpService` import는 기존 허용 접두사 밖이다. 어댑터는 연쇄 호출로 쓰고 import하지 않는다.
+
+### 대기
+- Burp 수동 확인(민수, `docs/burp-extension.md` 6절). HTTP/2 확인 결과를 받으면 (A) v1.53의 HTTP/2 문장을 고친다.
