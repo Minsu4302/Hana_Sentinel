@@ -2118,3 +2118,61 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 ### 확인 필요(2a Burp 수동 절차)
 - Repeater 뷰어의 짝: 기본 거부로 닫았다(리뷰 반영 — Repeater 출처는 모든 경로 `repeater_source`). 열려면 수동 확인 후 (A) 개정이 필요하다.
 - HTTP/2 메시지의 Burp 텍스트 표현.
+
+---
+
+## 2부 PR-2a — 구문 파서 + meta + 메뉴 provider + 설정 탭, 송신 0 (Issue #149, (A) v1.53)
+
+### 한 일
+- `capture.core`(Montoya 0, java.net 0): RawParser((A) §2.9 v1.52 규칙 7항), Selection(순수 함수), MetaSource, Prepare(파싱 → 마스킹 → §2.10), Reasons(사유 코드 닫힌 목록)
+- `capture.ContextMenu`(Montoya 이벤트 어댑터): 사실값과 바이트만 꺼내고, 처리는 `transport.Worker`(동시 1·대기열 2)에서 한다. 로그에는 사유 코드와 크기만 남긴다.
+- `transport.Settings`(토큰 char[], 기본값 = Python 서버 기본값), `ui.SettingsTab`(리터럴 라벨만)
+- 진입점: 설정 탭·provider·언로드 핸들러(실행기 종료·토큰 지우기)
+- 오라클 `tests/test_java_request_parse.py`
+  - 명세 생성기(무작위 120 + 적대 39)와 Java 파서 하네스의 §2.10 바이트를 비교한다. 거부 세부 종류까지 대조한다.
+  - 종단 79건: 파싱 → 마스킹 = 참조 마스커
+  - 선택 규칙 전 조합 표, meta 형식
+  - 사유 코드 목록과 금지 토큰의 교집합 0, 설정 기본값 대조
+  - Java 변이 4종과 대조
+- 정적 검사(`tools/java_boundary.py`): `java_capture_human_selected`, 파서 코어 분리(`java_request_parse`), `java_no_target_send` 2단계 허용 목록·금지 멤버
+- (A) v1.53(매핑표 v1.44): `java_request_parse`·`java_capture_human_selected` 승격
+
+### 재량 결정
+- 선택 규칙을 Montoya와 분리된 순수 함수로 두었다. 이벤트 어댑터는 사실값만 넘긴다. Burp 없이 전 조합을 시험하기 위해서다.
+- 파서 거부에 내부 세부 종류를 두었다(로그는 parse_refused 하나). obs-fold 규칙이 실제로 작동하는지 증명하려면 필요하다.
+- 사유 코드 구현 목록에 `prepared`·`mask_refused`를 더했다.
+- 시작 줄도 헤더 값과 같은 정의(UTF-8 대체)로 디코드한다. 그래서 path의 비ASCII 원문 바이트는 그대로 문자가 되고, 잘못된 바이트는 U+FFFD가 된다.
+- Transfer-Encoding은 첫 헤더 값만 본다. chunked가 아니면 omitted다.
+- 줄 끝은 CRLF만 받는다(맨 CR·LF는 거부).
+- 기존 정적 규칙의 `register\w*Handler` 금지가 허용 목록의 `registerUnloadingHandler`까지 잡았다. 이 이름만 빼도록 정규식을 고쳤다((A) 규칙 칸에도 명시).
+
+### 깨진 가정 / 사실 기록
+- 오라클 생성기 결함 1건: 원문 query 조각 변형에 공백을 남겨 요청 줄이 깨졌다(seed 9건). 생성기를 고치고 다시 돌렸다.
+- `burp.api.montoya.http.HttpService` import는 기존 허용 접두사 밖이다. 어댑터는 연쇄 호출로 쓰고 import하지 않는다.
+
+### 회귀와 재발 방지
+- 첫 make verify 실패(커밋 4340211, 푸시 전 — verify-stamp 없음):
+  - 새 파서 하네스(`ParseHarness`)를 동등성 하네스와 같은 테스트 패키지(`transport.masker`)에 두었다.
+  - 동등성 테스트의 Java 변이 컴파일은 그 패키지 경로의 소스를 모두 모은다. 그 안에 `capture.core`를 참조하는 하네스가 섞여 변이본 컴파일이 실패했다(변이 4종·대조).
+- 수정(커밋 0810382): 변이 컴파일 범위를 'Montoya를 쓰지 않는 소스 전체'로 바꿨다(파서 테스트의 컴파일 함수와 같은 정의).
+- 변이 확인이 여전히 유효하다는 증거(새 범위, PR-1b-1 Java 변이 4종 + 대조):
+
+| 변이 | 대상 클래스 | 변이본 경로에서 로드(-Xlog:class+load) | 동등성 불일치 사례 수 |
+|---|---|---|---|
+| canonical_escape_b | Canonical | 예 | 7 |
+| lone_surrogate_precheck_removed | AmbiguousJson | 예 | 3 |
+| receipt_skips_dropped_spans | Masker | 예 | 4 |
+| truncate_head_filler_kept_half | Masker | 예 | 2 |
+| 대조(변이 없음) | Masker | 예 | 0 |
+
+- 재발 방지: 커밋 전 스크립트의 앞단에 테스트 단계를 넣었다.
+  - 대상: main 대비 바뀐 테스트 파일 + `burp-extension`을 참조하는 테스트 전부. Java 소스가 바뀌었으면 오프라인 빌드를 먼저 한다.
+  - 커밋 → make verify 순서는 유지한다(verify-stamp가 커밋에 묶여 있다).
+  - '처음부터 verify 먼저'안은 고르지 않았다. verify는 커밋된 HEAD를 증명하는 단계이고, 커밋 전 단계는 빠르게 걸러 내는 단계라 역할이 다르다.
+- 하네스 배치(유지): `ParseHarness`는 `transport.masker` 테스트 패키지에 그대로 둔다.
+  - 이유: RawEnvelope를 §2.10으로 쓰려면 package-private `Canonical`이 필요하다.
+  - `capture.core` 테스트 패키지로 옮기면 테스트 때문에 `Canonical`을 공개 API로 넓히거나 직렬화기를 하나 더 만들어야 한다.
+  - 이번 회귀의 원인은 배치가 아니라 변이 컴파일의 경로 기반 범위였고, 그 범위는 고쳤다.
+
+### 대기
+- Burp 수동 확인(민수, `docs/burp-extension.md` 6절). HTTP/2 확인 결과를 받으면 (A) v1.53의 HTTP/2 문장을 고친다.

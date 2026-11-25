@@ -25,6 +25,8 @@ LOOPBACK_ONLY: Final = "java_loopback_only"
 LOGIC_ISOLATION: Final = "java_logic_isolation"
 BUILD_EGRESS: Final = "java_build_egress"
 MASKER_PARITY: Final = "java_masker_parity"
+CAPTURE_SELECTED: Final = "java_capture_human_selected"
+REQUEST_PARSE: Final = "java_request_parse"
 
 # ── java_build_egress: 정확한 좌표 허용 목록((A) §3.1). 버전 고정은 verification-metadata가 한다.
 # error_prone_annotations는 gson이 참조하는 애너테이션이다 — 런타임 불필요를 실측해(2부 PR-1b 0단계 c) compileOnly에만 둔다.
@@ -61,7 +63,7 @@ MONTOYA_IMPORT_PREFIX: Final = ("burp.api.montoya.logging.", "burp.api.montoya.e
 TARGET_ACCESSORS: Final = ("http", "repeater", "intruder", "scanner", "collaborator", "persistence", "proxy",
                            "burpSuite", "siteMap", "scope", "websockets", "organizer", "comparer", "decoder", "bambda",
                            "project", "utilities")
-TARGET_CALLS: Final = re.compile(r"\b(sendRequest\w*|register\w*Handler|registerProxy\w*|issueActiveScan|startCrawl|"
+TARGET_CALLS: Final = re.compile(r"\b(sendRequest\w*|register(?!Unloading)\w*Handler|registerProxy\w*|issueActiveScan|startCrawl|"
                                  r"sendToRepeater|sendToIntruder|sendToOrganizer|sendToComparer|createBurpCollaboratorClient)\s*\(")
 # ── 공통 우회 차단
 BYPASS: Final = {
@@ -92,6 +94,24 @@ LENIENT_JSON: Final = {
     "set_lenient": re.compile(r"\bsetLenient\b"),
     "lenient_strictness": re.compile(r"\bLENIENT\b|\bLEGACY_STRICT\b"),
 }
+# ── java_no_target_send 2단계 허용 목록((A) §3.1 v1.52): MontoyaApi의 1단계 접근자 뒤에 올 수 있는 멤버, 금지 멤버
+SECOND_LEVEL: Final = {"userInterface": {"registerContextMenuItemsProvider", "registerSuiteTab"},
+                       "extension": {"setName", "registerUnloadingHandler"},
+                       "logging": {"logToOutput", "logToError"}}
+BANNED_MEMBERS: Final = re.compile(r"\.\s*(copyToTempFile|ipAddress|keywordCounts|attributes|annotations|withAnnotations|"
+                                   r"timingData|setRequest|setResponse)\s*\(|\.\s*contains\s*\(\s*(?:java\s*\.\s*util\s*\.\s*"
+                                   r"regex\s*\.\s*)?Pattern\b")
+# ── java_capture_human_selected((A) §2.9·§3.1 v1.52)
+PROVIDER: Final = re.compile(r"\bimplements\b[^{]*\bContextMenuItemsProvider\b")
+CAPTURE_SOURCES: Final = re.compile(r"\.\s*(?:selectedRequestResponses|messageEditorRequestResponse)\s*\(")
+EDITOR_MUTATION: Final = re.compile(r"\.\s*(?:setRequest|setResponse)\s*\(")
+OTHER_SOURCES: Final = re.compile(r"\.\s*(?:proxy|siteMap)\s*\(\s*\)|\.\s*history\s*\(|\bregister(?!Unloading)\w*Handler\s*\(")
+SCHEDULED: Final = re.compile(r"\bTimer\b|\bScheduledExecutorService\b|\bScheduledThreadPoolExecutor\b|"
+                              r"\bnewScheduledThreadPool\b|\bnewSingleThreadScheduledExecutor\b|\.\s*schedule\w*\s*\(")
+REPEATER_CHECK: Final = re.compile(r"\bisFromTool\s*\(\s*ToolType\s*\.\s*REPEATER\s*\)")
+SELECTION_CALL: Final = re.compile(r"\bSelection\s*\.\s*decide\s*\(")
+# 구문 파서 코어 = 루트.capture.core(Burp 없이 실행 — Montoya 0, java.net 0)
+PARSE_CORE_SUBPACKAGE: Final = "capture.core"
 STRICT_READER: Final = re.compile(r"\.\s*setStrictness\s*\(\s*Strictness\s*\.\s*STRICT\s*\)")
 NEW_READER: Final = re.compile(r"\bnew\s+(?:[\w$]+\s*\.\s*)*JsonReader\s*\(")  # 정규 이름 포함
 
@@ -330,6 +350,13 @@ def no_target_send_violations(project: Path) -> list[Violation]:
         if _subpackage(f, root) == "transport" and (
                 any(name.startswith("burp.") for _s, name in _imports(f)) or re.search(r"\bburp\s*\.\s*api\b", code)):
             out.append(Violation(NO_TARGET_SEND, "transport_montoya_import", f.rel))
+        # 2단계 허용 목록: userInterface()·extension()·logging() 바로 뒤의 멤버(. 또는 ::)는 목록 안이어야 한다
+        for m in re.finditer(r"\.\s*(userInterface|extension|logging)\s*\(\s*\)", code):
+            nxt = re.match(r"\s*(?:\.|::)\s*(\w+)", code[m.end():])
+            if not nxt or nxt.group(1) not in SECOND_LEVEL[m.group(1)]:
+                out.append(Violation(NO_TARGET_SEND, "montoya_second_level_not_allowed", f"{f.rel}: {m.group(1)}"))
+        if BANNED_MEMBERS.search(code):
+            out.append(Violation(NO_TARGET_SEND, "montoya_member_banned", f.rel))
         # 마스커 코어는 java.net을 쓰지 않는다(import·정규 이름·정적 import 모두)
         if _in_core(f, root) and re.search(r"\bjava\s*\.\s*net\b", code):
             out.append(Violation(NO_TARGET_SEND, "core_java_net", f.rel))
@@ -639,6 +666,49 @@ def wrapper_distribution_hash(url: str = GRADLE_DISTRIBUTION_URL) -> str:
     return s or "0"
 
 
+def capture_violations(project: Path) -> list[Violation]:
+    """`java_capture_human_selected` — 사람이 컨텍스트 메뉴로 고른 1건만 캡처한다((A) §2.9 v1.52).
+    선택 원천(selectedRequestResponses·messageEditorRequestResponse)은 ContextMenuItemsProvider 구현 파일에만 둔다. 편집기 상태
+    변경(setRequest·setResponse), 다른 캡처 원천(proxy()·siteMap()·history·register*Handler), 타이머·스케줄러 경로는 0이다.
+    provider 파일은 Repeater 출처 판별(isFromTool(ToolType.REPEATER))과 선택 규칙(Selection.decide) 호출을 둔다."""
+    out = []
+    for f in _require_project(project):
+        code = f.lexed.code
+        provider = PROVIDER.search(code) is not None
+        if CAPTURE_SOURCES.search(code) and not provider:
+            out.append(Violation(CAPTURE_SELECTED, "capture_outside_provider", f.rel))
+        if EDITOR_MUTATION.search(code):
+            out.append(Violation(CAPTURE_SELECTED, "capture_editor_mutation", f.rel))
+        if OTHER_SOURCES.search(code):
+            out.append(Violation(CAPTURE_SELECTED, "capture_other_source", f.rel))
+        if SCHEDULED.search(code):
+            out.append(Violation(CAPTURE_SELECTED, "capture_scheduled_path", f.rel))
+        if provider:
+            if not REPEATER_CHECK.search(code):
+                out.append(Violation(CAPTURE_SELECTED, "repeater_check_missing", f.rel))
+            if not SELECTION_CALL.search(code):
+                out.append(Violation(CAPTURE_SELECTED, "selection_rule_missing", f.rel))
+    return out
+
+
+def request_parse_violations(project: Path) -> list[Violation]:
+    """`java_request_parse` 정적 하위 검사 — 구문 파서 코어(루트.capture.core)는 Montoya import 0, java.net 0(Burp 없이 하네스 실행).
+    Montoya 이벤트를 다루는 클래스(capture의 provider)는 코어 밖에 둔다."""
+    files = _require_project(project)
+    entries = _entry_points([f for f in files if f.rel.startswith(MAIN_JAVA.as_posix() + "/")])
+    root = entries[0].package if len(entries) == 1 else None
+    core = f"{root}.{PARSE_CORE_SUBPACKAGE}" if root else None
+    out = []
+    for f in files:
+        if core is None or not (f.package == core or f.package.startswith(core + ".")):
+            continue
+        if any(name.startswith("burp.") for _s, name in _imports(f)) or re.search(r"\bburp\s*\.\s*api\b", f.lexed.code):
+            out.append(Violation(REQUEST_PARSE, "parse_core_montoya", f.rel))
+        if re.search(r"\bjava\s*\.\s*net\b", f.lexed.code):
+            out.append(Violation(REQUEST_PARSE, "parse_core_java_net", f.rel))
+    return out
+
+
 def lenient_json_violations(project: Path) -> list[Violation]:
     """`java_masker_parity` 정적 하위 검사 — 엄격 JSON 판정이 Gson 설정에 기대므로 관대한 진입점·설정을 쓰지 않는다.
     JsonParser(parseString·parseReader), GsonBuilder, Gson 변환 메서드(fromJson·toJson — 직렬화는 §2.10 자체 쓰기만),
@@ -656,4 +726,5 @@ def lenient_json_violations(project: Path) -> list[Violation]:
 
 def all_violations(project: Path) -> list[Violation]:
     return (bypass_violations(project) + no_target_send_violations(project) + loopback_violations(project)
-            + logic_isolation_violations(project) + build_egress_violations(project) + lenient_json_violations(project))
+            + logic_isolation_violations(project) + build_egress_violations(project) + lenient_json_violations(project)
+            + capture_violations(project) + request_parse_violations(project))

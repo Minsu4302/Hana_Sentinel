@@ -623,7 +623,8 @@ def _compile_mutant(tmp: Path, file: str, old: str, new: str) -> tuple[Path, Pat
     rel = f"src/main/java/{CORE_PKG}/{file}"
     mutant = copy_with_mutation(PROJECT, ["src"], tmp / "mut", rel, old, new)
     out = tmp / "classes"
-    sources = [str(p) for p in (tmp / "mut" / "src").rglob("*.java") if CORE_PKG in p.as_posix()]
+    # Montoya를 쓰지 않는 소스 전체(main·test) — 하네스가 다른 Montoya 0 패키지(capture.core 등)를 참조해도 컴파일된다
+    sources = [str(p) for p in (tmp / "mut" / "src").rglob("*.java") if "burp.api" not in p.read_text(encoding="utf-8")]
     r = subprocess.run([str(_java("javac")), "--release", "17", "-encoding", "UTF-8", "-nowarn", "-cp", str(_gson_jar()),
                         "-d", str(out), *sources], capture_output=True, timeout=600)
     assert r.returncode == 0, "변이본 컴파일 실패"

@@ -13,7 +13,7 @@ import java.util.Locale;
  * - str.lower: Locale.ROOT 소문자화(Final_Sigma·U+0130 포함 같은 규칙).
  * - urllib.parse.unquote_plus: ASCII 구간마다 %XX를 바이트로 바꾸고 UTF-8(errors=replace, 최대 부분열마다 U+FFFD)로 디코드.
  */
-final class PyText {
+public final class PyText {
     static final char REPLACEMENT = '\uFFFD';
 
     private PyText() {
@@ -34,7 +34,7 @@ final class PyText {
                 || cp == 0x205F || cp == 0x3000;
     }
 
-    static String strip(String s) {
+    public static String strip(String s) {
         int start = 0;
         int end = s.length();
         while (start < end && isSpace(s.charAt(start))) {
@@ -68,7 +68,7 @@ final class PyText {
     }
 
     /** Python str.split(sep) — 구분자 문자열 하나, 빈 조각 유지. */
-    static List<String> split(String s, String sep) {
+    public static List<String> split(String s, String sep) {
         List<String> out = new ArrayList<>();
         int from = 0;
         while (true) {
@@ -82,7 +82,7 @@ final class PyText {
         }
     }
 
-    static String lower(String s) {
+    public static String lower(String s) {
         return s.toLowerCase(Locale.ROOT);
     }
 
@@ -111,7 +111,7 @@ final class PyText {
         return Integer.compare(a.length() - i, b.length() - j);
     }
 
-    static String unquotePlus(String s) {
+    public static String unquotePlus(String s) {
         return unquote(s.replace('+', ' '));
     }
 
@@ -176,7 +176,7 @@ final class PyText {
     }
 
     /** bytes.decode('utf-8', 'replace') — 잘못된 최대 부분열마다 U+FFFD 하나. */
-    static String decodeUtf8Replace(byte[] b) {
+    public static String decodeUtf8Replace(byte[] b) {
         StringBuilder out = new StringBuilder(b.length);
         int i = 0;
         int n = b.length;

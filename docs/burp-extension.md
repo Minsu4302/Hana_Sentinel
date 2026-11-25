@@ -91,3 +91,21 @@ Burp Community 2024.12.1 기준.
 
 Burp 자체의 외부 연결(업데이트 확인 등)은 시스템 밖 도구의 동작이다. OS·운영 통제가 실주체다((A) §3.1 `egress_enforcement_owner`).
 확장 코드는 이 연결에 관여하지 않으며, 확장 자체는 1부에서 아무것도 전송하지 않는다.
+
+## 6. 2부 PR-2a 수동 확인(민수 — 결과는 PR에 사유 코드와 성공 여부만 남긴다)
+
+대상은 Juice Shop 또는 자체 더미 API뿐이다. 실데이터·토큰·내부 URL은 쓰지 않는다. 2a는 아무것도 전송하지 않는다 —
+메뉴를 누르면 파싱·마스킹까지 하고 Output 탭에 `sentinel: <사유 코드>` 한 줄만 남긴다(host·경로·값 없음).
+
+1. 새 jar 로드: `make verify`(또는 `gradlew.bat --offline --no-daemon build`)로 만든 `build\libs\sentinel-burp-extension-0.1.0.jar`.
+   Extensions에서 기존 Sentinel을 내리고 새 jar를 추가한다.
+   - Output에 `Sentinel extension loaded`가 있다. Errors는 비어 있다. 상단에 `Sentinel` 탭이 보인다.
+2. Proxy > HTTP history에서 Juice Shop 요청 1건(응답 있음)을 우클릭 → Extensions > `Sentinel: prepare` → `sentinel: prepared bytes=N`
+3. 같은 목록에서 2건을 골라 실행 → `sentinel: selection_not_single`
+4. 응답이 없는 항목(예: Intercept에서 요청을 drop한 항목)에서 실행 → `sentinel: no_response`
+5. Repeater: 요청 편집기에서 실행, 응답 뷰어에서 실행 → 둘 다 `sentinel: repeater_source`
+6. HTTP history 아래 요청·응답 뷰어(읽기 전용)에서 실행 → `sentinel: prepared bytes=N`
+7. HTTP/2: 허용된 대상 중 HTTP/2로 통신하는 것이 있으면 그 요청 1건으로 2번을 반복하고 결과(사유 코드)를 적는다.
+   해당 대상이 없으면 '미확인'으로 적는다(대상을 바깥 사이트로 넓히지 않는다).
+8. `Sentinel` 탭: 토큰 입력란에 아무 더미 문자열을 넣고 '적용' → 입력란이 비워진다. '지우기'도 눌러 본다.
+   서버 문자열을 표시하는 곳은 없다. 확장을 내릴 때 Errors에 아무것도 남지 않는다.
