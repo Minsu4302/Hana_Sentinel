@@ -2088,3 +2088,33 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 ### 한계
 - 재현성은 같은 개발 PC·같은 JDK·같은 Gradle에서 본 것이다. 사내 PC에서의 재현은 반입 절차(2부 PR-4)에서 다시 확인한다.
 - 신선도 표지는 build가 끝날 때의 소스 목록이다. Gradle을 `build` 없이 일부 태스크만 돌리면 표지가 갱신되지 않아 '오래됨'으로 판정한다(보수적).
+
+---
+
+## (A) v1.52 — 2부 PR-2 계약(Issue #147, 문서 + 키, 코드 0)
+
+### 0단계(조사) 결과
+- (A) 빈칸 6(G1 파서 정의, G2 origin_ref 출처, G3 편집기 경로, G4 R1 응답 쪽 위치, G5 클라이언트 값, G6 사유 코드 어휘)과 모순 후보 2(C1 서버 요청 상한 1 MiB와 §2.10 이스케이프 팽창, C2 elapsed_ms)를 보고하고 멈췄다.
+- 사실:
+  - Montoya 2024.12의 HttpRequestResponse에는 Burp 내부 id가 없다. `timingData()`는 있지만 허용 목록 밖이다.
+  - 편집기 객체에는 `setRequest`·`setResponse`가 있다.
+  - 동결본 Param 값은 퍼센트 디코드된 값이다. 반사 규칙도 디코드된 값에서 트리거 문자를 찾는다.
+  - `timeout`·`unavailable`·`oversize`·`ok`는 Java 금지 토큰이다.
+
+### 판정(민수)
+- G1 파서 규칙 승인. 한계 문장 두 가지(Content-Encoding 미해제 → omitted, HTTP/2 표현은 수동 확인 대기).
+- G2 `ext-` + 16진 8자리 난수.
+- G3 편집기 경로는 읽기 전용 뷰어에서 호출한 경우만 받는다(편집 가능하면 `editable_message`).
+  - javap 확인: ContextMenuEvent는 InvocationSource(`invocationType()`·`isFrom(InvocationType...)`)를 상속한다. 값은 MESSAGE_EDITOR_REQUEST/RESPONSE, MESSAGE_VIEWER_REQUEST/RESPONSE, SITE_MAP_TREE/TABLE, PROXY_HISTORY, PROXY_INTERCEPT, SCANNER_RESULTS, INTRUDER_*, SEARCH_RESULTS다.
+- G4 R1 응답 쪽 위치 = `루트.transport.response`와 ui.
+- G5 클라이언트 값 승인.
+- G6 사유 코드는 닫힌 목록으로 두고 `editable_message`를 더한다.
+- C1 서버 상한 4 MiB, Java 송신 전 상한은 같은 값(기계 대조).
+- C2 elapsed_ms는 측정할 수 없으면 null이다. 엔진은 이 값을 쓰지 않는다(확인: 엔진의 elapsed_ms 참조는 분석 소요 시간뿐이다).
+- 토큰: token_urlsafe(32), stdout 1회, SENTINEL_SHARED_TOKEN 폐기. 운영 절차: stdout을 파일로 리다이렉트하지 않는다.
+- 새 키 `java_request_parse`(→ 2a)를 둔다. §1.4 색인에는 넣지 않는다(보조).
+- 분할: v1.52 문서 → 2a → 2b.
+
+### 확인 필요(2a Burp 수동 절차)
+- Repeater 뷰어의 짝: 기본 거부로 닫았다(리뷰 반영 — Repeater 출처는 모든 경로 `repeater_source`). 열려면 수동 확인 후 (A) 개정이 필요하다.
+- HTTP/2 메시지의 Burp 텍스트 표현.
