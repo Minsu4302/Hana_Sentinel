@@ -2,7 +2,7 @@
   "schema_version": "1",
   "notice": "생성물 — 손으로 편집 금지. `make manifest`로 guardrails.yaml에서 재파생한다.",
   "source": "guardrails.yaml",
-  "spec": "docs/design-decision.md §3 매핑표 v1.40",
+  "spec": "docs/design-decision.md §3 매핑표 v1.41",
   "capabilities": {
     "egress_static_check": {
       "status": "enforced",
@@ -333,7 +333,7 @@
     "java_no_target_send": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위까지 증명 — transport Montoya import 0·마스커 코어 java.net 0은 미구현 → 2부 PR-1, 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. 1부 범위 + transport Montoya import 0·마스커 코어(transport.masker 패키지) java.net 0까지 증명(v1.50). 2단계 허용 목록·금지 추가는 미구현 → 2부 PR-2",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_has_no_target_send_or_bypass",
         "tests/test_java_boundary.py::test_target_send_fixture_is_rejected",
@@ -343,7 +343,9 @@
         "tests/test_java_boundary.py::test_bypass_in_any_package_is_rejected",
         "tests/test_java_boundary.py::test_bypass_words_in_comments_are_not_code",
         "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
-        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation",
+        "tests/test_java_boundary.py::test_core_and_transport_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_java_net_outside_core_is_not_the_core_rule"
       ]
     },
     "java_loopback_only": {
@@ -383,7 +385,7 @@
     "java_jar_contents": {
       "status": "not_implemented",
       "effective_status": "not_implemented",
-      "target": "2부 PR-1",
+      "target": "2부 PR-1b-2",
       "verification_tests": []
     },
     "java_client_bounds": {
@@ -424,7 +426,7 @@
     "java_logic_isolation": {
       "status": "enforced",
       "effective_status": "enforced",
-      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. R1·R2′는 미구현 → 2부 PR-1",
+      "note": "정적 범위 — 레포 Java 소스·빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖. R1·R2′ 포함(v1.50) — 면제 집합은 정본 모델에서 기계 추출(현재 send = {truncated}, response = ∅), 판정 어휘는 주석도 검사한다, 응답 쪽 면제의 transport 응답 파싱 위치는 2부 PR-2에서 정한다",
       "verification_tests": [
         "tests/test_java_boundary.py::test_real_project_logic_isolation",
         "tests/test_java_boundary.py::test_forbidden_tokens_come_from_every_canonical_source",
@@ -432,7 +434,12 @@
         "tests/test_java_boundary.py::test_extra_type_in_entry_point_file_is_rejected",
         "tests/test_java_boundary.py::test_forbidden_token_from_each_source_is_rejected",
         "tests/test_java_boundary.py::test_empty_or_missing_project_is_an_error_not_a_pass",
-        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation",
+        "tests/test_java_boundary.py::test_exemptions_are_machine_derived_from_the_canonical_models",
+        "tests/test_java_boundary.py::test_real_core_needs_r1_and_has_it",
+        "tests/test_java_boundary.py::test_r2_fixture",
+        "tests/test_java_boundary.py::test_r2_external_api_member_call_passes_as_control",
+        "tests/test_java_boundary.py::test_r1_send_field_in_transport_passes_as_control"
       ]
     },
     "input_schema_gate": {
@@ -670,10 +677,28 @@
       ]
     },
     "java_masker_parity": {
-      "status": "not_implemented",
-      "effective_status": "not_implemented",
-      "target": "2부 PR-1",
-      "verification_tests": []
+      "status": "enforced",
+      "effective_status": "enforced",
+      "note": "범위 — 실행 중 생성한 N5 더미 코퍼스(고정 시드 160 + 적대 사례) 위의 §2.10 바이트 일치. object_id는 '빈 목록 / 비어 있지 않으면 거부'까지, base64는 범위 밖 (Java는 항상 omitted — 따로 확인). 코퍼스 밖 입력의 일치는 증명하지 않는다. Java glob은 `*`·`?`만 — `[`가 든 정책은 Java가 기동 거부",
+      "verification_tests": [
+        "tests/test_java_masker_parity.py::test_java_core_output_equals_reference_masker_bytes",
+        "tests/test_java_masker_parity.py::test_corpus_reaches_every_area_it_claims",
+        "tests/test_java_masker_parity.py::test_java_always_omits_base64_bodies",
+        "tests/test_java_masker_parity.py::test_harness_classpath_has_gson_only_and_no_error_prone",
+        "tests/test_java_masker_parity.py::test_policy_resource_is_the_canonical_file",
+        "tests/test_java_masker_parity.py::test_java_reason_codes_equal_reference",
+        "tests/test_java_masker_parity.py::test_java_constants_equal_reference",
+        "tests/test_java_masker_parity.py::test_mismatch_report_carries_no_values",
+        "tests/test_java_masker_parity.py::test_parity_is_load_bearing_under_verified_java_mutation",
+        "tests/test_java_masker_parity.py::test_unmutated_copy_compiled_the_same_way_passes_as_control",
+        "tests/test_reference_masker_part2.py::test_ambiguous_json_is_detected",
+        "tests/test_reference_masker_part2.py::test_unambiguous_content_passes",
+        "tests/test_reference_masker_part2.py::test_ambiguous_utf8_body_is_sent_omitted_before_masking",
+        "tests/test_reference_masker_part2.py::test_frozen_bodies_have_no_ambiguous_json",
+        "tests/test_java_boundary.py::test_lenient_json_fixture_is_rejected",
+        "tests/test_java_boundary.py::test_real_core_uses_only_the_strict_reader",
+        "tests/test_java_boundary.py::test_java_boundary_check_is_load_bearing_under_verified_mutation"
+      ]
     },
     "label_consistency": {
       "status": "enforced",

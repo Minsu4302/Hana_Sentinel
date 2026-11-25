@@ -1964,3 +1964,93 @@ Gradle은 module 메타데이터를 쓰므로 pom은 해석되지 않는다. 메
 - Gson·jar
 - R1·R2′
 - `java_masker_parity`·`java_jar_contents` 승격
+
+---
+
+## 2부 PR-1b-1 — Java 마스커 코어 + 동등성 (Issue #143, (A) v1.50)
+
+### 0단계
+- a. 반입 원본 해시(Maven Central `.sha256`·`.sha1`과 모두 일치, 2026-11-24). 앞서 받은 사본 5개와도 바이트가 같다.
+
+| 파일 | 바이트 | SHA-256 |
+|---|---|---|
+| gson-2.15.0.jar | 316396 | `96d3dd843dc2911de01cdabcd50064cb9e860353102a0a78c96fd833d396fc7d` |
+| gson-2.15.0.pom | 23052 | `426bc968a4e521865a58dd17a60389fed6195a1c357e3eb8bcb7cae31387bcae` |
+| gson-parent-2.15.0.pom | 27403 | `337664b30ade9b66e373b6efca1aba7421c1f8ff63643b8aa8b6d05d8efe8e8b` |
+| error_prone_annotations-2.50.0.jar | 20252 | `4667724877f1d37a689202da191e23efa7657c62eef93ccdac406eccfe5cdd0a` |
+| error_prone_annotations-2.50.0.pom | 4252 | `71a0680d277324bab46bec4b00f6f111c1b794a931d0d8cda79bcb9246982f92` |
+| error_prone_parent-2.50.0.pom | 15882 | `abf45a019db125b50ff55134ec2af94ae3519761038adf0a60b9bd7b4b8b6254` |
+
+  - 두 좌표 모두 `.module`은 Central에 없다(404). 원본은 `%USERPROFILE%\sentinel-java\archive\`에 둔다.
+- b. Gson 동작 실측(사례 44개, Gson 네 방식 × Python `strict_json.parse`)
+  - Gson 기본 진입점(`JsonParser.parseString`·`Gson.fromJson`)은 엄격하지 않다: 중복 키(마지막 값), NaN·Infinity, 주석, 작은따옴표, 선행 0, 빈 입력(JsonNull)을 받아들인다.
+  - 판정 조합(JsonReader + STRICT + 순회 중 중복 키 거부 + END_DOCUMENT 확인)이 Python과 갈리는 것은 3가지다: 선행 BOM(Gson은 건너뜀), 이스케이프된 고립 서로게이트(Gson 거부·Python 허용), 깊이 256 이상(Gson 거부·Python은 배열 993·객체 991까지 — 재귀 스택에 달림).
+  - 동결본 utf8 252본문에 셋 다 0건(깊이 최대 3).
+- c. error_prone_annotations는 런타임에 필요 없다.
+  - 클래스패스에 gson만 두고 실험 전체를 돌렸다. Gson 클래스 144개가 로드됐고 errorprone 로드 시도는 0건이다.
+  - gson module-info에서는 `requires static`이다. 애너테이션 보존 정책은 CanIgnoreReturnValue·InlineMe가 CLASS, CheckReturnValue가 RUNTIME이다.
+  - 컴파일 때 없으면 `-Xlint:all -Werror`에서 InlineMe 경고 하나로 실패한다.
+- d. 분할: 1b-1(코어·동등성, v1.50) / 1b-2(jar·`java_jar_contents`, v1.51).
+
+### 판정(민수)
+- 엄격 JSON 판정 조합, 선행 BOM 거부 보강, 오프셋 자체 스캐너를 승인했다.
+- 고립 서로게이트·깊이: `strict_json.py`에 넣는 안은 채택하지 않았다(`ruleset_freeze` 해시 범위 — 바꾸면 rules-3, S v2 위의 측정이 동결 순서 밖). 생산자 규칙(제3안)으로 정했다. 사전 검사는 Java와 참조 마스커에 같은 스캐너로 두고 동등성 범위에 넣는다.
+- 관대한 Gson API 정적 금지는 1b-1에 넣는다(`java_masker_parity`의 정적 하위 검사).
+- error_prone_annotations는 compileOnly로 둔다(해시 고정 유지). 런타임 클래스패스와 jar에서는 뺀다.
+
+### 한 일
+- 마스커 코어 `burp-extension/.../transport/masker/`(순수 Java)
+  - 구성: RawEnvelope, Policy(정본 파일을 빌드 리소스로), StrictJson, AmbiguousJson(사전 검사), JsonSpans(오프셋), Canonical(§2.10), Masker
+  - Python 표준 동작 이식: 코드포인트 비교, 유니코드 공백, `unquote_plus`(UTF-8 최대 부분열 대체), `fnmatchcase`의 `*`·`?`
+- 참조 마스커에 `ambiguous_json` 사전 검사를 넣었다. 동결본 해당 0건은 상시 테스트가 본다.
+- 동등성 하네스(`src/test/java`)와 `tests/test_java_masker_parity.py`
+  - 고정 시드 160건과 적대 사례 60여 건
+  - 클래스패스는 gson만 쓴다(캐시 jar의 해시를 대조한 뒤)
+  - Java 변이 4종과 대조 1건
+- 정적 검사(`tools/java_boundary.py`)
+  - R1·R2′: 면제 집합은 정본 모델에서 기계로 뽑는다 — send = {truncated}, response = ∅
+  - transport Montoya import 0, 코어 java.net 0
+  - 관대한 Gson API 금지, JsonReader는 STRICT
+  - parent pom 허용, error_prone은 compileOnly 좌표로
+- Gradle: gson implementation, error_prone compileOnly + 런타임 제외, 정책 리소스, verification-metadata 6항목(parent pom 포함)
+- (A) v1.50(매핑표 v1.41): `java_masker_parity` 승격, R1·R2′·정적 규칙의 '미구현' 표기 제거, §2.2·§2.3·§2.6·§2.9·부록
+
+### 재량 결정(리뷰 팩 6c와 같다)
+- 마스커 코어 = `루트.transport.masker` 패키지(정적 규칙의 적용 범위).
+- 사전 검사 스캐너 세부:
+  - (가)는 문자열 안의 이스케이프만, (나)는 문자열 밖 괄호만 센다.
+  - `]`·`}`는 0 아래로 내려가지 않는다.
+  - JSON이 아닌 본문도 같은 규칙으로 훑는다.
+- R2′:
+  - 판정 어휘는 주석도 검사한다(보수적 — 면제는 외부 API 멤버 접근뿐).
+  - '우리 소스가 선언한 식별자'는 멤버 접근이 아닌 자리에 나오는 모든 식별자로 본다(상위 근사).
+- R1 응답 쪽 면제는 ui에만 적용한다. transport 응답 파싱 위치는 2부 PR-2에서 정한다(현재 집합이 ∅이라 지금 동작에는 영향 없음).
+- 관대 API 금지 범위:
+  - Java 소스 전체(main·test)에 적용한다.
+  - JsonParser는 이름 자체를 금지한다(인스턴스 `parse`도 관대).
+  - JsonReader 생성 수 ≤ STRICT 설정 수를 요구한다.
+- Java glob은 `*`·`?`만 해석한다. 정책에 `[`가 있으면 Java가 기동하지 않는다(fail-closed).
+- 하네스 RawEnvelope 시각은 `YYYY-MM-DDTHH:MM:SS[.f{1,6}](Z|±HH:MM)`만 받는다.
+- 영수증 구현: 출력에 남은 MaskedRef와 절단으로 버린 span을 센다. 값은 참조 마스커와 같고, 변이 3이 한 줄로 걸리게 하려는 구조다.
+- Gradle 9 `test` 태스크의 `failOnNoDiscoveredTests = false`: 테스트 소스는 하네스뿐이고 JUnit 테스트가 없다.
+
+### 깨진 가정 / 사실 기록
+- Gson의 기본 진입점은 관대하다. "Gson으로 파싱하면 엄격"은 틀린 가정이었다.
+- Gson은 선행 BOM을 건너뛴다.
+- Python 엄격 파서의 깊이 경계는 정의된 값이 아니다(재귀 스택).
+- Gradle 9는 테스트 소스가 있는데 테스트가 없으면 `test` 태스크를 실패시킨다.
+- 장치 결함 3건(모두 고친 뒤 다시 돌렸다. 하네스 실패가 아니라 테스트 입력·검사 설계의 결함이다):
+  - 무작위 코퍼스 첫 설계에서 160건 중 77건이 유출 거부로 끝났다. 공유 값을 마스킹되지 않는 자리에도 넣었기 때문이다. 공유 값을 마스킹 자리에만 두도록 고쳤다(159/160 통과). 다시 얇아지지 않게 도달 테스트에 하한(90%)을 넣었다.
+  - 깊이 사례의 비밀값을 한 글자로 넣어 유출 검사가 다른 문자열 속 같은 글자를 잡았다.
+  - 정규 이름(`new com.google.gson.stream.JsonReader(`)으로 만든 리더가 STRICT 개수 검사를 빠져나갔다. 위조 픽스처가 잡았고, 정규식을 고쳤다.
+- 구현자 도구 사고: 파일을 쓸 때 입력의 `\uXXXX` 일부가 실제 문자(BOM·NBSP·U+2028 등)로 들어갔다. 의미는 같았지만 리뷰에서 보이지 않으므로 이스케이프 표기로 되돌렸다.
+
+### 한계(정직 표기)
+- 동등성은 코퍼스 위의 바이트 일치다. 코퍼스 밖 입력의 일치는 증명하지 않는다.
+- 소문자화는 Python `str.lower`(Unicode 14.0)와 Java `toLowerCase(Locale.ROOT)`(Unicode 15.0)다. 버전 차이로 갈리는 문자는 코퍼스에 없다.
+- 동등성 테스트는 make verify의 Java 단계가 만든 빌드 산출물을 쓴다. pytest만 따로 돌리면 오래된 산출물로 비교할 수 있다(신선도 검사 없음).
+- HMAC 키 배열은 0으로 덮어쓴다. JCA 내부 사본은 덮어쓸 수 없다.
+
+### 이월
+- 1b-2(v1.51): jar 묶기, `java_jar_contents`, 재현 가능 빌드, 변이 4(jar 여분 항목)
+- 2부 PR-2: transport 응답 파싱 위치(R1 응답 쪽 면제)

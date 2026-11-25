@@ -28,6 +28,8 @@
 - 절단((A) §2.2, 마스킹 뒤): 저장 content(표지 포함) ≤ 상한(요청 64KiB·응답 256KiB, UTF-8 바이트). 앞 ≤ ⌊(상한−|표지|)/2⌋,
   뒤 ≤ 나머지, 코드포인트 경계로 안쪽 축소, FILLER에 걸치면 그 FILLER 통째로 잘린 영역에. '앞 + TRUNCATION_MARK + 뒤'로 저장하고
   남은 span은 text range span으로 바꾼다. 원본에 표지가 이미 있으면 omitted, base64가 상한을 넘으면 omitted.
+- 사전 검사((A) §2.2, 마스킹 전): utf8 본문에 이스케이프된 고립 서로게이트가 있거나 문자열 밖 괄호 깊이가 255를 넘으면
+  omitted(`ambiguous_json`). 엄격 JSON 판정이 구현 간에 갈리는 영역이라 보내지 않는다 — Java 코어가 같은 스캐너를 쓴다.
 - 배치((A) §2.3): 기본 transaction — Envelope 1개마다 HMAC 키·매핑 테이블·host 번호를 새로 만든다(Java 동등성의 기준).
   run은 데이터셋 생성기만 쓴다(S v1·S v2 생성 조건). object_id_rules가 비어 있지 않으면 거부한다(kind 미정).
 - 출력 바이트는 (A) §2.10 정규 직렬화(`sentinel.canonical_json`).
@@ -72,6 +74,8 @@ REPO_ROOT: Final = Path(__file__).resolve().parents[2]
 POLICY: Final = DEFAULT_POLICY
 FORM_CONTENT_TYPE: Final = "application/x-www-form-urlencoded"
 MAX_LABEL: Final = 9999  # MaskLabel = ref_ + 숫자 2~4자리
+# 생산자 사전 검사의 중첩 깊이 상한((A) §2.2) — Gson JsonReader 기본 상한과 같다. 넘는 본문은 omitted.
+NESTING_LIMIT: Final = 255
 # 유출 검사가 값 전체와 함께 찾는 비밀 구성요소의 최소 길이(짧은 조각은 오탐 — 마스커-A와 같은 기준)
 MIN_FRAGMENT: Final = 8
 
@@ -302,6 +306,56 @@ def _truncate(content: str, spans: list[dict], limit: int) -> tuple[str, list[di
     return content[:head] + TRUNCATION_MARK + content[tail:], kept, True
 
 
+_HEX4: Final = re.compile(r"[0-9A-Fa-f]{4}")
+
+
+def _escape_unit(content: str, i: int) -> int | None:
+    """content[i]가 '\\'이고 뒤가 'u' + 16진 4자리면 그 코드 단위, 아니면 None."""
+    if content.startswith("u", i + 1) and _HEX4.fullmatch(content, i + 2, i + 6):
+        return int(content[i + 2:i + 6], 16)
+    return None
+
+
+def ambiguous_json(content: str) -> bool:
+    """(A) §2.2 생산자 사전 검사 — 엄격 JSON 판정이 구현 간에 갈리는 본문인가. Java 코어가 같은 스캐너를 쓴다(동등성 범위).
+    문자열 상태를 따라 한 번 훑는다: 문자열 밖 '"'는 문자열 시작, 문자열 안 '\\'는 다음 한 글자(또는 \\uXXXX)를 소비, '"'는 끝.
+    (가) 문자열 안의 이스케이프된 고립 서로게이트 — \\uD800–\\uDBFF 바로 뒤에 \\uDC00–\\uDFFF 이스케이프가 없거나,
+        \\uDC00–\\uDFFF가 단독으로 옴.
+    (나) 문자열 밖 '['·'{' 중첩 깊이가 NESTING_LIMIT를 넘음. ']'·'}'는 깊이를 1 줄이되 0 아래로 내리지 않는다.
+    JSON이 아닌 본문도 같은 규칙으로 훑는다(결정적 — 판정은 본문 종류와 무관)."""
+    depth, in_string, i, n = 0, False, 0, len(content)
+    while i < n:
+        c = content[i]
+        if in_string:
+            if c == "\\":
+                unit = _escape_unit(content, i)
+                if unit is None:
+                    i += 2
+                    continue
+                if 0xDC00 <= unit <= 0xDFFF:
+                    return True
+                if 0xD800 <= unit <= 0xDBFF:
+                    low = _escape_unit(content, i + 6) if content.startswith("\\", i + 6) else None
+                    if low is None or not 0xDC00 <= low <= 0xDFFF:
+                        return True
+                    i += 12
+                    continue
+                i += 6
+                continue
+            if c == '"':
+                in_string = False
+        elif c == '"':
+            in_string = True
+        elif c in "[{":
+            depth += 1
+            if depth > NESTING_LIMIT:
+                return True
+        elif c in "]}" and depth:
+            depth -= 1
+        i += 1
+    return False
+
+
 def _omitted(b: RawBody) -> dict[str, Any]:
     # (A) §2.2 불변식 2' + size_bytes 정의: omitted는 0
     return {"content_type": b.content_type, "size_bytes": 0, "truncated": False, "encoding": "omitted",
@@ -312,6 +366,8 @@ def _body(b: RawBody, run: _Run, globs: dict[str, list[str]], side: str) -> dict
     content, spans = b.content, []
     if b.encoding == "utf8" and content is not None and TRUNCATION_MARK in content:
         return _omitted(b)  # 원본에 표지 문자열이 이미 있음 — 표지 위조·모호성 방지((A) §2.2 불변식 7)
+    if b.encoding == "utf8" and content is not None and ambiguous_json(content):
+        return _omitted(b)  # 엄격 JSON 판정이 구현 간에 갈리는 본문 — 보내지 않는다((A) §2.2 생산자 규칙)
     if b.encoding == "utf8" and content is not None:
         try:
             strict_json.parse(content)

